@@ -1,0 +1,20 @@
+// Modelo de dados do projeto (PostgreSQL).
+// Ponto de partida: o grupo vai adicionando os modelos conforme as features
+// (Partida, Evento, Campeonato, Palpite...). Depois de editar, rode:
+//   npx prisma migrate dev --name descricao-da-mudanca
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
