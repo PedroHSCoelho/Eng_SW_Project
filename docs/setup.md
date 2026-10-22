@@ -4,8 +4,8 @@ Guia para colocar o ambiente de desenvolvimento no ar. Os comandos são para o P
 
 ## Pré-requisitos
 
-- [Node.js](https://nodejs.org) versão 22 (LTS)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (para o banco de dados)
+- [Node.js](https://nodejs.org) versão 22 (LTS)
 - [Git](https://git-scm.com)
 
 Confira as versões:
@@ -24,7 +24,12 @@ Eng_SW_Project/
 ├── backend/             # Node.js + Express + Prisma (porta 3001)
 │   ├── prisma/          # modelos do banco de dados
 │   └── src/
-│       ├── routes/      # uma rota por feature
+│       ├── features/    # módulos do domínio: jogadores, partidas, ranking e avaliações
+│       │   ├── players/
+│       │   ├── matches/
+│       │   ├── rankings/
+│       │   └── ratings/
+│       ├── routes/      # rota de saúde do sistema
 │       ├── app.js       # configuração do Express
 │       ├── db.js        # conexão com o banco
 │       └── index.js     # inicia o servidor
@@ -32,6 +37,16 @@ Eng_SW_Project/
 ├── docker-compose.yml   # PostgreSQL
 └── README.md
 ```
+
+
+O escopo do projeto está centrado em quatro módulos principais:
+
+- Jogadores: cadastro, perfil e estatísticas individuais
+- Partidas: súmula, resultados e participantes
+- Ranking: classificação por pontos, saldo de gols e desempenho
+- Avaliação: notas recebidas após as partidas
+
+Essa divisão ajuda a manter a aplicação em camadas e a evoluir de forma incremental, com entregas menores e testes por regra de negócio.
 
 ## Passo a passo
 

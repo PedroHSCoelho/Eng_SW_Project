@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react'
 
 const funcionalidades = [
-  { icone: '📊', titulo: 'Estatísticas', texto: 'Jogadores do futebol real' },
-  { icone: '🧑‍🤝‍🧑', titulo: 'Amigos', texto: 'Suas estatísticas e as da galera' },
-  { icone: '🏆', titulo: 'Campeonatos', texto: 'Tabelas e artilharia automáticas' },
-  { icone: '🎲', titulo: 'Sorteador', texto: 'Times equilibrados na hora' },
-  { icone: '📋', titulo: 'Prancheta', texto: 'Futsal, fut7 e campo' },
-  { icone: '🎯', titulo: 'Bolão', texto: 'Palpites entre amigos' },
+  { icone: '👤', titulo: 'Jogadores', texto: 'Perfil individual com gols, assistências e partidas' },
+  { icone: '📋', titulo: 'Súmula', texto: 'Registrar resultados, gols e assistências da partida' },
+  { icone: '🏆', titulo: 'Ranking', texto: 'Classificação automática por pontos e desempenho' },
+  { icone: '⭐', titulo: 'Avaliação', texto: 'Notas recebidas por cada participante após o jogo' },
 ]
 
 export default function App() {
