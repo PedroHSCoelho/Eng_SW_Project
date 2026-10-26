@@ -2,6 +2,19 @@
 
 Os PDFs desta pasta são slides só com imagem (sem texto extraível). Este índice resume cada um, para consulta rápida e para a IA aplicar no projeto. Resumos feitos por leitura visual dos slides; revisem contra os PDFs antes de citar na apresentação.
 
+## Versionado neste repositório
+
+| Item | Assunto |
+|------|---------|
+| `fowler-ship-show-ask.html` | Estratégia Ship / Show / Ask para Pull Requests |
+| `fowler-is-quality-worth-the-cost.html` | Custo e valor da qualidade interna de software |
+| `medium-git-worktree-ai-agents.md` | Git worktree com agentes de IA |
+| `skills-mattpocock/` | Coleção de skills de engenharia usada como inspiração (ver `CREDITS.md` de cada skill) |
+
+## PDFs (não versionados)
+
+Os PDFs (cerca de 195 MB) ficam fora do Git para não inflar o histórico nem o tempo de clone; o `.gitignore` os ignora. Peça os arquivos ao time e coloque-os nesta pasta. Os resumos abaixo cobrem cada um.
+
 ## Mapa: tema → material → onde aplicamos
 
 | Tema | Material | Aplicação no projeto |

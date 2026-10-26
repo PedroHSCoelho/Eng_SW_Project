@@ -184,3 +184,9 @@ Mantenha esta estrutura. Se criar pasta nova, explique e atualize este mapa.
 - Não altere escopo do README nem adicione funcionalidades extras por conta própria.
 - Não rode comandos destrutivos ou que exponham `.env`.
 - Mudança que cruza vários módulos ou muda o schema: apresente o plano primeiro.
+
+### Regras de contribuição (ver [CONTRIBUTING.md](CONTRIBUTING.md))
+- Nada de commit direto na `main`; branches `tipo/descricao`; commits em Conventional Commits (português, imperativo); PRs pequenos. O professor avalia todos os commits.
+- Um commit por mudança lógica.
+- Mudou o `schema.prisma`? Gere e commite a migração junto; nunca edite migração já mergeada.
+- Não versione `.env` nem os PDFs de `docs/referencia/` (o `.gitignore` já os ignora).
