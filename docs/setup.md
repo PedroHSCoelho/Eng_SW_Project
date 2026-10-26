@@ -33,7 +33,7 @@ Eng_SW_Project/
 │       ├── app.js       # configuração do Express
 │       ├── db.js        # conexão com o banco
 │       └── index.js     # inicia o servidor
-├── docs/
+├── docs/                # documentação (setup.md, referencia/)
 ├── docker-compose.yml   # PostgreSQL
 └── README.md
 ```
