@@ -14,6 +14,9 @@ build/
 *.log
 npm-debug.log*
 
+# Material de referência pesado (distribuído fora do Git)
+docs/referencia/*.pdf
+
 # Sistema e editores
 .DS_Store
 Thumbs.db
