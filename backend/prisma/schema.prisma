@@ -12,6 +12,26 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Posição em campo. Nomes em inglês no código; a tela traduz.
+enum Position {
+  GOALKEEPER
+  DEFENDER
+  MIDFIELDER
+  FORWARD
+}
+
+// Jogador cadastrado. Estatísticas (gols, assistências, partidas) NÃO ficam aqui:
+// são calculadas a partir das súmulas, para não duplicar dado derivado.
+model Player {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(50)
+  nickname    String   @db.VarChar(30) // como o jogador quer ser exibido ("Zé")
+  nicknameKey String   @unique @db.VarChar(30) // apelido em minúsculas: garante unicidade sem diferenciar maiúsculas
+  position    Position
+  active      Boolean  @default(true) // inativar em vez de excluir quem já tem partida
+  createdAt   DateTime @default(now())
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   name      String
