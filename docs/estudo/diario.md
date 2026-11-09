@@ -40,3 +40,13 @@ Modelo:
 - Teste que prova: ainda nenhum de banco. Falta aplicar `migrate deploy` e conferir `/api/health/db`.
 - Dúvidas que ficaram: —
 - Quem revisou/entendeu: (preencher)
+
+## 2026-11-09 — Tela de jogadores e fechamento da F02
+- O que mudou: criada a tela de jogadores (`frontend/src/features/players/`): lista, busca, filtro de ativos, cadastro, edição, inativar e excluir (com confirmação). Merge da `main` na branch (conflitos em `CLAUDE.md` e `docs/setup.md` resolvidos mantendo a nossa versão).
+- Por quê: a F02 só estava pronta no back-end; a fatia vertical precisa chegar até a tela.
+- Conceito aprendido: separar acesso HTTP (`playersApi.js`) da tela (`PlayersPage.jsx`); a regra continua no back-end e o front só exibe a mensagem de erro que a API devolve; teste de comportamento com `fetch` simulado por "MÉTODO + URL"; evitar resposta antiga sobrescrever a nova (flag `ativo` no `useEffect`).
+- Arquivos principais: `playersApi.js`, `PlayersPage.jsx`, `PlayersPage.test.jsx`, `App.jsx`, `App.test.jsx`.
+- Teste que prova: 15 testes do front (13 da tela). Sabotei a rota de inativar de propósito e o teste correspondente falhou; ponta a ponta feito via proxy do Vite até o Supabase.
+- Dívida técnica conhecida: `npm audit` aponta 3 avisos altos na cadeia do Prisma 6 (`deepmerge-ts`); a correção exige Prisma 7 (breaking). Reavaliar antes da entrega.
+- Dúvidas que ficaram: layout não foi conferido no navegador por quem escreveu o código.
+- Quem revisou/entendeu: (preencher)
