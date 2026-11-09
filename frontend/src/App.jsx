@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react'
+import { NavLink, Route, Routes } from 'react-router-dom'
+import HomePage from './HomePage.jsx'
+import PlayersPage from './features/players/PlayersPage.jsx'
 
-const funcionalidades = [
-  { icone: '👤', titulo: 'Jogadores', texto: 'Perfil individual com gols, assistências e partidas' },
-  { icone: '📋', titulo: 'Súmula', texto: 'Registrar resultados, gols e assistências da partida' },
-  { icone: '🏆', titulo: 'Ranking', texto: 'Classificação automática por pontos e desempenho' },
-  { icone: '⭐', titulo: 'Avaliação', texto: 'Notas recebidas por cada participante após o jogo' },
-]
+// NavLink = <a> que sabe se aponta para a página atual (destaca o item do menu).
+const itemMenu = ({ isActive }) =>
+  `rounded-lg px-3 py-1.5 text-sm font-medium ${
+    isActive ? 'bg-green-500 text-green-950' : 'bg-green-800 hover:bg-green-700'
+  }`
 
+// O App é o "layout" fixo (cabeçalho + menu); o <Routes> troca só o conteúdo conforme a URL.
+// O BrowserRouter fica em main.jsx (nos testes entra o MemoryRouter).
 export default function App() {
   // Estado do teste de conexão com o back-end: 'carregando' | 'online' | 'offline'
   const [api, setApi] = useState('carregando')
@@ -28,26 +32,32 @@ export default function App() {
       <header className="mx-auto max-w-5xl px-4 py-10 text-center">
         <h1 className="text-4xl font-bold md:text-5xl">⚽ Eng_SW_Project</h1>
         <p className="mt-3 text-green-200">
-          Estatísticas, campeonatos, sorteio de times e prancheta para quem ama futebol.
+          Registre partidas, acompanhe estatísticas, veja o ranking e avalie os jogadores da pelada.
         </p>
         <span
           className={`mt-5 inline-block rounded-full px-4 py-1 text-sm font-medium ${statusClasses[api]}`}
         >
           API: {api}
         </span>
+        <nav aria-label="Principal" className="mt-6 flex justify-center gap-2">
+          <NavLink to="/" end className={itemMenu}>
+            Início
+          </NavLink>
+          <NavLink to="/jogadores" className={itemMenu}>
+            Jogadores
+          </NavLink>
+        </nav>
       </header>
 
-      <main className="mx-auto grid max-w-5xl gap-4 px-4 pb-16 sm:grid-cols-2 lg:grid-cols-3">
-        {funcionalidades.map((f) => (
-          <section
-            key={f.titulo}
-            className="rounded-xl bg-green-900 p-5 shadow-lg ring-1 ring-green-700"
-          >
-            <div className="text-3xl">{f.icone}</div>
-            <h2 className="mt-2 text-lg font-semibold">{f.titulo}</h2>
-            <p className="text-sm text-green-200">{f.texto}</p>
-          </section>
-        ))}
+      <main>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/jogadores" element={<PlayersPage />} />
+          <Route
+            path="*"
+            element={<p className="text-center text-green-200">Página não encontrada</p>}
+          />
+        </Routes>
       </main>
     </div>
   )
