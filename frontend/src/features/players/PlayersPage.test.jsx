@@ -170,7 +170,7 @@ describe('PlayersPage', () => {
   })
 
   describe('inativar', () => {
-    it('chama a API de inativar', async () => {
+    it('só inativa depois de confirmar', async () => {
       simularApi({
         ...listaCom(ze),
         'PATCH /api/players/1/inativar': () => resposta(200, { data: { ...ze, active: false } }),
@@ -179,8 +179,22 @@ describe('PlayersPage', () => {
       await screen.findByText('Zé')
 
       fireEvent.click(screen.getByRole('button', { name: 'Inativar Zé' }))
+      expect(chamadas()).not.toContain('PATCH /api/players/1/inativar')
 
+      fireEvent.click(screen.getByRole('button', { name: 'Confirmar inativação de Zé' }))
       await waitFor(() => expect(chamadas()).toContain('PATCH /api/players/1/inativar'))
+    })
+
+    it('permite desistir da inativação', async () => {
+      simularApi(listaCom(ze))
+      render(<PlayersPage />)
+      await screen.findByText('Zé')
+
+      fireEvent.click(screen.getByRole('button', { name: 'Inativar Zé' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Cancelar inativação de Zé' }))
+
+      expect(screen.getByRole('button', { name: 'Inativar Zé' })).toBeInTheDocument()
+      expect(chamadas()).not.toContain('PATCH /api/players/1/inativar')
     })
 
     it('não oferece inativar para quem já está inativo', async () => {
