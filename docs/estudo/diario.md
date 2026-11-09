@@ -50,3 +50,20 @@ Modelo:
 - Dívida técnica conhecida: `npm audit` aponta 3 avisos altos na cadeia do Prisma 6 (`deepmerge-ts`); a correção exige Prisma 7 (breaking). Reavaliar antes da entrega.
 - Dúvidas que ficaram: layout não foi conferido no navegador por quem escreveu o código.
 - Quem revisou/entendeu: (preencher)
+
+## 2026-11-09 — Tela de jogadores completa (F03)
+- O que mudou: confirmação em dois cliques também ao **inativar** (antes só ao excluir); formulário extraído para `PlayerForm.jsx` (componente de apresentação); navegação com React Router (`/` e `/jogadores`, menu, página 404); cards da home foram para `HomePage.jsx`; texto do cabeçalho sem "campeonatos/sorteio/prancheta" (fora do escopo); ADR 0004.
+- Por quê: fechar os critérios de aceite da F03 do `GUIA-DO-PROJETO.md`.
+- Conceito aprendido: componente de apresentação vs. página que orquestra; roteamento no cliente (BrowserRouter em produção, MemoryRouter em teste); TDD (Red visto antes de cada Green).
+- Arquivos principais: `PlayerForm.jsx`, `PlayerForm.test.jsx`, `PlayersPage.jsx`, `App.jsx`, `HomePage.jsx`, `main.jsx`, `docs/adr/0004-react-router-no-front.md`.
+- Teste que prova: 25 testes do front (6 do formulário isolado, 5 do App/rotas, 14 da página). `npm run build` ok.
+- Dúvidas que ficaram: layout e navegação não foram conferidos no navegador por quem escreveu o código (ver roteiro de teste manual).
+- Quem revisou/entendeu: (preencher)
+
+## 2026-11-09 — Dívida técnica do Prisma e fluxo de PRs
+- O que mudou: `backend/package.json` ganhou `"overrides": { "deepmerge-ts": "^8.0.2" }`; `CONTRIBUTING.md` e `GUIA-DO-PROJETO.md` agora dizem que PRs vão para a `dev`.
+- Por quê: o `npm audit` apontava 3 avisos altos em `deepmerge-ts` (dentro do CLI `prisma`, só em desenvolvimento). A correção oficial era migrar para o Prisma 7 (breaking); o `overrides` força a versão corrigida sem trocar o Prisma.
+- Conceito aprendido: dependência transitiva (dependência da dependência); `overrides` do npm como correção pontual; verificar depois (`audit`, `prisma validate/generate/migrate status`, testes).
+- Teste que prova: `npm audit` = 0 vulnerabilidades; 70 testes do back passam; `prisma migrate status` = banco em dia.
+- Risco conhecido: o `overrides` é um remendo; se o Prisma 6 deixar de funcionar com `deepmerge-ts` 8, remover o override e planejar a migração para o Prisma 7.
+- Quem revisou/entendeu: (preencher)

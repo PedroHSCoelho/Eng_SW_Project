@@ -4,14 +4,15 @@ Este projeto é desenvolvido em equipe e todo o histórico é avaliado. Por isso
 
 ## Fluxo de trabalho
 
-1. A `main` é sempre estável: nunca se faz commit direto nela.
-2. Cada tarefa nasce em uma branch curta, criada a partir da `main` atualizada.
-3. Ao terminar, abre-se um Pull Request (PR) para a `main`.
+1. A `main` é sempre estável (só recebe o que será entregue) e a `dev` é a branch de integração. Nunca se faz commit direto em nenhuma das duas.
+2. Cada tarefa nasce em uma branch curta, criada a partir da `dev` atualizada.
+3. Ao terminar, abre-se um Pull Request (PR) para a **`dev`**.
 4. Outra pessoa do time revisa e aprova antes do merge.
 5. O merge é feito com **squash** ou **merge commit**, combinado pelo time, e a branch é apagada.
+6. A cada entrega do semestre, a `dev` (com os testes verdes) vai para a `main` por um PR.
 
 ```powershell
-git switch main
+git switch dev
 git pull
 git switch -c feat/cadastro-de-jogadores
 ```

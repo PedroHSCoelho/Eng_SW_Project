@@ -233,7 +233,7 @@ Os arquivos do F01 também estão no `F01-arquivos.zip` que o Luiz tem.
 
 1. **A `dev` está desatualizada em relação à `main`.** Ela foi criada antes do PR #2, então não tem `CONTRIBUTING.md`, template de PR, `.editorconfig`, `docs/setup.md` etc. Antes de abrir o PR do F01, alguém precisa trazer a `main` para a `dev` (`git switch dev; git pull; git merge origin/main`) e resolver os conflitos, principalmente no `README.md`, `backend/package.json` e `package-lock.json`.
 2. **Os commits do F01 têm `(#N)` no título**, que era só um lugar para o número da issue. Como já foram enviados, não reescreva o histórico; só preste atenção nos próximos.
-3. **Combinar se os PRs vão para `dev` ou para `main`.** O `CONTRIBUTING.md` diz PR para a `main`; o backlog sugere PR para a `dev`. Escolham um e atualizem o `CONTRIBUTING.md`.
+3. ~~Combinar se os PRs vão para `dev` ou para `main`.~~ **Resolvido (09/11/2026):** PRs vão para a `dev`; a `dev` vai para a `main` a cada entrega. `CONTRIBUTING.md` atualizado.
 4. **Branch `docs/estrutura-claude` sem merge.** Abrir o PR, revisar e mergear (o `CLAUDE.md` dela substitui o curto que está na `main`).
 5. **Escopo do backlog x `CLAUDE.md`.** O `CLAUDE.md` da branch `docs/estrutura-claude` diz que o escopo é só o README e que sorteio de times fica para o fim. O backlog tem o F15 (sorteio) e o F04 (login), que não estão no README. Decidam juntos: o login é quase obrigatório para a avaliação saber quem avalia; o sorteio pode ficar como opcional no fim.
 6. **`README.md` na `main` está em UTF-16**, apesar do commit dizer UTF-8 (no GitHub aparece estranho e o diff vira binário). Precisa ser salvo de novo como UTF-8.
