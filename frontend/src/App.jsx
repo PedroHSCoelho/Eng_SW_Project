@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import PlayersPage from './features/players/PlayersPage.jsx'
 
 const funcionalidades = [
   { icone: '👤', titulo: 'Jogadores', texto: 'Perfil individual com gols, assistências e partidas' },
@@ -49,6 +50,8 @@ export default function App() {
           </section>
         ))}
       </main>
+
+      <PlayersPage />
     </div>
   )
 }
