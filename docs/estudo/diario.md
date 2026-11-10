@@ -67,3 +67,11 @@ Modelo:
 - Teste que prova: `npm audit` = 0 vulnerabilidades; 70 testes do back passam; `prisma migrate status` = banco em dia.
 - Risco conhecido: o `overrides` é um remendo; se o Prisma 6 deixar de funcionar com `deepmerge-ts` 8, remover o override e planejar a migração para o Prisma 7.
 - Quem revisou/entendeu: (preencher)
+
+## 2026-11-09 — Login e papéis (F04)
+- O que mudou: cadastro/login/logout/me (`/api/auth/*`), gestão de usuários (`/api/users`), **pedidos de organizador** (`/api/organizer-requests`: pedir, ver o meu, fila, aprovar, recusar), middlewares `autenticar`/`exigirPapel`, jogadores protegidos (leitura: logado; escrita: organizador), comando `npm run organizador:promover` (bootstrap no banco), migrações `auth-user-role` e `pedido-organizador`; front com `AuthContext`, tela de login/cadastro, rota protegida, tela Usuários (com a fila de pedidos) e tela "Ser organizador". `criarApp` separado de `app.js` para testar o app completo. ADR 0005. Removida a ideia de organizador por variável de ambiente.
+- Por quê: critérios da F04 e base da F05 (criar partida só organizador) e F13 (só participante avalia); o organizador precisa surgir por regras no banco, não por configuração de máquina.
+- Conceito aprendido: autenticação x autorização (401 x 403); hash vs. criptografia; JWT; cookie httpOnly/SameSite (XSS e CSRF); núcleo puro x casca; injeção de dependência (inclusive do relógio, para testar "7 dias"); transação (aprovar = fechar pedido + promover); lista explícita de campos para não vazar dados.
+- Teste que prova: 147 testes do back e 43 do front; build do front ok.
+- Não verificado: o fluxo contra o banco real (as migrações ainda não foram aplicadas no Supabase), o comando de bootstrap rodando de verdade e as telas no navegador.
+- Quem revisou/entendeu: (preencher)

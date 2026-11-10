@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import PlayersPage from './PlayersPage.jsx'
+import { AuthContext } from '../auth/AuthContext.jsx'
 
 const ze = { id: 1, name: 'José da Silva', nickname: 'Zé', position: 'FORWARD', active: true }
 const beto = { id: 2, name: 'Roberto Lima', nickname: 'Beto', position: 'GOALKEEPER', active: false }
@@ -33,6 +34,15 @@ function preencher({ nome, apelido, posicao }) {
   fireEvent.change(screen.getByLabelText('Posição'), { target: { value: posicao } })
 }
 
+// A página lê quem está logado pelo contexto; aqui entregamos um usuário pronto, sem rede.
+function renderizarPagina(papel = 'ORGANIZER') {
+  return render(
+    <AuthContext.Provider value={{ usuario: { id: 1, role: papel }, carregando: false }}>
+      <PlayersPage />
+    </AuthContext.Provider>,
+  )
+}
+
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn())
 })
@@ -47,7 +57,7 @@ describe('PlayersPage', () => {
     it('mostra os jogadores com posição em português e marca os inativos', async () => {
       simularApi(listaCom(ze, beto))
 
-      render(<PlayersPage />)
+      renderizarPagina()
 
       expect(await screen.findByText('Zé')).toBeInTheDocument()
       expect(screen.getByText('José da Silva · Atacante')).toBeInTheDocument()
@@ -58,14 +68,14 @@ describe('PlayersPage', () => {
     it('avisa quando não há jogadores', async () => {
       simularApi()
 
-      render(<PlayersPage />)
+      renderizarPagina()
 
       expect(await screen.findByText('Nenhum jogador encontrado.')).toBeInTheDocument()
     })
 
     it('envia a busca para a API sem espaços nas pontas', async () => {
       simularApi()
-      render(<PlayersPage />)
+      renderizarPagina()
       await screen.findByText('Nenhum jogador encontrado.')
 
       fireEvent.change(screen.getByLabelText('Buscar por nome ou apelido'), {
@@ -77,7 +87,7 @@ describe('PlayersPage', () => {
 
     it('pede só jogadores ativos quando o filtro é marcado', async () => {
       simularApi()
-      render(<PlayersPage />)
+      renderizarPagina()
       await screen.findByText('Nenhum jogador encontrado.')
 
       fireEvent.click(screen.getByLabelText('Mostrar só ativos'))
@@ -88,7 +98,7 @@ describe('PlayersPage', () => {
     it('mostra erro quando não consegue falar com o servidor', async () => {
       fetch.mockRejectedValue(new Error('rede caiu'))
 
-      render(<PlayersPage />)
+      renderizarPagina()
 
       expect(await screen.findByRole('alert')).toHaveTextContent(
         'Não foi possível falar com o servidor',
@@ -99,7 +109,7 @@ describe('PlayersPage', () => {
   describe('cadastro', () => {
     it('envia os dados, limpa o formulário e recarrega a lista', async () => {
       simularApi({ 'POST /api/players': () => resposta(201, { data: ze }) })
-      render(<PlayersPage />)
+      renderizarPagina()
       await screen.findByText('Nenhum jogador encontrado.')
 
       preencher({ nome: 'José da Silva', apelido: 'Zé', posicao: 'FORWARD' })
@@ -120,7 +130,7 @@ describe('PlayersPage', () => {
       simularApi({
         'POST /api/players': () => resposta(422, { erro: 'Apelido já está em uso' }),
       })
-      render(<PlayersPage />)
+      renderizarPagina()
       await screen.findByText('Nenhum jogador encontrado.')
 
       preencher({ nome: 'Outro Zé', apelido: 'zé', posicao: 'DEFENDER' })
@@ -137,7 +147,7 @@ describe('PlayersPage', () => {
         ...listaCom(ze),
         'PUT /api/players/1': () => resposta(200, { data: ze }),
       })
-      render(<PlayersPage />)
+      renderizarPagina()
       await screen.findByText('Zé')
 
       fireEvent.click(screen.getByRole('button', { name: 'Editar Zé' }))
@@ -158,7 +168,7 @@ describe('PlayersPage', () => {
 
     it('cancelar volta o formulário para o modo de cadastro', async () => {
       simularApi(listaCom(ze))
-      render(<PlayersPage />)
+      renderizarPagina()
       await screen.findByText('Zé')
 
       fireEvent.click(screen.getByRole('button', { name: 'Editar Zé' }))
@@ -175,7 +185,7 @@ describe('PlayersPage', () => {
         ...listaCom(ze),
         'PATCH /api/players/1/inativar': () => resposta(200, { data: { ...ze, active: false } }),
       })
-      render(<PlayersPage />)
+      renderizarPagina()
       await screen.findByText('Zé')
 
       fireEvent.click(screen.getByRole('button', { name: 'Inativar Zé' }))
@@ -187,7 +197,7 @@ describe('PlayersPage', () => {
 
     it('permite desistir da inativação', async () => {
       simularApi(listaCom(ze))
-      render(<PlayersPage />)
+      renderizarPagina()
       await screen.findByText('Zé')
 
       fireEvent.click(screen.getByRole('button', { name: 'Inativar Zé' }))
@@ -199,7 +209,7 @@ describe('PlayersPage', () => {
 
     it('não oferece inativar para quem já está inativo', async () => {
       simularApi(listaCom(beto))
-      render(<PlayersPage />)
+      renderizarPagina()
       await screen.findByText('Beto')
 
       expect(screen.queryByRole('button', { name: 'Inativar Beto' })).not.toBeInTheDocument()
@@ -212,7 +222,7 @@ describe('PlayersPage', () => {
         ...listaCom(ze),
         'DELETE /api/players/1': () => resposta(204),
       })
-      render(<PlayersPage />)
+      renderizarPagina()
       await screen.findByText('Zé')
 
       fireEvent.click(screen.getByRole('button', { name: 'Excluir Zé' }))
@@ -228,7 +238,7 @@ describe('PlayersPage', () => {
         'DELETE /api/players/1': () =>
           resposta(422, { erro: 'Jogador com partidas não pode ser excluído; inative-o' }),
       })
-      render(<PlayersPage />)
+      renderizarPagina()
       await screen.findByText('Zé')
 
       fireEvent.click(screen.getByRole('button', { name: 'Excluir Zé' }))
@@ -236,5 +246,17 @@ describe('PlayersPage', () => {
 
       expect(await screen.findByRole('alert')).toHaveTextContent('inative-o')
     })
+  })
+})
+
+describe('PlayersPage para quem não é organizador', () => {
+  it('mostra a lista, mas sem formulário de cadastro e sem botões de editar, inativar ou excluir', async () => {
+    simularApi(listaCom(ze))
+
+    renderizarPagina('PLAYER')
+
+    expect(await screen.findByText('Zé')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Nome')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Editar|Inativar|Excluir/ })).not.toBeInTheDocument()
   })
 })

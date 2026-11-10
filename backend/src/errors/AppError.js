@@ -17,6 +17,20 @@ export class ValidationError extends AppError {
   }
 }
 
+// Quem pediu não está autenticado (sem login, token inválido ou vencido)
+export class UnauthorizedError extends AppError {
+  constructor(mensagem = 'Autenticação necessária') {
+    super(mensagem, 401)
+  }
+}
+
+// Está autenticado, mas o papel dele não permite a ação
+export class ForbiddenError extends AppError {
+  constructor(mensagem = 'Você não tem permissão para esta ação') {
+    super(mensagem, 403)
+  }
+}
+
 // Recurso não existe (jogador, partida...)
 export class NotFoundError extends AppError {
   constructor(mensagem = 'Recurso não encontrado') {
