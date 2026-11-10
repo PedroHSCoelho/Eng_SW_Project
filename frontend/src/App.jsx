@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react'
 import { NavLink, Route, Routes } from 'react-router-dom'
 import HomePage from './HomePage.jsx'
 import PlayersPage from './features/players/PlayersPage.jsx'
+import LoginPage from './features/auth/LoginPage.jsx'
+import RotaProtegida from './features/auth/RotaProtegida.jsx'
+import { AuthProvider, useAuth } from './features/auth/AuthContext.jsx'
+import UsersPage from './features/users/UsersPage.jsx'
+import OrganizerRequestPage from './features/organizerRequests/OrganizerRequestPage.jsx'
 
 // NavLink = <a> que sabe se aponta para a página atual (destaca o item do menu).
 const itemMenu = ({ isActive }) =>
@@ -9,9 +14,19 @@ const itemMenu = ({ isActive }) =>
     isActive ? 'bg-green-500 text-green-950' : 'bg-green-800 hover:bg-green-700'
   }`
 
-// O App é o "layout" fixo (cabeçalho + menu); o <Routes> troca só o conteúdo conforme a URL.
+// O AuthProvider deixa "quem está logado" disponível para todas as telas.
 // O BrowserRouter fica em main.jsx (nos testes entra o MemoryRouter).
 export default function App() {
+  return (
+    <AuthProvider>
+      <Layout />
+    </AuthProvider>
+  )
+}
+
+// Layout fixo (cabeçalho + menu); o <Routes> troca só o conteúdo conforme a URL.
+function Layout() {
+  const { usuario, sair } = useAuth()
   // Estado do teste de conexão com o back-end: 'carregando' | 'online' | 'offline'
   const [api, setApi] = useState('carregando')
 
@@ -43,16 +58,65 @@ export default function App() {
           <NavLink to="/" end className={itemMenu}>
             Início
           </NavLink>
-          <NavLink to="/jogadores" className={itemMenu}>
-            Jogadores
-          </NavLink>
+          {usuario && (
+            <NavLink to="/jogadores" className={itemMenu}>
+              Jogadores
+            </NavLink>
+          )}
+          {usuario?.role === 'PLAYER' && (
+            <NavLink to="/ser-organizador" className={itemMenu}>
+              Ser organizador
+            </NavLink>
+          )}
+          {usuario?.role === 'ORGANIZER' && (
+            <NavLink to="/usuarios" className={itemMenu}>
+              Usuários
+            </NavLink>
+          )}
+          {!usuario && (
+            <NavLink to="/login" className={itemMenu}>
+              Entrar
+            </NavLink>
+          )}
         </nav>
+        {usuario && (
+          <p className="mt-4 text-sm text-green-200">
+            {usuario.name} ({usuario.role === 'ORGANIZER' ? 'Organizador' : 'Jogador'}){' '}
+            <button type="button" onClick={sair} className="ml-2 underline">
+              Sair
+            </button>
+          </p>
+        )}
       </header>
 
       <main>
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/jogadores" element={<PlayersPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/jogadores"
+            element={
+              <RotaProtegida>
+                <PlayersPage />
+              </RotaProtegida>
+            }
+          />
+          <Route
+            path="/ser-organizador"
+            element={
+              <RotaProtegida>
+                <OrganizerRequestPage />
+              </RotaProtegida>
+            }
+          />
+          <Route
+            path="/usuarios"
+            element={
+              <RotaProtegida papel="ORGANIZER">
+                <UsersPage />
+              </RotaProtegida>
+            }
+          />
           <Route
             path="*"
             element={<p className="text-center text-green-200">Página não encontrada</p>}

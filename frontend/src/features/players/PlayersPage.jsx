@@ -7,6 +7,7 @@ import {
   listarJogadores,
 } from './playersApi.js'
 import PlayerForm, { POSICOES } from './PlayerForm.jsx'
+import { useAuth } from '../auth/AuthContext.jsx'
 
 const FORM_VAZIO = { name: '', nickname: '', position: '' }
 
@@ -15,6 +16,8 @@ const campo =
 const botao = 'rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50'
 
 export default function PlayersPage() {
+  // Só o organizador cadastra/edita/inativa/exclui. Esconder os botões é conforto: o back-end responde 403 de qualquer jeito.
+  const ehOrganizador = useAuth().usuario?.role === 'ORGANIZER'
   const [jogadores, setJogadores] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
@@ -98,14 +101,16 @@ export default function PlayersPage() {
         </p>
       )}
 
-      <PlayerForm
-        valores={form}
-        editando={Boolean(editandoId)}
-        enviando={enviando}
-        aoMudar={atualizarCampo}
-        aoEnviar={salvar}
-        aoCancelar={limparFormulario}
-      />
+      {ehOrganizador && (
+        <PlayerForm
+          valores={form}
+          editando={Boolean(editandoId)}
+          enviando={enviando}
+          aoMudar={atualizarCampo}
+          aoEnviar={salvar}
+          aoCancelar={limparFormulario}
+        />
+      )}
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
         <label className="flex-1 text-sm">
@@ -150,6 +155,7 @@ export default function PlayersPage() {
                   {j.name} · {POSICOES[j.position] ?? j.position}
                 </p>
               </div>
+              {ehOrganizador && (
               <div className="flex flex-wrap justify-end gap-2">
                 <button
                   type="button"
@@ -208,6 +214,7 @@ export default function PlayersPage() {
                   </>
                 )}
               </div>
+              )}
             </li>
           ))}
         </ul>
