@@ -1,7 +1,6 @@
 // Monta o Express recebendo os serviços prontos. Separado do app.js para que os testes
 // montem o app COMPLETO (rotas + guardas + errorHandler) com repositórios em memória.
 import express from 'express'
-import cors from 'cors'
 import healthRouter from './routes/health.js'
 import { errorHandler, notFound } from './middlewares/errorHandler.js'
 import { criarAutenticar, exigirPapel, exigirPapelParaEscrever } from './middlewares/auth.js'
@@ -21,7 +20,6 @@ export function criarApp({
   const app = express()
   const autenticar = criarAutenticar(authService)
 
-  app.use(cors())
   app.use(express.json())
 
   app.use('/api/health', healthRouter)
