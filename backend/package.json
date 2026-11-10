@@ -12,14 +12,17 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
+    "organizador:promover": "node scripts/promover-organizador.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^18.0.9",
-    "express": "^5.3.0"
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3"
   },
   "devDependencies": {
     "prisma": "^6.19.3",

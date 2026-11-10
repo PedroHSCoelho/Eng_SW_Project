@@ -8,7 +8,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
   url       = env("DATABASE_URL") // pooler do Supabase (porta 6543): usada pela aplicação
   directUrl = env("DIRECT_URL") // conexão sem pgbouncer (porta 5432): usada só pelo prisma migrate
 }
@@ -31,11 +31,48 @@ model Player {
   position    Position
   active      Boolean  @default(true) // inativar em vez de excluir quem já tem partida
   createdAt   DateTime @default(now())
+  user        User? // conta de login ligada a este jogador (no máximo uma)
 }
 
+// Papel do usuário no sistema. Muda pela gestão de usuários (só organizador).
+enum Role {
+  ORGANIZER
+  PLAYER
+}
+
+// Conta de login. Senha NUNCA em texto: só o hash do bcrypt.
 model User {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  createdAt DateTime @default(now())
+  id                Int                @id @default(autoincrement())
+  name              String
+  email             String             @unique // sempre em minúsculas (normalizado pelo serviço)
+  passwordHash      String
+  role              Role               @default(PLAYER)
+  playerId          Int?               @unique // um jogador tem no máximo um usuário
+  player            Player?            @relation(fields: [playerId], references: [id])
+  createdAt         DateTime           @default(now())
+  organizerRequests OrganizerRequest[] @relation("RequestOwner") // pedidos que a pessoa fez
+  decidedRequests   OrganizerRequest[] @relation("RequestDecider") // pedidos que a pessoa decidiu
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Pedido de um jogador para virar organizador. Um organizador aprova ou recusa;
+// guardamos quem decidiu e quando (trilha de auditoria).
+model OrganizerRequest {
+  id          Int           @id @default(autoincrement())
+  userId      Int
+  user        User          @relation("RequestOwner", fields: [userId], references: [id], onDelete: Cascade)
+  message     String        @db.VarChar(200) // motivo informado por quem pede
+  status      RequestStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  decidedAt   DateTime?
+  decidedById Int?
+  decidedBy   User?         @relation("RequestDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
 }
