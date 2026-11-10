@@ -15,6 +15,8 @@ Um termo por conceito, usado igual nas conversas, requisitos, banco, API e códi
 | Gol | `Goal` | Evento de gol numa partida, com autor e, opcionalmente, assistente | — |
 | Assistência | `assist` | Passe que originou um gol; opcional | passe |
 | Participante | — | Jogador que disputou uma partida específica | convidado |
+| Organizador | `Role.ORGANIZER` | Usuário que cadastra jogadores, gere usuários e decide pedidos; no futuro cria partidas e encerra súmulas | admin, dono |
+| Pedido de organizador | `OrganizerRequest` | Solicitação de um jogador para virar organizador, aprovada ou recusada por um organizador | convite, promoção |
 | Avaliação / Nota | `Rating` / `ratings` | Nota inteira de 1 a 5 dada por um participante a outro após a partida | review, voto |
 | Nota média | `averageRating` | Média das notas recebidas por um jogador | score |
 | Ranking | `rankings` | Classificação geral derivada das estatísticas | tabela |
