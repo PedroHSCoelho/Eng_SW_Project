@@ -75,3 +75,11 @@ Modelo:
 - Teste que prova: 147 testes do back e 43 do front; build do front ok.
 - Não verificado: o fluxo contra o banco real (as migrações ainda não foram aplicadas no Supabase), o comando de bootstrap rodando de verdade e as telas no navegador.
 - Quem revisou/entendeu: (preencher)
+
+## 2026-11-09 — Deploy na Vercel
+- O que mudou: `vercel.json`, `api/index.js` (ponto de entrada serverless), `package.json` na raiz (`"type": "module"`), `binaryTargets` no schema Prisma, remoção do `cors()` e da dependência `cors`, ADR 0006, seção "Publicar na Vercel" no `docs/setup.md`.
+- Por quê: testar em uma URL pública sem depender do `localhost`, mantendo o cookie `strict` (mesma origem).
+- Conceito aprendido: serverless x servidor sempre ligado; mesma origem x CORS; rewrites (SPA fallback); variáveis de ambiente por ambiente; migração de banco separada do deploy.
+- Teste que prova: 147 testes do back, build do front e um teste manual carregando `api/index.js` (responde 401 sem login).
+- Não verificado: o deploy real na Vercel (depende de criar o projeto e configurar as variáveis).
+- Quem revisou/entendeu: (preencher)
