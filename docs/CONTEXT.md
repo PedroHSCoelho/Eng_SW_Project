@@ -12,7 +12,8 @@ Um termo por conceito, usado igual nas conversas, requisitos, banco, API e códi
 | Jogador inativo | `active = false` | Jogador que não pode ser escalado; usado no lugar de excluir quem já tem partida | excluído |
 | Partida | `Match` / `matches` | Jogo registrado, com data, participantes e resultado (a "pelada") | jogo, game |
 | Súmula | (a própria `Match` + eventos) | Registro oficial do que aconteceu na partida | ata |
-| Gol | `Goal` | Evento de gol numa partida, com autor e, opcionalmente, assistente | — |
+| Gol | `Goal` | Evento de gol numa partida, com autor e, opcionalmente, assistente; `team` é o time que ganha o gol | — |
+| Gol contra | `ownGoal = true` | Gol que o jogador faz na própria meta: conta para o adversário, não soma gol para o autor e não tem assistência | — |
 | Assistência | `assist` | Passe que originou um gol; opcional | passe |
 | Participante | `MatchPlayer` | Jogador escalado em uma partida específica | convidado |
 | Time | `Team` (`A`, `B`) | Um dos dois lados de uma partida; não há times fixos, cada partida monta os seus | equipe, lado |

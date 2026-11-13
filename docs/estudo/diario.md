@@ -92,3 +92,12 @@ Modelo:
 - Teste que prova: 39 testes novos (24 do núcleo, 4 do serviço, 11 da API com login); conferido também contra um PostgreSQL local (migração aplicada, escalação, iniciar, corrida e Restrict); 186 no back ao todo.
 - Dúvidas que ficaram: a partida precisa de data no futuro para ser criada? (por ora aceita qualquer data; a F07 impede encerrar partida futura).
 - Quem revisou/entendeu: Luiz (autor); revisor do PR: (preencher)
+
+## 2026-11-10 — Gols e assistências (F06)
+- O que mudou: modelo `Goal` (autor, assistência opcional, time que ganha o gol, gol contra, minuto opcional; migração `cria-gol`); `goals.core.js` com as regras; `POST /api/matches/:id/gols` e `DELETE /api/matches/:id/gols/:goalId`; a partida passa a vir com os gols.
+- Por quê: critérios da F06; os gols são a fonte do placar (F07) e das estatísticas (F10).
+- Conceito aprendido: dado derivado calculado no servidor (`team` nunca vem do cliente); duas relações para a mesma tabela (`GoalScorer` e `GoalAssist`); regra que depende do estado (só com a partida em andamento).
+- Arquivos principais: `schema.prisma`, `goals.core.js`, `matches.service.js`, `matches.repository.js`, `matches.routes.js`.
+- Teste que prova: 31 testes novos (20 do núcleo dos gols, 3 do serviço, 8 da API); 217 no back ao todo; conferido também contra um PostgreSQL local.
+- Dúvidas que ficaram: um gol pode ser lançado ao mesmo tempo em que outra pessoa encerra a partida (janela pequena entre ler e gravar); aceitável nesta escala.
+- Quem revisou/entendeu: Luiz (autor); revisor do PR: (preencher)
