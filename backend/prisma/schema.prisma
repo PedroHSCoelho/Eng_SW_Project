@@ -4,17 +4,115 @@
 //   npx prisma migrate dev --name descricao-da-mudanca
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"] // "rhel" = Linux da Vercel; "native" = sua máquina
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // pooler do Supabase (porta 6543): usada pela aplicação
+  directUrl = env("DIRECT_URL") // conexão sem pgbouncer (porta 5432): usada só pelo prisma migrate
 }
 
+// Posição em campo. Nomes em inglês no código; a tela traduz.
+enum Position {
+  GOALKEEPER
+  DEFENDER
+  MIDFIELDER
+  FORWARD
+}
+
+// Jogador cadastrado. Estatísticas (gols, assistências, partidas) NÃO ficam aqui:
+// são calculadas a partir das súmulas, para não duplicar dado derivado.
+model Player {
+  id          Int           @id @default(autoincrement())
+  name        String        @db.VarChar(50)
+  nickname    String        @db.VarChar(30) // como o jogador quer ser exibido ("Zé")
+  nicknameKey String        @unique @db.VarChar(30) // apelido em minúsculas: garante unicidade sem diferenciar maiúsculas
+  position    Position
+  active      Boolean       @default(true) // inativar em vez de excluir quem já tem partida
+  createdAt   DateTime      @default(now())
+  user        User? // conta de login ligada a este jogador (no máximo uma)
+  matches     MatchPlayer[] // partidas em que foi escalado
+}
+
+// Papel do usuário no sistema. Muda pela gestão de usuários (só organizador).
+enum Role {
+  ORGANIZER
+  PLAYER
+}
+
+// Conta de login. Senha NUNCA em texto: só o hash do bcrypt.
 model User {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  createdAt DateTime @default(now())
+  id                Int                @id @default(autoincrement())
+  name              String
+  email             String             @unique // sempre em minúsculas (normalizado pelo serviço)
+  passwordHash      String
+  role              Role               @default(PLAYER)
+  playerId          Int?               @unique // um jogador tem no máximo um usuário
+  player            Player?            @relation(fields: [playerId], references: [id])
+  createdAt         DateTime           @default(now())
+  organizerRequests OrganizerRequest[] @relation("RequestOwner") // pedidos que a pessoa fez
+  decidedRequests   OrganizerRequest[] @relation("RequestDecider") // pedidos que a pessoa decidiu
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Pedido de um jogador para virar organizador. Um organizador aprova ou recusa;
+// guardamos quem decidiu e quando (trilha de auditoria).
+model OrganizerRequest {
+  id          Int           @id @default(autoincrement())
+  userId      Int
+  user        User          @relation("RequestOwner", fields: [userId], references: [id], onDelete: Cascade)
+  message     String        @db.VarChar(200) // motivo informado por quem pede
+  status      RequestStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  decidedAt   DateTime?
+  decidedById Int?
+  decidedBy   User?         @relation("RequestDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
+}
+
+// Estados da partida: agendada -> em andamento -> finalizada (só nessa ordem).
+enum MatchStatus {
+  SCHEDULED
+  IN_PROGRESS
+  FINISHED
+}
+
+// Lado do campo. Não há times fixos: cada partida monta os seus dois times.
+enum Team {
+  A
+  B
+}
+
+// Partida (a "pelada"). Placar e resultado NÃO ficam aqui por enquanto:
+// entram com os gols (F06) e o encerramento (F07).
+model Match {
+  id        Int           @id @default(autoincrement())
+  date      DateTime // dia e hora da partida
+  location  String        @db.VarChar(100)
+  status    MatchStatus   @default(SCHEDULED)
+  createdAt DateTime      @default(now())
+  players   MatchPlayer[] // escalação dos dois times
+}
+
+// Escalação: um jogador em um time de uma partida.
+// A chave (matchId, playerId) impede o mesmo jogador duas vezes na partida,
+// inclusive nos dois times ao mesmo tempo.
+model MatchPlayer {
+  matchId  Int
+  playerId Int
+  team     Team
+  match    Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Restrict) // quem jogou não pode ser excluído
+
+  @@id([matchId, playerId])
+  @@index([playerId])
 }
