@@ -83,3 +83,12 @@ Modelo:
 - Teste que prova: 147 testes do back, build do front e um teste manual carregando `api/index.js` (responde 401 sem login).
 - Não verificado: o deploy real na Vercel (depende de criar o projeto e configurar as variáveis).
 - Quem revisou/entendeu: (preencher)
+
+## 2026-11-10 — Partida e escalação (F05)
+- O que mudou: modelos `Match` e `MatchPlayer` com os enums `MatchStatus` e `Team` (migração `cria-partida`); módulo `matches` com núcleo puro, serviço, repositório e rotas em `/api/matches` (criar, listar, ver, escalar, iniciar); `possuiPartidas` dos jogadores agora consulta o `MatchPlayer`; ADR 0007.
+- Por quê: critérios da F05; é a base da súmula (F06 gols, F07 encerramento) e das estatísticas.
+- Conceito aprendido: máquina de estados (a partida só avança); chave composta como regra garantida pelo banco; transação para trocar a escalação sem ficar pela metade; atualização condicional (`updateMany where status`) contra corrida.
+- Arquivos principais: `schema.prisma`, `matches.core.js`, `matches.service.js`, `matches.repository.js`, `matches.routes.js`, `criarApp.js`.
+- Teste que prova: 39 testes novos (24 do núcleo, 4 do serviço, 11 da API com login); conferido também contra um PostgreSQL local (migração aplicada, escalação, iniciar, corrida e Restrict); 186 no back ao todo.
+- Dúvidas que ficaram: a partida precisa de data no futuro para ser criada? (por ora aceita qualquer data; a F07 impede encerrar partida futura).
+- Quem revisou/entendeu: Luiz (autor); revisor do PR: (preencher)
