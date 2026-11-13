@@ -80,22 +80,31 @@ export function criarPlayersRepoEmMemoria(iniciais = []) {
   }
 }
 
-// Repositório em memória das partidas. Como o real, devolve a partida com a escalação.
+// Repositório em memória das partidas. Como o real, devolve a partida com a escalação e os gols.
 export function criarMatchesRepoEmMemoria() {
   let proximoId = 1
+  let proximoGolId = 1
   const partidas = []
   return {
     partidas,
     listar: async () => partidas,
     buscarPorId: async (id) => partidas.find((p) => p.id === id) ?? null,
     criar: async (dados) => {
-      const partida = { id: proximoId++, status: 'SCHEDULED', players: [], ...dados }
+      const partida = { id: proximoId++, status: 'SCHEDULED', players: [], goals: [], ...dados }
       partidas.push(partida)
       return partida
     },
     substituirEscalacao: async (id, escalacao) =>
       Object.assign(partidas.find((p) => p.id === id), { players: escalacao.map((e) => ({ matchId: id, ...e })) }),
     mudarStatus: async (id, { para }) => Object.assign(partidas.find((p) => p.id === id), { status: para }),
+    criarGol: async ({ matchId, ...gol }) => {
+      const novo = { id: proximoGolId++, matchId, ...gol }
+      partidas.find((p) => p.id === matchId).goals.push(novo)
+      return novo
+    },
+    removerGol: async (goalId) => {
+      for (const p of partidas) p.goals = p.goals.filter((g) => g.id !== goalId)
+    },
   }
 }
 

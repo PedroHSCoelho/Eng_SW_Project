@@ -2,11 +2,16 @@
 import prisma from '../../db.js'
 import { BusinessRuleError } from '../../errors/AppError.js'
 
-// Escalação com o mínimo do jogador que a tela precisa.
+// Escalação e gols com o mínimo do jogador que a tela precisa.
+const apelido = { select: { id: true, nickname: true } }
 const comEscalacao = {
   players: {
     include: { player: { select: { id: true, nickname: true, position: true } } },
     orderBy: [{ team: 'asc' }, { playerId: 'asc' }],
+  },
+  goals: {
+    include: { scorer: apelido, assist: apelido },
+    orderBy: [{ minute: { sort: 'asc', nulls: 'last' } }, { id: 'asc' }],
   },
 }
 
@@ -32,4 +37,8 @@ export const matchesRepository = {
     if (count === 0) throw new BusinessRuleError('A partida mudou de estado; recarregue e tente de novo')
     return prisma.match.findUnique({ where: { id }, include: comEscalacao })
   },
+
+  criarGol: (dados) => prisma.goal.create({ data: dados }),
+
+  removerGol: (goalId) => prisma.goal.delete({ where: { id: goalId } }),
 }

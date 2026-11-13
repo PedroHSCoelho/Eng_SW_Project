@@ -3,8 +3,9 @@
 import { Router } from 'express'
 import { ValidationError } from '../../errors/AppError.js'
 
-function lerId(req) {
-  const id = Number(req.params.id)
+// Ids vêm da URL (texto): só aceita inteiro positivo.
+function lerId(req, nome = 'id') {
+  const id = Number(req.params[nome])
   if (!Number.isInteger(id) || id <= 0) {
     throw new ValidationError('Id inválido')
   }
@@ -33,6 +34,15 @@ export function criarMatchesRouter(service) {
 
   router.patch('/:id/iniciar', async (req, res) => {
     res.json({ data: await service.iniciar(lerId(req)) })
+  })
+
+  // Corpo: { "scorerId": 1, "assistId": 2, "minute": 10, "ownGoal": false } (só scorerId é obrigatório)
+  router.post('/:id/gols', async (req, res) => {
+    res.status(201).json({ data: await service.registrarGol(lerId(req), req.body ?? {}) })
+  })
+
+  router.delete('/:id/gols/:goalId', async (req, res) => {
+    res.json({ data: await service.removerGol(lerId(req), lerId(req, 'goalId')) })
   })
 
   return router
