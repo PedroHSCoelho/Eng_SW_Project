@@ -8,12 +8,14 @@ import { criarPlayersRouter } from './features/players/players.routes.js'
 import { criarAuthRouter } from './features/auth/auth.routes.js'
 import { criarUsersRouter } from './features/users/users.routes.js'
 import { criarOrganizerRequestsRouter } from './features/organizerRequests/organizerRequests.routes.js'
+import { criarMatchesRouter } from './features/matches/matches.routes.js'
 
 export function criarApp({
   playersService,
   authService,
   usersService,
   organizerRequestsService,
+  matchesService,
   tokens,
   cookieSeguro = false,
 }) {
@@ -37,6 +39,13 @@ export function criarApp({
     autenticar,
     exigirPapelParaEscrever('ORGANIZER'),
     criarPlayersRouter(playersService),
+  )
+  // Partidas: qualquer logado vê; só organizador cria, escala e inicia.
+  app.use(
+    '/api/matches',
+    autenticar,
+    exigirPapelParaEscrever('ORGANIZER'),
+    criarMatchesRouter(matchesService),
   )
   // Gestão de usuários: só organizador, inclusive para ler.
   app.use('/api/users', autenticar, exigirPapel('ORGANIZER'), criarUsersRouter(usersService))

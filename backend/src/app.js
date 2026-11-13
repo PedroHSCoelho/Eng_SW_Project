@@ -9,6 +9,8 @@ import { criarUsersService } from './features/users/users.service.js'
 import { usersRepository } from './features/users/users.repository.js'
 import { criarOrganizerRequestsService } from './features/organizerRequests/organizerRequests.service.js'
 import { organizerRequestsRepository } from './features/organizerRequests/organizerRequests.repository.js'
+import { criarMatchesService } from './features/matches/matches.service.js'
+import { matchesRepository } from './features/matches/matches.repository.js'
 
 const tokens = criarTokens()
 
@@ -25,6 +27,7 @@ const app = criarApp({
   organizerRequestsService: criarOrganizerRequestsService({
     requestsRepo: organizerRequestsRepository,
   }),
+  matchesService: criarMatchesService({ matchesRepo: matchesRepository, playersRepo: playersRepository }),
   tokens,
   cookieSeguro: process.env.NODE_ENV === 'production',
 })

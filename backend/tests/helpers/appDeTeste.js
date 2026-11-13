@@ -7,6 +7,7 @@ import { criarTokens } from '../../src/features/auth/tokens.js'
 import { criarPlayersService } from '../../src/features/players/players.service.js'
 import { criarUsersService } from '../../src/features/users/users.service.js'
 import { criarOrganizerRequestsService } from '../../src/features/organizerRequests/organizerRequests.service.js'
+import { criarMatchesService } from '../../src/features/matches/matches.service.js'
 
 export const SEGREDO = 'segredo-de-teste-com-mais-de-32-caracteres!!'
 
@@ -66,6 +67,7 @@ export function criarPlayersRepoEmMemoria(iniciais = []) {
   return {
     listar: async () => jogadores,
     buscarPorId: async (id) => jogadores.find((j) => j.id === id) ?? null,
+    buscarPorIds: async (ids) => jogadores.filter((j) => ids.includes(j.id)),
     buscarPorNicknameKey: async (key) => jogadores.find((j) => j.nicknameKey === key) ?? null,
     criar: async (dados) => {
       const jogador = { id: proximoId++, active: true, ...dados }
@@ -78,10 +80,30 @@ export function criarPlayersRepoEmMemoria(iniciais = []) {
   }
 }
 
+// Repositório em memória das partidas. Como o real, devolve a partida com a escalação.
+export function criarMatchesRepoEmMemoria() {
+  let proximoId = 1
+  const partidas = []
+  return {
+    partidas,
+    listar: async () => partidas,
+    buscarPorId: async (id) => partidas.find((p) => p.id === id) ?? null,
+    criar: async (dados) => {
+      const partida = { id: proximoId++, status: 'SCHEDULED', players: [], ...dados }
+      partidas.push(partida)
+      return partida
+    },
+    substituirEscalacao: async (id, escalacao) =>
+      Object.assign(partidas.find((p) => p.id === id), { players: escalacao.map((e) => ({ matchId: id, ...e })) }),
+    mudarStatus: async (id, { para }) => Object.assign(partidas.find((p) => p.id === id), { status: para }),
+  }
+}
+
 export function montarApp({ expiraEmSegundos, jogadores = [], agora } = {}) {
   const usersRepo = criarUsersRepoEmMemoria()
   const requestsRepo = criarRequestsRepoEmMemoria(usersRepo)
   const playersRepo = criarPlayersRepoEmMemoria(jogadores)
+  const matchesRepo = criarMatchesRepoEmMemoria()
   const tokens = criarTokens({ obterSegredo: () => SEGREDO, expiraEmSegundos })
   const authService = criarAuthService({
     usersRepo,
@@ -93,7 +115,8 @@ export function montarApp({ expiraEmSegundos, jogadores = [], agora } = {}) {
     authService,
     usersService: criarUsersService({ usersRepo, playersRepo }),
     organizerRequestsService: criarOrganizerRequestsService({ requestsRepo, agora }),
+    matchesService: criarMatchesService({ matchesRepo, playersRepo }),
     tokens,
   })
-  return { app, usersRepo, requestsRepo, tokens }
+  return { app, usersRepo, requestsRepo, matchesRepo, tokens }
 }

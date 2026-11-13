@@ -33,6 +33,11 @@ export const playersRepository = {
     return prisma.player.findUnique({ where: { id } })
   },
 
+  // Usado pela escalação (módulo matches) para conferir vários jogadores de uma vez.
+  buscarPorIds(ids) {
+    return prisma.player.findMany({ where: { id: { in: ids } } })
+  },
+
   buscarPorNicknameKey(nicknameKey) {
     return prisma.player.findUnique({ where: { nicknameKey } })
   },
@@ -57,9 +62,8 @@ export const playersRepository = {
     await prisma.player.delete({ where: { id } })
   },
 
-  // Ainda não existe Partida no banco (entra no F05): ninguém tem partida por enquanto.
-  // No F05 isto passa a consultar MatchPlayer.
-  async possuiPartidas() {
-    return false
+  // Já foi escalado em alguma partida? (o onDelete: Restrict do MatchPlayer também barra no banco)
+  async possuiPartidas(id) {
+    return (await prisma.matchPlayer.count({ where: { playerId: id } })) > 0
   },
 }
