@@ -96,5 +96,9 @@ Código em `backend/src/features/matches/`: `matches.core.js` (regras puras), `m
 | `POST /api/matches` | Cria (`date` em ISO, `location`) → 201, sempre `SCHEDULED` | 400 dados inválidos |
 | `PUT /api/matches/:id/escalacao` | Substitui os dois times: `{ "teamA": [1,2,3], "teamB": [4,5,6] }` | 400, 404, 422 |
 | `PATCH /api/matches/:id/iniciar` | `SCHEDULED` → `IN_PROGRESS` | 404, 422 |
+| `POST /api/matches/:id/gols` | Lança um gol: `{ scorerId, assistId?, minute?, ownGoal? }` → 201 com a partida | 400, 404, 422 |
+| `DELETE /api/matches/:id/gols/:goalId` | Remove um gol lançado errado → 200 com a partida | 400, 404, 422 |
 
 Regras (em `matches.core.js`): local de 2 a 100 caracteres; um jogador não aparece duas vezes nem nos dois times; jogador inexistente ou inativo não é escalado; a escalação só muda com a partida agendada; para começar, cada time precisa de pelo menos 3 jogadores. Ver `docs/adr/0007-partida-e-escalacao.md`.
+
+Regras dos gols (F06, em `goals.core.js`): só com a partida em andamento (lançar e remover); o autor precisa estar escalado; a assistência é opcional e precisa ser de **outro** jogador do **mesmo** time; gol contra não tem assistência e conta para o adversário. O time do gol (`team`) é sempre calculado pelo servidor; se o cliente mandar, é ignorado. Minuto opcional, de 0 a 120. A partida volta com `goals` (autor e assistente com apelido), ordenados pelo minuto.
