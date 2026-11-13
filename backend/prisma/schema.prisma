@@ -25,14 +25,15 @@ enum Position {
 // Jogador cadastrado. Estatísticas (gols, assistências, partidas) NÃO ficam aqui:
 // são calculadas a partir das súmulas, para não duplicar dado derivado.
 model Player {
-  id          Int      @id @default(autoincrement())
-  name        String   @db.VarChar(50)
-  nickname    String   @db.VarChar(30) // como o jogador quer ser exibido ("Zé")
-  nicknameKey String   @unique @db.VarChar(30) // apelido em minúsculas: garante unicidade sem diferenciar maiúsculas
+  id          Int           @id @default(autoincrement())
+  name        String        @db.VarChar(50)
+  nickname    String        @db.VarChar(30) // como o jogador quer ser exibido ("Zé")
+  nicknameKey String        @unique @db.VarChar(30) // apelido em minúsculas: garante unicidade sem diferenciar maiúsculas
   position    Position
-  active      Boolean  @default(true) // inativar em vez de excluir quem já tem partida
-  createdAt   DateTime @default(now())
+  active      Boolean       @default(true) // inativar em vez de excluir quem já tem partida
+  createdAt   DateTime      @default(now())
   user        User? // conta de login ligada a este jogador (no máximo uma)
+  matches     MatchPlayer[] // partidas em que foi escalado
 }
 
 // Papel do usuário no sistema. Muda pela gestão de usuários (só organizador).
@@ -76,4 +77,42 @@ model OrganizerRequest {
 
   @@index([userId])
   @@index([status])
+}
+
+// Estados da partida: agendada -> em andamento -> finalizada (só nessa ordem).
+enum MatchStatus {
+  SCHEDULED
+  IN_PROGRESS
+  FINISHED
+}
+
+// Lado do campo. Não há times fixos: cada partida monta os seus dois times.
+enum Team {
+  A
+  B
+}
+
+// Partida (a "pelada"). Placar e resultado NÃO ficam aqui por enquanto:
+// entram com os gols (F06) e o encerramento (F07).
+model Match {
+  id        Int           @id @default(autoincrement())
+  date      DateTime // dia e hora da partida
+  location  String        @db.VarChar(100)
+  status    MatchStatus   @default(SCHEDULED)
+  createdAt DateTime      @default(now())
+  players   MatchPlayer[] // escalação dos dois times
+}
+
+// Escalação: um jogador em um time de uma partida.
+// A chave (matchId, playerId) impede o mesmo jogador duas vezes na partida,
+// inclusive nos dois times ao mesmo tempo.
+model MatchPlayer {
+  matchId  Int
+  playerId Int
+  team     Team
+  match    Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Restrict) // quem jogou não pode ser excluído
+
+  @@id([matchId, playerId])
+  @@index([playerId])
 }
