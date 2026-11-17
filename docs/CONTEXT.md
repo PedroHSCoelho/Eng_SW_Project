@@ -18,8 +18,10 @@ Um termo por conceito, usado igual nas conversas, requisitos, banco, API e códi
 | Participante | `MatchPlayer` | Jogador escalado em uma partida específica | convidado |
 | Time | `Team` (`A`, `B`) | Um dos dois lados de uma partida; não há times fixos, cada partida monta os seus | equipe, lado |
 | Escalação | `MatchPlayer[]` / `PUT /escalacao` | Quais jogadores estão em cada time de uma partida | lineup, convocação |
+| Placar | `score` (`{ A, B }`) | Gols de cada time, sempre calculado a partir dos gols; nunca digitado nem guardado | resultado parcial |
+| Resultado | `MatchResult` (`A_WINS`, `B_WINS`, `DRAW`) | Vitória de A, vitória de B ou empate, gravado ao encerrar a partida | vencedor |
 | Estado da partida | `MatchStatus` | Agendada (`SCHEDULED`) → em andamento (`IN_PROGRESS`) → finalizada (`FINISHED`), só nessa ordem | situação |
-| Organizador | `Role.ORGANIZER` | Usuário que cadastra jogadores, gere usuários e decide pedidos, cria partidas e escala os times; no futuro encerra súmulas | admin, dono |
+| Organizador | `Role.ORGANIZER` | Usuário que cadastra jogadores, gere usuários e decide pedidos, cria partidas, escala os times, lança os gols e encerra a súmula | admin, dono |
 | Pedido de organizador | `OrganizerRequest` | Solicitação de um jogador para virar organizador, aprovada ou recusada por um organizador | convite, promoção |
 | Avaliação / Nota | `Rating` / `ratings` | Nota inteira de 1 a 5 dada por um participante a outro após a partida | review, voto |
 | Nota média | `averageRating` | Média das notas recebidas por um jogador | score |
