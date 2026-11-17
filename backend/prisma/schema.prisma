@@ -94,16 +94,25 @@ enum Team {
   B
 }
 
-// Partida (a "pelada"). Placar e resultado NÃO ficam aqui por enquanto:
-// entram com os gols (F06) e o encerramento (F07).
+// Resultado gravado ao encerrar a partida.
+enum MatchResult {
+  A_WINS
+  B_WINS
+  DRAW
+}
+
+// Partida (a "pelada"). O placar NÃO é guardado: é sempre calculado a partir dos gols.
+// O resultado é gravado ao encerrar (depois disso a súmula não muda mais).
 model Match {
-  id        Int           @id @default(autoincrement())
-  date      DateTime // dia e hora da partida
-  location  String        @db.VarChar(100)
-  status    MatchStatus   @default(SCHEDULED)
-  createdAt DateTime      @default(now())
-  players   MatchPlayer[] // escalação dos dois times
-  goals     Goal[] // gols lançados na súmula
+  id         Int           @id @default(autoincrement())
+  date       DateTime // dia e hora da partida
+  location   String        @db.VarChar(100)
+  status     MatchStatus   @default(SCHEDULED)
+  result     MatchResult? // vazio até a partida ser encerrada
+  finishedAt DateTime? // quando foi encerrada
+  createdAt  DateTime      @default(now())
+  players    MatchPlayer[] // escalação dos dois times
+  goals      Goal[] // gols lançados na súmula
 }
 
 // Escalação: um jogador em um time de uma partida.

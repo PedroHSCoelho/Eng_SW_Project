@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
+  calcularPlacar,
   lerIdsDoTime,
+  resultadoDoPlacar,
   validarDadosDaPartida,
   validarEscalacao,
   verificarEscalacaoEditavel,
+  verificarPodeEncerrar,
   verificarPodeIniciar,
 } from '../src/features/matches/matches.core.js'
 
@@ -100,5 +103,48 @@ describe('verificarPodeIniciar', () => {
 
   it('não começa duas vezes', () => {
     expect(() => verificarPodeIniciar(partidaCom(3, 3, 'IN_PROGRESS'))).toThrow('Só uma partida agendada')
+  })
+})
+
+describe('calcularPlacar', () => {
+  it('conta os gols pelo time que ganhou cada um (inclusive gol contra)', () => {
+    const gols = [{ team: 'A' }, { team: 'B', ownGoal: true }, { team: 'A' }]
+    expect(calcularPlacar(gols)).toEqual({ A: 2, B: 1 })
+  })
+
+  it('sem gols é 0 x 0', () => {
+    expect(calcularPlacar([])).toEqual({ A: 0, B: 0 })
+  })
+})
+
+describe('resultadoDoPlacar', () => {
+  it.each([
+    [{ A: 2, B: 1 }, 'A_WINS'],
+    [{ A: 0, B: 3 }, 'B_WINS'],
+    [{ A: 1, B: 1 }, 'DRAW'],
+  ])('%j -> %s', (placar, resultado) => {
+    expect(resultadoDoPlacar(placar)).toBe(resultado)
+  })
+})
+
+describe('verificarPodeEncerrar', () => {
+  const agora = new Date('2026-11-20T23:00:00Z')
+  const jogada = { status: 'IN_PROGRESS', date: new Date('2026-11-20T22:00:00Z') }
+
+  it('partida em andamento e com data passada pode ser encerrada', () => {
+    expect(() => verificarPodeEncerrar({ partida: jogada, agora })).not.toThrow()
+  })
+
+  it('não encerra duas vezes', () => {
+    expect(() => verificarPodeEncerrar({ partida: { ...jogada, status: 'FINISHED' }, agora })).toThrow('já foi encerrada')
+  })
+
+  it('não encerra partida que nem começou', () => {
+    expect(() => verificarPodeEncerrar({ partida: { ...jogada, status: 'SCHEDULED' }, agora })).toThrow('em andamento')
+  })
+
+  it('não encerra partida marcada para o futuro', () => {
+    const futura = { ...jogada, date: new Date('2026-11-21T22:00:00Z') }
+    expect(() => verificarPodeEncerrar({ partida: futura, agora })).toThrow('futuro')
   })
 })

@@ -32,8 +32,12 @@ export const matchesRepository = {
 
   // Troca o status só se ele ainda for o esperado (`de`). Se duas requisições
   // tentarem ao mesmo tempo, a segunda encontra 0 linhas e vira erro de negócio.
-  async mudarStatus(id, { de, para }) {
-    const { count } = await prisma.match.updateMany({ where: { id, status: de }, data: { status: para } })
+  // `dados` grava junto o que muda na transição (ex.: resultado ao encerrar).
+  async mudarStatus(id, { de, para, dados = {} }) {
+    const { count } = await prisma.match.updateMany({
+      where: { id, status: de },
+      data: { ...dados, status: para },
+    })
     if (count === 0) throw new BusinessRuleError('A partida mudou de estado; recarregue e tente de novo')
     return prisma.match.findUnique({ where: { id }, include: comEscalacao })
   },

@@ -101,3 +101,11 @@ Modelo:
 - Teste que prova: 31 testes novos (20 do núcleo dos gols, 3 do serviço, 8 da API); 217 no back ao todo; conferido também contra um PostgreSQL local.
 - Dúvidas que ficaram: um gol pode ser lançado ao mesmo tempo em que outra pessoa encerra a partida (janela pequena entre ler e gravar); aceitável nesta escala.
 - Quem revisou/entendeu: Luiz (autor); revisor do PR: (preencher)
+
+## 2026-11-10 — Encerrar partida e placar (F07)
+- O que mudou: `Match` ganhou `result` (enum `MatchResult`) e `finishedAt` (migração `encerra-partida`); funções puras `calcularPlacar`, `resultadoDoPlacar` e `verificarPodeEncerrar`; `PATCH /api/matches/:id/encerrar`; toda resposta de partida traz `score`; relógio injetado no serviço de partidas; ADR 0008.
+- Por quê: critérios da F07; fecha a súmula (Entrega 2, parte do back-end) e prepara histórico, estatísticas e ranking.
+- Conceito aprendido: máquina de estados completa (agendada → em andamento → finalizada); dado derivado calculado x gravado; injeção do relógio para testar regra de tempo.
+- Arquivos principais: `schema.prisma`, `matches.core.js`, `matches.service.js`, `matches.repository.js`, `matches.routes.js`.
+- Teste que prova: 17 testes novos (9 do núcleo, 2 do serviço, 6 da API); 234 no back ao todo; conferido também contra um PostgreSQL local.
+- Quem revisou/entendeu: Luiz (autor); revisor do PR: (preencher)
