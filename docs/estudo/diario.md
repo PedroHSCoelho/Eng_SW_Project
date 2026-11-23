@@ -83,3 +83,29 @@ Modelo:
 - Teste que prova: 147 testes do back, build do front e um teste manual carregando `api/index.js` (responde 401 sem login).
 - Não verificado: o deploy real na Vercel (depende de criar o projeto e configurar as variáveis).
 - Quem revisou/entendeu: (preencher)
+
+## 2026-11-10 — Partida e escalação (F05)
+- O que mudou: modelos `Match` e `MatchPlayer` com os enums `MatchStatus` e `Team` (migração `cria-partida`); módulo `matches` com núcleo puro, serviço, repositório e rotas em `/api/matches` (criar, listar, ver, escalar, iniciar); `possuiPartidas` dos jogadores agora consulta o `MatchPlayer`; ADR 0007.
+- Por quê: critérios da F05; é a base da súmula (F06 gols, F07 encerramento) e das estatísticas.
+- Conceito aprendido: máquina de estados (a partida só avança); chave composta como regra garantida pelo banco; transação para trocar a escalação sem ficar pela metade; atualização condicional (`updateMany where status`) contra corrida.
+- Arquivos principais: `schema.prisma`, `matches.core.js`, `matches.service.js`, `matches.repository.js`, `matches.routes.js`, `criarApp.js`.
+- Teste que prova: 39 testes novos (24 do núcleo, 4 do serviço, 11 da API com login); conferido também contra um PostgreSQL local (migração aplicada, escalação, iniciar, corrida e Restrict); 186 no back ao todo.
+- Dúvidas que ficaram: a partida precisa de data no futuro para ser criada? (por ora aceita qualquer data; a F07 impede encerrar partida futura).
+- Quem revisou/entendeu: Luiz (autor); revisor do PR: (preencher)
+
+## 2026-11-10 — Gols e assistências (F06)
+- O que mudou: modelo `Goal` (autor, assistência opcional, time que ganha o gol, gol contra, minuto opcional; migração `cria-gol`); `goals.core.js` com as regras; `POST /api/matches/:id/gols` e `DELETE /api/matches/:id/gols/:goalId`; a partida passa a vir com os gols.
+- Por quê: critérios da F06; os gols são a fonte do placar (F07) e das estatísticas (F10).
+- Conceito aprendido: dado derivado calculado no servidor (`team` nunca vem do cliente); duas relações para a mesma tabela (`GoalScorer` e `GoalAssist`); regra que depende do estado (só com a partida em andamento).
+- Arquivos principais: `schema.prisma`, `goals.core.js`, `matches.service.js`, `matches.repository.js`, `matches.routes.js`.
+- Teste que prova: 31 testes novos (20 do núcleo dos gols, 3 do serviço, 8 da API); 217 no back ao todo; conferido também contra um PostgreSQL local.
+- Dúvidas que ficaram: um gol pode ser lançado ao mesmo tempo em que outra pessoa encerra a partida (janela pequena entre ler e gravar); aceitável nesta escala.
+- Quem revisou/entendeu: Luiz (autor); revisor do PR: (preencher)
+
+## 2026-11-10 — Encerrar partida e placar (F07)
+- O que mudou: `Match` ganhou `result` (enum `MatchResult`) e `finishedAt` (migração `encerra-partida`); funções puras `calcularPlacar`, `resultadoDoPlacar` e `verificarPodeEncerrar`; `PATCH /api/matches/:id/encerrar`; toda resposta de partida traz `score`; relógio injetado no serviço de partidas; ADR 0008.
+- Por quê: critérios da F07; fecha a súmula (Entrega 2, parte do back-end) e prepara histórico, estatísticas e ranking.
+- Conceito aprendido: máquina de estados completa (agendada → em andamento → finalizada); dado derivado calculado x gravado; injeção do relógio para testar regra de tempo.
+- Arquivos principais: `schema.prisma`, `matches.core.js`, `matches.service.js`, `matches.repository.js`, `matches.routes.js`.
+- Teste que prova: 17 testes novos (9 do núcleo, 2 do serviço, 6 da API); 234 no back ao todo; conferido também contra um PostgreSQL local.
+- Quem revisou/entendeu: Luiz (autor); revisor do PR: (preencher)
