@@ -32,6 +32,10 @@ A partir dos dados registrados, o sistema calcula estatísticas individuais e di
 - Cálculo da média das avaliações recebidas por cada jogador.
 - Consulta à nota média dos jogadores em seus perfis.
 
+## Aplicação publicada
+
+O sistema está no ar em **https://eng-sw-project-frontend.vercel.app** (front estático e API na Vercel, banco no Supabase). Para rodar na sua máquina, veja [Primeiros passos](#primeiros-passos).
+
 ## Tecnologias
 
 | Camada | Stack |

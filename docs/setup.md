@@ -68,7 +68,24 @@ Um projeto só na Vercel, ligado à raiz do repositório (ver `docs/adr/0006-dep
    - `NODE_ENV` não precisa: a Vercel já usa `production`.
 3. **Deploy**. Teste `https://<seu-projeto>.vercel.app/api/health` e `/api/health/db`.
 4. Migrações não rodam no deploy: depois de criar uma migração, rode `npx prisma migrate deploy` na sua máquina (usa a `DIRECT_URL` do `.env`).
-5. Primeiro organizador em produção: `npm run organizador:promover` na sua máquina (aponta para o mesmo banco).
+5. Primeiro organizador em produção: `npm run organizador:promover -- seu@email.com` na sua máquina (aponta para o mesmo banco). A conta precisa já ter sido criada pelo site.
+
+### Aplicação publicada
+
+- **Endereço:** https://eng-sw-project-frontend.vercel.app (projeto `eng-sw-project-frontend`, time `eng-sw` na Vercel).
+- Cada merge na `main` gera um deploy de produção; cada PR gera um deploy de prévia.
+- **Como saber se está tudo certo:**
+  - `/api/health` responde `{"status":"ok"}` (o servidor está de pé);
+  - `/api/health/db` responde `{"status":"ok","banco":"conectado"}` (o banco responde);
+  - `/api/rankings` sem login responde **401** (a API está protegida e o código novo está no ar).
+
+### Problemas comuns na Vercel
+
+| Sintoma | Causa | O que fazer |
+|---|---|---|
+| `/api/health/db` dá 503 e o login dá 500; no log da função aparece `Environment variable not found: DATABASE_URL` | A variável não existe para o ambiente **Production**, ou foi criada mas não houve novo deploy | Crie/confira a variável em **Settings → Environment Variables** e faça **Redeploy** (variável nova só vale em deploy novo) |
+| O cadastro ou o login dá 500 só depois de o banco conectar | Falta `JWT_SECRET` (mínimo de 32 caracteres) | Crie a variável e faça **Redeploy** |
+| Qualquer erro estranho na API | A mensagem real fica no log da função | **Deployments → o deploy → Logs** (ou **Runtime Logs**) |
 
 ## Cuidados com o banco compartilhado
 
