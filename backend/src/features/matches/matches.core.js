@@ -78,3 +78,32 @@ export function verificarPodeIniciar(partida) {
     }
   }
 }
+
+// Placar sempre calculado a partir dos gols (nunca digitado).
+// Cada gol já sabe qual time ganhou o ponto (`team`), inclusive o gol contra.
+export function calcularPlacar(gols) {
+  return {
+    A: gols.filter((g) => g.team === 'A').length,
+    B: gols.filter((g) => g.team === 'B').length,
+  }
+}
+
+export function resultadoDoPlacar({ A, B }) {
+  if (A > B) return 'A_WINS'
+  if (B > A) return 'B_WINS'
+  return 'DRAW'
+}
+
+// Em andamento -> finalizada. Não encerra duas vezes nem partida marcada para o futuro.
+// `agora` entra por parâmetro para o teste controlar o relógio.
+export function verificarPodeEncerrar({ partida, agora }) {
+  if (partida.status === 'FINISHED') {
+    throw new BusinessRuleError('A partida já foi encerrada')
+  }
+  if (partida.status !== 'IN_PROGRESS') {
+    throw new BusinessRuleError('Só uma partida em andamento pode ser encerrada')
+  }
+  if (new Date(partida.date) > agora) {
+    throw new BusinessRuleError('Não é possível encerrar uma partida marcada para o futuro')
+  }
+}

@@ -96,7 +96,8 @@ export function criarMatchesRepoEmMemoria() {
     },
     substituirEscalacao: async (id, escalacao) =>
       Object.assign(partidas.find((p) => p.id === id), { players: escalacao.map((e) => ({ matchId: id, ...e })) }),
-    mudarStatus: async (id, { para }) => Object.assign(partidas.find((p) => p.id === id), { status: para }),
+    mudarStatus: async (id, { para, dados = {} }) =>
+      Object.assign(partidas.find((p) => p.id === id), { ...dados, status: para }),
     criarGol: async ({ matchId, ...gol }) => {
       const novo = { id: proximoGolId++, matchId, ...gol }
       partidas.find((p) => p.id === matchId).goals.push(novo)
@@ -124,7 +125,7 @@ export function montarApp({ expiraEmSegundos, jogadores = [], agora } = {}) {
     authService,
     usersService: criarUsersService({ usersRepo, playersRepo }),
     organizerRequestsService: criarOrganizerRequestsService({ requestsRepo, agora }),
-    matchesService: criarMatchesService({ matchesRepo, playersRepo }),
+    matchesService: criarMatchesService({ matchesRepo, playersRepo, agora }),
     tokens,
   })
   return { app, usersRepo, requestsRepo, matchesRepo, tokens }

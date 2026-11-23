@@ -40,7 +40,7 @@ export function criarApp({
     exigirPapelParaEscrever('ORGANIZER'),
     criarPlayersRouter(playersService),
   )
-  // Partidas: qualquer logado vê; só organizador cria, escala, inicia e lança gols.
+  // Partidas: qualquer logado vê; só organizador cria, escala, inicia, lança gols e encerra.
   app.use(
     '/api/matches',
     autenticar,

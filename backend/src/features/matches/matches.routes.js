@@ -36,6 +36,10 @@ export function criarMatchesRouter(service) {
     res.json({ data: await service.iniciar(lerId(req)) })
   })
 
+  router.patch('/:id/encerrar', async (req, res) => {
+    res.json({ data: await service.encerrar(lerId(req)) })
+  })
+
   // Corpo: { "scorerId": 1, "assistId": 2, "minute": 10, "ownGoal": false } (só scorerId é obrigatório)
   router.post('/:id/gols', async (req, res) => {
     res.status(201).json({ data: await service.registrarGol(lerId(req), req.body ?? {}) })

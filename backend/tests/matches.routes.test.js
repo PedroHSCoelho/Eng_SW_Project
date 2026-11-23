@@ -21,8 +21,9 @@ async function cadastrar(app, nome) {
 }
 
 // "Chefe" é organizador (promovido direto no repositório, como o bootstrap faz); "Maria" é jogadora.
-async function cenario() {
-  const ctx = montarApp({ jogadores })
+// O relógio fica no dia seguinte à partida, para ela poder ser encerrada.
+async function cenario({ agora = () => new Date('2026-11-21T12:00:00Z') } = {}) {
+  const ctx = montarApp({ jogadores, agora })
   const chefe = await cadastrar(ctx.app, 'Chefe')
   ctx.usersRepo.usuarios.find((u) => u.email === 'chefe@x.com').role = 'ORGANIZER'
   const maria = await cadastrar(ctx.app, 'Maria')
@@ -140,8 +141,8 @@ describe('PATCH /api/matches/:id/iniciar', () => {
 })
 
 // Partida 1 criada, escalada (1, 2, 3 x 4, 5, 6) e iniciada.
-async function partidaEmAndamento() {
-  const ctx = await cenario()
+async function partidaEmAndamento(opcoes) {
+  const ctx = await cenario(opcoes)
   await ctx.chefe.post('/api/matches', novaPartida)
   await ctx.chefe.put('/api/matches/1/escalacao', escalacaoCompleta)
   await ctx.chefe.patch('/api/matches/1/iniciar')
@@ -215,5 +216,61 @@ describe('DELETE /api/matches/:id/gols/:goalId', () => {
   it('404 para gol que não é desta partida', async () => {
     const { chefe } = await partidaEmAndamento()
     expect((await chefe.delete('/api/matches/1/gols/99')).status).toBe(404)
+  })
+})
+
+describe('PATCH /api/matches/:id/encerrar', () => {
+  it('encerra com placar calculado pelos gols e grava o resultado', async () => {
+    const { chefe } = await partidaEmAndamento()
+    await chefe.post('/api/matches/1/gols', { scorerId: 4 })
+    await chefe.post('/api/matches/1/gols', { scorerId: 1, ownGoal: true })
+    await chefe.post('/api/matches/1/gols', { scorerId: 2, assistId: 3 })
+
+    const res = await chefe.patch('/api/matches/1/encerrar')
+
+    expect(res.status).toBe(200)
+    expect(res.body.data).toMatchObject({ status: 'FINISHED', result: 'B_WINS', score: { A: 1, B: 2 } })
+    expect(res.body.data.finishedAt).toBe('2026-11-21T12:00:00.000Z')
+  })
+
+  it('sem gols termina empatada em 0 x 0', async () => {
+    const { chefe } = await partidaEmAndamento()
+    const res = await chefe.patch('/api/matches/1/encerrar')
+    expect(res.body.data).toMatchObject({ result: 'DRAW', score: { A: 0, B: 0 } })
+  })
+
+  it('422 ao encerrar duas vezes', async () => {
+    const { chefe } = await partidaEmAndamento()
+    await chefe.patch('/api/matches/1/encerrar')
+
+    const res = await chefe.patch('/api/matches/1/encerrar')
+
+    expect(res.status).toBe(422)
+    expect(res.body.erro).toBe('A partida já foi encerrada')
+  })
+
+  it('422 ao encerrar partida marcada para o futuro', async () => {
+    const { chefe } = await partidaEmAndamento({ agora: () => new Date('2026-11-19T12:00:00Z') })
+
+    const res = await chefe.patch('/api/matches/1/encerrar')
+
+    expect(res.status).toBe(422)
+    expect(res.body.erro).toMatch(/futuro/)
+  })
+
+  it('depois de encerrada, a súmula não muda (gol, remoção de gol e escalação)', async () => {
+    const { chefe } = await partidaEmAndamento()
+    await chefe.post('/api/matches/1/gols', { scorerId: 1 })
+    await chefe.patch('/api/matches/1/encerrar')
+
+    expect((await chefe.post('/api/matches/1/gols', { scorerId: 2 })).status).toBe(422)
+    expect((await chefe.delete('/api/matches/1/gols/1')).status).toBe(422)
+    expect((await chefe.put('/api/matches/1/escalacao', escalacaoCompleta)).status).toBe(422)
+    expect((await chefe.get('/api/matches/1')).body.data.score).toEqual({ A: 1, B: 0 })
+  })
+
+  it('jogador não encerra (403)', async () => {
+    const { maria } = await partidaEmAndamento()
+    expect((await maria.patch('/api/matches/1/encerrar')).status).toBe(403)
   })
 })

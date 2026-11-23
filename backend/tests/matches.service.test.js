@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { criarMatchesService } from '../src/features/matches/matches.service.js'
 
 // Repositórios falsos e mínimos: guardam o que o serviço pediu para gravar.
-function cenario({ partida = { id: 1, status: 'SCHEDULED', players: [] } } = {}) {
+function cenario({ partida = { id: 1, status: 'SCHEDULED', players: [] }, agora } = {}) {
   const gravado = {}
   const matchesRepo = {
     buscarPorId: async (id) => (id === partida.id ? partida : null),
@@ -14,7 +14,7 @@ function cenario({ partida = { id: 1, status: 'SCHEDULED', players: [] } } = {})
   const playersRepo = {
     buscarPorIds: async (ids) => ids.map((id) => ({ id, nickname: `J${id}`, active: true })),
   }
-  return { service: criarMatchesService({ matchesRepo, playersRepo }), gravado }
+  return { service: criarMatchesService({ matchesRepo, playersRepo, agora }), gravado }
 }
 
 describe('matchesService', () => {
@@ -72,5 +72,32 @@ describe('matchesService', () => {
 
     await expect(service.removerGol(1, 5)).rejects.toThrow('em andamento')
     expect(gravado.golRemovido).toBeUndefined()
+  })
+
+  it('encerrar grava o resultado calculado pelos gols e a hora do relógio', async () => {
+    const momento = new Date('2026-11-21T00:00:00Z')
+    const partida = {
+      id: 1,
+      status: 'IN_PROGRESS',
+      date: new Date('2026-11-20T22:00:00Z'),
+      players: [],
+      goals: [{ team: 'B' }, { team: 'B' }, { team: 'A' }],
+    }
+    const { service, gravado } = cenario({ partida, agora: () => momento })
+
+    await service.encerrar(1)
+
+    expect(gravado.status).toEqual({
+      de: 'IN_PROGRESS',
+      para: 'FINISHED',
+      dados: { result: 'B_WINS', finishedAt: momento },
+    })
+  })
+
+  it('buscar devolve a partida com o placar calculado', async () => {
+    const partida = { id: 1, status: 'IN_PROGRESS', players: [], goals: [{ team: 'A' }] }
+    const { service } = cenario({ partida })
+
+    expect((await service.buscar(1)).score).toEqual({ A: 1, B: 0 })
   })
 })
