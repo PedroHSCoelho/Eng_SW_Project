@@ -14,8 +14,13 @@ build/
 *.log
 npm-debug.log*
 
+
 # Sistema e editores
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+
+
+# Vercel
+.vercel/

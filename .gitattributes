@@ -1,0 +1,15 @@
+# Normaliza finais de linha para LF no repositório e no checkout
+* text=auto eol=lf
+
+# Binários
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# Lockfiles não precisam de diff detalhado
+package-lock.json -diff
