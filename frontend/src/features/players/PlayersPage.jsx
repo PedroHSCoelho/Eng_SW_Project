@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   atualizarJogador,
   criarJogador,
@@ -144,7 +145,9 @@ export default function PlayersPage() {
             >
               <div>
                 <p className="font-semibold">
-                  {j.nickname}{' '}
+                  <Link to={`/jogadores/${j.id}`} className="underline">
+                    {j.nickname}
+                  </Link>{' '}
                   {!j.active && (
                     <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
                       Inativo

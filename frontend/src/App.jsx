@@ -2,6 +2,12 @@ import { useEffect, useState } from 'react'
 import { NavLink, Route, Routes } from 'react-router-dom'
 import HomePage from './HomePage.jsx'
 import PlayersPage from './features/players/PlayersPage.jsx'
+import PlayerProfilePage from './features/players/PlayerProfilePage.jsx'
+import RankingPage from './features/rankings/RankingPage.jsx'
+import MatchesPage from './features/matches/MatchesPage.jsx'
+import MatchPage from './features/matches/MatchPage.jsx'
+import HistoryPage from './features/matches/HistoryPage.jsx'
+import DrawPage from './features/draw/DrawPage.jsx'
 import LoginPage from './features/auth/LoginPage.jsx'
 import RotaProtegida from './features/auth/RotaProtegida.jsx'
 import { AuthProvider, useAuth } from './features/auth/AuthContext.jsx'
@@ -63,6 +69,26 @@ function Layout() {
               Jogadores
             </NavLink>
           )}
+          {usuario && (
+            <NavLink to="/partidas" className={itemMenu}>
+              Partidas
+            </NavLink>
+          )}
+          {usuario && (
+            <NavLink to="/historico" className={itemMenu}>
+              Histórico
+            </NavLink>
+          )}
+          {usuario && (
+            <NavLink to="/ranking" className={itemMenu}>
+              Ranking
+            </NavLink>
+          )}
+          {usuario?.role === 'ORGANIZER' && (
+            <NavLink to="/sorteio" className={itemMenu}>
+              Sorteio
+            </NavLink>
+          )}
           {usuario?.role === 'PLAYER' && (
             <NavLink to="/ser-organizador" className={itemMenu}>
               Ser organizador
@@ -98,6 +124,54 @@ function Layout() {
             element={
               <RotaProtegida>
                 <PlayersPage />
+              </RotaProtegida>
+            }
+          />
+          <Route
+            path="/jogadores/:id"
+            element={
+              <RotaProtegida>
+                <PlayerProfilePage />
+              </RotaProtegida>
+            }
+          />
+          <Route
+            path="/partidas"
+            element={
+              <RotaProtegida>
+                <MatchesPage />
+              </RotaProtegida>
+            }
+          />
+          <Route
+            path="/historico"
+            element={
+              <RotaProtegida>
+                <HistoryPage />
+              </RotaProtegida>
+            }
+          />
+          <Route
+            path="/partidas/:id"
+            element={
+              <RotaProtegida>
+                <MatchPage />
+              </RotaProtegida>
+            }
+          />
+          <Route
+            path="/sorteio"
+            element={
+              <RotaProtegida papel="ORGANIZER">
+                <DrawPage />
+              </RotaProtegida>
+            }
+          />
+          <Route
+            path="/ranking"
+            element={
+              <RotaProtegida>
+                <RankingPage />
               </RotaProtegida>
             }
           />

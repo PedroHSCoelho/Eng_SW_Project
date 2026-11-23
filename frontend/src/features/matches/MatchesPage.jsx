@@ -1,0 +1,122 @@
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext.jsx'
+import { criarPartida, listarPartidas } from './matchesApi.js'
+import { STATUS, formatarData } from './textos.js'
+
+const campo =
+  'w-full rounded-lg bg-green-950 px-3 py-2 text-white ring-1 ring-green-700 focus:outline-none focus:ring-2 focus:ring-green-400'
+
+export default function MatchesPage() {
+  const ehOrganizador = useAuth().usuario?.role === 'ORGANIZER'
+  const navegar = useNavigate()
+  const [partidas, setPartidas] = useState([])
+  const [carregando, setCarregando] = useState(true)
+  const [erro, setErro] = useState('')
+  const [data, setData] = useState('')
+  const [local, setLocal] = useState('')
+  const [enviando, setEnviando] = useState(false)
+
+  useEffect(() => {
+    let ativo = true
+    listarPartidas()
+      .then((lista) => ativo && setPartidas(lista))
+      .catch((e) => ativo && setErro(e.message))
+      .finally(() => ativo && setCarregando(false))
+    return () => {
+      ativo = false
+    }
+  }, [])
+
+  async function criar(evento) {
+    evento.preventDefault()
+    setErro('')
+    setEnviando(true)
+    try {
+      // O campo "datetime-local" é a hora do navegador; mandamos em ISO para o back-end não adivinhar o fuso.
+      const nova = await criarPartida({ date: new Date(data).toISOString(), location: local })
+      navegar(`/partidas/${nova.id}`) // já abre a súmula para escalar os times
+    } catch (e) {
+      setErro(e.message)
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <section className="mx-auto max-w-5xl px-4 pb-16" aria-labelledby="titulo-partidas">
+      <h2 id="titulo-partidas" className="text-2xl font-bold">
+        📋 Partidas
+      </h2>
+
+      {erro && (
+        <p role="alert" className="mt-4 rounded-lg bg-red-100 px-4 py-2 text-sm text-red-800">
+          {erro}
+        </p>
+      )}
+
+      {ehOrganizador && (
+        <form
+          onSubmit={criar}
+          className="mt-4 grid gap-3 rounded-xl bg-green-900 p-5 ring-1 ring-green-700 sm:grid-cols-3"
+        >
+          <h3 className="font-semibold sm:col-span-3">Nova partida</h3>
+          <label className="text-sm">
+            Data e hora
+            <input
+              type="datetime-local"
+              className={campo}
+              value={data}
+              onChange={(e) => setData(e.target.value)}
+              required
+            />
+          </label>
+          <label className="text-sm">
+            Local
+            <input
+              className={campo}
+              value={local}
+              onChange={(e) => setLocal(e.target.value)}
+              minLength={2}
+              maxLength={100}
+              required
+            />
+          </label>
+          <div className="flex items-end">
+            <button
+              type="submit"
+              disabled={enviando}
+              className="rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-green-950 hover:bg-green-400 disabled:opacity-50"
+            >
+              Criar partida
+            </button>
+          </div>
+        </form>
+      )}
+
+      {carregando ? (
+        <p className="mt-6 text-green-200">Carregando…</p>
+      ) : partidas.length === 0 ? (
+        <p className="mt-6 text-green-200">Nenhuma partida registrada ainda.</p>
+      ) : (
+        <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+          {partidas.map((p) => (
+            <li key={p.id}>
+              <Link
+                to={`/partidas/${p.id}`}
+                className="flex items-center justify-between gap-3 rounded-xl bg-green-900 p-4 ring-1 ring-green-700 hover:bg-green-800"
+              >
+                <span>
+                  <span className="block font-semibold">{formatarData(p.date)}</span>
+                  <span className="text-sm text-green-200">{p.location}</span>
+                </span>
+                <span className={`rounded-full px-3 py-0.5 text-xs font-medium ${STATUS[p.status].classe}`}>
+                  {STATUS[p.status].nome}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
