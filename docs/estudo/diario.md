@@ -180,3 +180,11 @@ Modelo:
 - Dúvidas que ficaram: com 3 ou mais goleiros "1 por time" é impossível (dividimos 2 x 1); a força do time é média, não soma.
 - Não verificado: as telas no navegador; o sorteio com notas reais (as consultas novas rodam no Postgres e devolvem vazio porque o banco não tem dados).
 - Quem revisou/entendeu: (preencher)
+
+## 2026-11-23 — Deploy na Vercel funcionando
+- O que mudou: a produção estava no ar, mas o banco não conectava (`Environment variable not found: DATABASE_URL` no log da função). Foram criadas na Vercel as variáveis `DATABASE_URL`, `DIRECT_URL` e `JWT_SECRET` (ambiente Production) e feito um novo deploy. `docs/setup.md` ganhou o endereço publicado, como conferir se está tudo certo e uma tabela de problemas comuns; o README ganhou a seção "Aplicação publicada".
+- Por quê: o ADR 0006 deixou o deploy real como "não verificado"; sem as variáveis, login, cadastro e tudo que toca o banco falhava em produção.
+- Conceito aprendido: variável de ambiente vale por ambiente (Production x Preview) e só entra em deploy novo; o log da função mostra o erro real; segredo nunca vai para o Git; verificar produção com um teste ponta a ponta que apaga os próprios dados.
+- Teste que prova: teste na URL pública (19 checagens: cadastro com token, sessão por cookie, permissões, sorteio, partida completa, estatísticas, ranking, histórico, avaliações e destaque) e conferência de que os dados de teste foram apagados. Primeiro organizador criado com `npm run organizador:promover`.
+- Não verificado: o visual das telas em produção e o deploy de prévia dos PRs (as variáveis podem ter sido criadas só para Production).
+- Quem revisou/entendeu: (preencher)
