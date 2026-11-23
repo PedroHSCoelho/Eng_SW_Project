@@ -188,3 +188,13 @@ Modelo:
 - Teste que prova: teste na URL pública (19 checagens: cadastro com token, sessão por cookie, permissões, sorteio, partida completa, estatísticas, ranking, histórico, avaliações e destaque) e conferência de que os dados de teste foram apagados. Primeiro organizador criado com `npm run organizador:promover`.
 - Não verificado: o visual das telas em produção e o deploy de prévia dos PRs (as variáveis podem ter sido criadas só para Production).
 - Quem revisou/entendeu: (preencher)
+
+## 2026-11-23 — Editar e cancelar partida, placar na lista, ranking por posição e perfil por período
+- O que mudou: `PUT /api/matches/:id` (editar data e local só de partida agendada) e `PATCH /api/matches/:id/cancelar`; novo estado `CANCELED` no `MatchStatus` (migração `cancela-partida`, só aditiva, já aplicada no Supabase); `GET /api/matches` passa a trazer o placar de cada partida; ranking com `?posicao=` e estatísticas do jogador com `?periodo=mes|ano|tudo`. No front: formulário "Data e local" e botão "Cancelar partida" (com confirmação) na súmula, placar e selo "Cancelada" na lista, seletor de posição no ranking e de período no perfil. ADR 0012.
+- Por quê: ajustes pedidos para o sistema ficar mais completo no uso real (corrigir uma partida marcada errada, cancelar por chuva, ver o placar sem abrir cada partida, comparar goleiros com goleiros e ver a fase atual de um jogador).
+- Conceito aprendido: estado em vez de exclusão (a partida cancelada some das contas porque elas já só olhavam `FINISHED`); atualização condicional (`where status`) contra corrida; migração aditiva aplicada antes do código; filtro opcional validado no núcleo; resposta antiga não sobrescreve a nova (`useRef` com número do pedido).
+- Arquivos principais: `matches.core.js` (`verificarPodeEditar`, `verificarPodeCancelar`), `matches.service.js`, `stats.core.js` (`lerPosicao`, `lerPeriodoDasEstatisticas`), `MatchPage.jsx`, `MatchEditForm.jsx`, `RankingPage.jsx`, `PlayerProfilePage.jsx`.
+- Teste que prova: 41 testes novos no back (núcleo, API de editar/cancelar/lista e dos filtros) e 17 no front; 429 no back e 124 no front. As mudanças no repositório foram conferidas no Postgres real com uma partida temporária (apagada).
+- Dúvidas que ficaram: cancelar não pode ser desfeito (criar outra partida); o período do perfil é em UTC como o ranking.
+- Não verificado: as telas no navegador; o código novo ainda não está em produção (depende de commit, PR e deploy).
+- Quem revisou/entendeu: (preencher)

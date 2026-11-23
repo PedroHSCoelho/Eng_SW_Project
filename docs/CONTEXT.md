@@ -20,7 +20,8 @@ Um termo por conceito, usado igual nas conversas, requisitos, banco, API e códi
 | Escalação | `MatchPlayer[]` / `PUT /escalacao` | Quais jogadores estão em cada time de uma partida | lineup, convocação |
 | Placar | `score` (`{ A, B }`) | Gols de cada time, sempre calculado a partir dos gols; nunca digitado nem guardado | resultado parcial |
 | Resultado | `MatchResult` (`A_WINS`, `B_WINS`, `DRAW`) | Vitória de A, vitória de B ou empate, gravado ao encerrar a partida | vencedor |
-| Estado da partida | `MatchStatus` | Agendada (`SCHEDULED`) → em andamento (`IN_PROGRESS`) → finalizada (`FINISHED`), só nessa ordem | situação |
+| Estado da partida | `MatchStatus` | Agendada (`SCHEDULED`) → em andamento (`IN_PROGRESS`) → finalizada (`FINISHED`), só nessa ordem; de agendada ou em andamento ainda pode ir para cancelada (`CANCELED`), estado final | situação |
+| Partida cancelada | `CANCELED` | Partida que não vai mais acontecer; continua registrada, mas não conta no histórico, nas estatísticas nem no ranking | excluída, apagada |
 | Organizador | `Role.ORGANIZER` | Usuário que cadastra jogadores, gere usuários e decide pedidos, cria partidas, escala os times, lança os gols e encerra a súmula | admin, dono |
 | Pedido de organizador | `OrganizerRequest` | Solicitação de um jogador para virar organizador, aprovada ou recusada por um organizador | convite, promoção |
 | Avaliação / Nota | `Rating` / `ratings` | Nota inteira de 1 a 5 dada por um participante a outro após a partida | review, voto |
