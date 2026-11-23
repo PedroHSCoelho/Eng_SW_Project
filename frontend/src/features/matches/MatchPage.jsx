@@ -4,7 +4,9 @@ import { useAuth } from '../auth/AuthContext.jsx'
 import RatingsPanel from '../ratings/RatingsPanel.jsx'
 import { listarJogadores } from '../players/playersApi.js'
 import {
+  atualizarPartida,
   buscarPartida,
+  cancelarPartida,
   definirEscalacao,
   encerrarPartida,
   iniciarPartida,
@@ -13,6 +15,7 @@ import {
 } from './matchesApi.js'
 import GoalForm from './GoalForm.jsx'
 import LineupEditor from './LineupEditor.jsx'
+import MatchEditForm from './MatchEditForm.jsx'
 import { RESULTADO, STATUS, formatarData } from './textos.js'
 
 const botao = 'rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50'
@@ -28,6 +31,7 @@ export default function MatchPage() {
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [confirmandoEncerrar, setConfirmandoEncerrar] = useState(false)
+  const [confirmandoCancelar, setConfirmandoCancelar] = useState(false)
 
   useEffect(() => {
     let ativo = true
@@ -54,6 +58,7 @@ export default function MatchPage() {
     try {
       setPartida(await acao())
       setConfirmandoEncerrar(false)
+      setConfirmandoCancelar(false)
       return true
     } catch (e) {
       setErro(e.message)
@@ -97,7 +102,13 @@ export default function MatchPage() {
         </p>
       )}
 
-      {partida.status !== 'SCHEDULED' && (
+      {partida.status === 'CANCELED' && (
+        <p className="mt-4 rounded-xl bg-red-100 px-4 py-3 text-red-800">
+          Esta partida foi cancelada. Ela não conta no histórico, nas estatísticas nem no ranking.
+        </p>
+      )}
+
+      {!['SCHEDULED', 'CANCELED'].includes(partida.status) && (
         <div className="mt-4 rounded-xl bg-green-900 p-5 text-center ring-1 ring-green-700">
           <p className="text-4xl font-bold tabular-nums" aria-label="Placar">
             Time A {partida.score.A} x {partida.score.B} Time B
@@ -108,6 +119,16 @@ export default function MatchPage() {
             </p>
           )}
         </div>
+      )}
+
+      {ehOrganizador && partida.status === 'SCHEDULED' && (
+        <MatchEditForm
+          // A chave faz o formulário recomeçar com os valores novos depois de salvar.
+          key={`${partida.date}-${partida.location}`}
+          partida={partida}
+          enviando={enviando}
+          aoSalvar={(dados) => executar(() => atualizarPartida(partida.id, dados))}
+        />
       )}
 
       {ehOrganizador && partida.status === 'SCHEDULED' && (
@@ -148,7 +169,7 @@ export default function MatchPage() {
         />
       )}
 
-      {partida.status !== 'SCHEDULED' && (
+      {!['SCHEDULED', 'CANCELED'].includes(partida.status) && (
         <div className="mt-6">
           <h3 className="text-lg font-semibold">Gols</h3>
           {partida.goals.length === 0 ? (
@@ -223,6 +244,40 @@ export default function MatchPage() {
               className={`${botao} bg-yellow-200 text-yellow-900 hover:bg-yellow-100`}
             >
               Encerrar partida
+            </button>
+          )}
+        </div>
+      )}
+      {ehOrganizador && ['SCHEDULED', 'IN_PROGRESS'].includes(partida.status) && (
+        <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-green-800 pt-4">
+          {confirmandoCancelar ? (
+            <>
+              <span className="text-sm text-yellow-200">
+                Cancelar esta partida? Ela deixa de contar no histórico e no ranking e não volta atrás.
+              </span>
+              <button
+                type="button"
+                disabled={enviando}
+                onClick={() => executar(() => cancelarPartida(partida.id))}
+                className={`${botao} bg-red-600 hover:bg-red-500`}
+              >
+                Confirmar cancelamento
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmandoCancelar(false)}
+                className={`${botao} bg-green-800 hover:bg-green-700`}
+              >
+                Voltar
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmandoCancelar(true)}
+              className={`${botao} bg-red-200 text-red-900 hover:bg-red-100`}
+            >
+              Cancelar partida
             </button>
           )}
         </div>

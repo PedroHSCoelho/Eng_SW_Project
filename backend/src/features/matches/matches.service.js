@@ -10,6 +10,8 @@ import {
   validarDadosDaPartida,
   validarEscalacao,
   verificarEscalacaoEditavel,
+  verificarPodeCancelar,
+  verificarPodeEditar,
   verificarPodeEncerrar,
   verificarPodeIniciar,
 } from './matches.core.js'
@@ -27,8 +29,11 @@ export function criarMatchesService({ matchesRepo, playersRepo, agora = () => ne
   }
 
   return {
-    listar() {
-      return matchesRepo.listar()
+    // Cada partida da lista traz o placar (calculado dos gols), sem a lista de gols.
+    async listar() {
+      return (await matchesRepo.listar()).map(({ id, date, location, status, result, goals }) => ({
+        id, date, location, status, result, score: calcularPlacar(goals ?? []),
+      }))
     },
 
     // Histórico: partidas finalizadas com filtros e paginação (a decisão é do núcleo).
@@ -42,6 +47,20 @@ export function criarMatchesService({ matchesRepo, playersRepo, agora = () => ne
 
     async criar(dados) {
       return comPlacar(await matchesRepo.criar(validarDadosDaPartida(dados)))
+    },
+
+    // Edita data e local (só enquanto agendada). Status, resultado e id enviados no corpo são descartados.
+    async atualizar(id, dados) {
+      verificarPodeEditar(await buscarOuFalhar(id))
+      return comPlacar(await matchesRepo.atualizarDados(id, validarDadosDaPartida(dados)))
+    },
+
+    // Cancela uma partida agendada ou em andamento. O `de` é o estado lido agora: se mudar no
+    // meio do caminho (ex.: alguém encerrou), o repositório recusa em vez de sobrescrever.
+    async cancelar(id) {
+      const partida = await buscarOuFalhar(id)
+      verificarPodeCancelar(partida)
+      return comPlacar(await matchesRepo.mudarStatus(id, { de: partida.status, para: 'CANCELED' }))
     },
 
     // PUT da escalação: substitui os dois times de uma vez.

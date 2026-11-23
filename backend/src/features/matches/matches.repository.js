@@ -16,7 +16,9 @@ const comEscalacao = {
 }
 
 export const matchesRepository = {
-  listar: () => prisma.match.findMany({ orderBy: { date: 'desc' } }),
+  // Com os gols (só o time de cada um): o serviço calcula o placar de cada partida da lista.
+  listar: () =>
+    prisma.match.findMany({ orderBy: { date: 'desc' }, include: { goals: { select: { team: true } } } }),
 
   // Partidas finalizadas com escalação e gols (só os campos que o cálculo usa).
   // Alimenta estatísticas e ranking, que são derivados das súmulas.
@@ -42,6 +44,13 @@ export const matchesRepository = {
       await tx.matchPlayer.createMany({ data: escalacao.map((e) => ({ matchId, ...e })) })
       return tx.match.findUnique({ where: { id: matchId }, include: comEscalacao })
     }),
+
+  // Muda data e local só se a partida ainda estiver agendada (se alguém a iniciou ao mesmo tempo, 0 linhas).
+  async atualizarDados(id, dados) {
+    const { count } = await prisma.match.updateMany({ where: { id, status: 'SCHEDULED' }, data: dados })
+    if (count === 0) throw new BusinessRuleError('A partida mudou de estado; recarregue e tente de novo')
+    return prisma.match.findUnique({ where: { id }, include: comEscalacao })
+  },
 
   // Troca o status só se ele ainda for o esperado (`de`). Se duas requisições
   // tentarem ao mesmo tempo, a segunda encontra 0 linhas e vira erro de negócio.

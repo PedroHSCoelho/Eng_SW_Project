@@ -9,12 +9,12 @@ export function criarStatsRouter(service, { autenticar }) {
   router.get('/players/:id/stats', autenticar, async (req, res) => {
     const id = Number(req.params.id)
     if (!Number.isInteger(id) || id <= 0) throw new ValidationError('Id inválido')
-    res.json({ data: await service.estatisticasDoJogador(id, { de: req.query.de, ate: req.query.ate }) })
+    res.json({ data: await service.estatisticasDoJogador(id, { de: req.query.de, ate: req.query.ate, periodo: req.query.periodo }) })
   })
 
   router.get('/rankings', autenticar, async (req, res) => {
     const periodo = typeof req.query.periodo === 'string' ? req.query.periodo : undefined
-    res.json({ data: await service.ranking({ periodo }) })
+    res.json({ data: await service.ranking({ periodo, posicao: req.query.posicao }) })
   })
 
   return router

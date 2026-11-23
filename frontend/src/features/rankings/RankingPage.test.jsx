@@ -95,3 +95,30 @@ describe('RankingPage', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 })
+
+describe('RankingPage: filtro por posição', () => {
+  it('escolher a posição busca o ranking filtrado; "Todas" volta ao ranking completo', async () => {
+    renderizar()
+    await screen.findByRole('table')
+
+    fireEvent.change(screen.getByLabelText('Posição'), { target: { value: 'GOALKEEPER' } })
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith('/api/rankings?periodo=tudo&posicao=GOALKEEPER', undefined),
+    )
+
+    fireEvent.change(screen.getByLabelText('Posição'), { target: { value: '' } })
+    await waitFor(() => expect(fetch.mock.calls.at(-1)[0]).toBe('/api/rankings?periodo=tudo'))
+  })
+
+  it('oferece as quatro posições em português e combina com o período', async () => {
+    renderizar()
+    await screen.findByRole('table')
+
+    const opcoes = within(screen.getByLabelText('Posição')).getAllByRole('option').map((o) => o.textContent)
+    expect(opcoes).toEqual(['Todas', 'Goleiro', 'Defensor', 'Meio-campista', 'Atacante'])
+
+    fireEvent.change(screen.getByLabelText('Posição'), { target: { value: 'FORWARD' } })
+    fireEvent.change(screen.getByLabelText('Período'), { target: { value: 'mes' } })
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/rankings?periodo=mes&posicao=FORWARD', undefined))
+  })
+})

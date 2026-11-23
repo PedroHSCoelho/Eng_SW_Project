@@ -98,6 +98,7 @@ export function criarMatchesRepoEmMemoria() {
       partidas.push(partida)
       return partida
     },
+    atualizarDados: async (id, dados) => Object.assign(partidas.find((p) => p.id === id), dados),
     substituirEscalacao: async (id, escalacao) =>
       Object.assign(partidas.find((p) => p.id === id), { players: escalacao.map((e) => ({ matchId: id, ...e })) }),
     mudarStatus: async (id, { para, dados = {} }) =>

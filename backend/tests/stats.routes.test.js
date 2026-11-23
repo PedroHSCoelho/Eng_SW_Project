@@ -7,7 +7,8 @@ import { montarApp } from './helpers/appDeTeste.js'
 const cookieDe = (res) => res.headers['set-cookie']?.[0]?.split(';')[0]
 
 const jogadores = [1, 2, 3, 4, 5, 6].map((id) => ({
-  id, name: `Jogador ${id}`, nickname: `J${id}`, nicknameKey: `j${id}`, position: 'MIDFIELDER', active: true,
+  id, name: `Jogador ${id}`, nickname: `J${id}`, nicknameKey: `j${id}`, active: true,
+  position: id === 1 ? 'FORWARD' : id === 4 ? 'GOALKEEPER' : 'MIDFIELDER',
 }))
 
 async function cadastrar(app, nome) {
@@ -153,5 +154,76 @@ describe('GET /api/players/:id/stats (recentes)', () => {
 
     expect(recentes.map((r) => r.resultado)).toEqual(['D', 'V'])
     expect(recentes[0]).toMatchObject({ golsPro: 0, golsContra: 1 })
+  })
+})
+
+describe('GET /api/rankings?posicao= (ranking por posição)', () => {
+  // Jogadores: 1 = atacante, 4 = goleiro, os demais meio-campistas (ver o início do arquivo).
+  async function jogarComGols() {
+    const ctx = await cenario()
+    await ctx.jogarPartida([{ scorerId: 1 }, { scorerId: 2 }, { scorerId: 2 }, { scorerId: 4 }])
+    return ctx
+  }
+
+  it('filtra o ranking pela posição: só aparecem jogadores dela', async () => {
+    const { maria } = await jogarComGols()
+
+    const atacantes = (await maria.get('/api/rankings?posicao=FORWARD')).body.data
+    const meias = (await maria.get('/api/rankings?posicao=MIDFIELDER')).body.data
+    const goleiros = (await maria.get('/api/rankings?posicao=GOALKEEPER')).body.data
+
+    expect(atacantes.artilharia.map((l) => l.playerId)).toEqual([1])
+    expect(meias.artilharia.map((l) => [l.playerId, l.goals])).toEqual([[2, 2]])
+    expect(goleiros.artilharia.map((l) => l.playerId)).toEqual([4])
+  })
+
+  it('sem o filtro (ou vazio) o ranking inclui todas as posições', async () => {
+    const { maria } = await jogarComGols()
+
+    const todos = (await maria.get('/api/rankings')).body.data.artilharia.map((l) => l.playerId).sort()
+    const vazio = (await maria.get('/api/rankings?posicao=')).body.data.artilharia.map((l) => l.playerId).sort()
+
+    expect(todos).toEqual([1, 2, 4])
+    expect(vazio).toEqual(todos)
+  })
+
+  it('a posição vale também para o ranking geral e combina com o período', async () => {
+    const { maria, jogarPartida } = await cenario()
+    for (let i = 0; i < 3; i++) await jogarPartida([{ scorerId: 1 }]) // 3 partidas: todos entram no geral
+
+    const geral = (await maria.get('/api/rankings?posicao=GOALKEEPER&periodo=tudo')).body.data.geral
+
+    expect(geral.map((l) => l.playerId)).toEqual([4]) // só o goleiro (o 4), que jogou as 3
+    expect(geral[0]).toMatchObject({ position: 1, matches: 3 })
+  })
+
+  it('posição inválida -> 400', async () => {
+    const { maria } = await cenario()
+    const res = await maria.get('/api/rankings?posicao=goleiro')
+    expect(res.status).toBe(400)
+    expect(res.body.erro).toMatch(/Posição inválida/)
+  })
+})
+
+describe('GET /api/players/:id/stats?periodo= (estatísticas por período)', () => {
+  it('periodo=mes considera só o mês do relógio (novembro/2026)', async () => {
+    const { maria, jogarPartida } = await cenario()
+    await jogarPartida([{ scorerId: 1 }], { date: '2026-10-10T19:00:00-03:00' }) // outubro
+    await jogarPartida([{ scorerId: 1 }, { scorerId: 1 }], { date: '2026-11-10T19:00:00-03:00' }) // novembro
+
+    const mes = (await maria.get('/api/players/1/stats?periodo=mes')).body.data
+    const tudo = (await maria.get('/api/players/1/stats?periodo=tudo')).body.data
+    const ano = (await maria.get('/api/players/1/stats?periodo=ano')).body.data
+
+    expect(mes).toMatchObject({ matches: 1, goals: 2 })
+    expect(tudo).toMatchObject({ matches: 2, goals: 3 })
+    expect(ano).toMatchObject({ matches: 2, goals: 3 })
+    expect(mes.recentes).toHaveLength(1) // as últimas partidas respeitam o mesmo período
+  })
+
+  it('período inválido, ou periodo junto com de/ate -> 400', async () => {
+    const { maria } = await cenario()
+    expect((await maria.get('/api/players/1/stats?periodo=semana')).status).toBe(400)
+    expect((await maria.get('/api/players/1/stats?periodo=mes&de=2026-11-01')).status).toBe(400)
   })
 })

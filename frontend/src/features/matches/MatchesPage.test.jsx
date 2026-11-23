@@ -5,8 +5,8 @@ import '@testing-library/jest-dom/vitest'
 import MatchesPage from './MatchesPage.jsx'
 import { AuthContext } from '../auth/AuthContext.jsx'
 
-const p1 = { id: 1, date: '2026-11-20T22:00:00.000Z', location: 'Quadra A', status: 'FINISHED' }
-const p2 = { id: 2, date: '2026-11-27T22:00:00.000Z', location: 'Quadra B', status: 'SCHEDULED' }
+const p1 = { id: 1, date: '2026-11-20T22:00:00.000Z', location: 'Quadra A', status: 'FINISHED', score: { A: 2, B: 1 } }
+const p2 = { id: 2, date: '2026-11-27T22:00:00.000Z', location: 'Quadra B', status: 'SCHEDULED', score: { A: 0, B: 0 } }
 
 function resposta(status, corpo) {
   return { ok: status >= 200 && status < 300, status, json: async () => corpo }
@@ -88,5 +88,29 @@ describe('MatchesPage', () => {
     renderizar('PLAYER')
     expect(await screen.findByText('Quadra A')).toBeInTheDocument()
     expect(screen.queryByText('Nova partida')).not.toBeInTheDocument()
+  })
+})
+
+describe('MatchesPage: placar e estado na lista', () => {
+  const andamento = { id: 3, date: '2026-11-21T22:00:00.000Z', location: 'Quadra C', status: 'IN_PROGRESS', score: { A: 1, B: 0 } }
+  const cancelada = { id: 4, date: '2026-11-22T22:00:00.000Z', location: 'Quadra D', status: 'CANCELED', score: { A: 3, B: 3 } }
+
+  it('mostra o placar das partidas em andamento e finalizadas, e nada nas agendadas', async () => {
+    fetch.mockImplementation(async () => resposta(200, { data: [p1, p2, andamento] }))
+    renderizar()
+
+    await screen.findByText('Quadra A')
+
+    expect(screen.getByText('Time A 2 x 1 Time B')).toBeInTheDocument() // finalizada
+    expect(screen.getByText('Time A 1 x 0 Time B')).toBeInTheDocument() // em andamento
+    expect(screen.getAllByText(/Time A \d x \d Time B/)).toHaveLength(2) // a agendada não mostra
+  })
+
+  it('partida cancelada mostra o selo "Cancelada" e nunca o placar', async () => {
+    fetch.mockImplementation(async () => resposta(200, { data: [cancelada] }))
+    renderizar()
+
+    expect(await screen.findByText('Cancelada')).toBeInTheDocument()
+    expect(screen.queryByText(/Time A \d x \d Time B/)).not.toBeInTheDocument()
   })
 })
