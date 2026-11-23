@@ -21,8 +21,9 @@ async function cadastrar(app, nome) {
 }
 
 // "Chefe" é organizador (promovido direto no repositório, como o bootstrap faz); "Maria" é jogadora.
-async function cenario() {
-  const ctx = montarApp({ jogadores })
+// O relógio fica no dia seguinte à partida, para ela poder ser encerrada.
+async function cenario({ agora = () => new Date('2026-11-21T12:00:00Z') } = {}) {
+  const ctx = montarApp({ jogadores, agora })
   const chefe = await cadastrar(ctx.app, 'Chefe')
   ctx.usersRepo.usuarios.find((u) => u.email === 'chefe@x.com').role = 'ORGANIZER'
   const maria = await cadastrar(ctx.app, 'Maria')
@@ -31,6 +32,7 @@ async function cenario() {
     post: (url, corpo) => request(ctx.app).post(url).set('Cookie', cookie).send(corpo),
     put: (url, corpo) => request(ctx.app).put(url).set('Cookie', cookie).send(corpo),
     patch: (url) => request(ctx.app).patch(url).set('Cookie', cookie),
+    delete: (url) => request(ctx.app).delete(url).set('Cookie', cookie),
   })
   return { ...ctx, chefe: api(chefe), maria: api(maria) }
 }
@@ -135,5 +137,140 @@ describe('PATCH /api/matches/:id/iniciar', () => {
     const depois = await chefe.put('/api/matches/1/escalacao', { teamA: [1, 2, 3], teamB: [4, 5, 6, 2] })
     expect(depois.status).toBe(422)
     expect(depois.body.erro).toMatch(/agendada/)
+  })
+})
+
+// Partida 1 criada, escalada (1, 2, 3 x 4, 5, 6) e iniciada.
+async function partidaEmAndamento(opcoes) {
+  const ctx = await cenario(opcoes)
+  await ctx.chefe.post('/api/matches', novaPartida)
+  await ctx.chefe.put('/api/matches/1/escalacao', escalacaoCompleta)
+  await ctx.chefe.patch('/api/matches/1/iniciar')
+  return ctx
+}
+
+describe('POST /api/matches/:id/gols', () => {
+  it('lança o gol: 201 e a partida com o gol, no time do autor', async () => {
+    const { chefe } = await partidaEmAndamento()
+
+    const res = await chefe.post('/api/matches/1/gols', { scorerId: 4, assistId: 5, minute: 12, team: 'A' })
+
+    expect(res.status).toBe(201)
+    expect(res.body.data.goals).toEqual([
+      expect.objectContaining({ scorerId: 4, assistId: 5, minute: 12, team: 'B', ownGoal: false }),
+    ])
+  })
+
+  it('gol contra vai para o adversário', async () => {
+    const { chefe } = await partidaEmAndamento()
+
+    const res = await chefe.post('/api/matches/1/gols', { scorerId: 1, ownGoal: true })
+
+    expect(res.body.data.goals[0].team).toBe('B')
+  })
+
+  it('422 quando a assistência é de jogador do outro time', async () => {
+    const { chefe } = await partidaEmAndamento()
+
+    const res = await chefe.post('/api/matches/1/gols', { scorerId: 1, assistId: 4 })
+
+    expect(res.status).toBe(422)
+    expect(res.body.erro).toMatch(/mesmo time/)
+  })
+
+  it('422 quando o autor não está escalado', async () => {
+    const { chefe } = await partidaEmAndamento()
+    const res = await chefe.post('/api/matches/1/gols', { scorerId: 7 })
+    expect(res.status).toBe(422)
+  })
+
+  it('422 em partida que ainda não começou', async () => {
+    const { chefe } = await cenario()
+    await chefe.post('/api/matches', novaPartida)
+    await chefe.put('/api/matches/1/escalacao', escalacaoCompleta)
+
+    const res = await chefe.post('/api/matches/1/gols', { scorerId: 1 })
+
+    expect(res.status).toBe(422)
+    expect(res.body.erro).toMatch(/em andamento/)
+  })
+
+  it('400 sem autor e 403 para jogador', async () => {
+    const { chefe, maria } = await partidaEmAndamento()
+    expect((await chefe.post('/api/matches/1/gols', {})).status).toBe(400)
+    expect((await maria.post('/api/matches/1/gols', { scorerId: 1 })).status).toBe(403)
+  })
+})
+
+describe('DELETE /api/matches/:id/gols/:goalId', () => {
+  it('remove o gol lançado errado', async () => {
+    const { chefe } = await partidaEmAndamento()
+    await chefe.post('/api/matches/1/gols', { scorerId: 1 })
+
+    const res = await chefe.delete('/api/matches/1/gols/1')
+
+    expect(res.status).toBe(200)
+    expect(res.body.data.goals).toEqual([])
+  })
+
+  it('404 para gol que não é desta partida', async () => {
+    const { chefe } = await partidaEmAndamento()
+    expect((await chefe.delete('/api/matches/1/gols/99')).status).toBe(404)
+  })
+})
+
+describe('PATCH /api/matches/:id/encerrar', () => {
+  it('encerra com placar calculado pelos gols e grava o resultado', async () => {
+    const { chefe } = await partidaEmAndamento()
+    await chefe.post('/api/matches/1/gols', { scorerId: 4 })
+    await chefe.post('/api/matches/1/gols', { scorerId: 1, ownGoal: true })
+    await chefe.post('/api/matches/1/gols', { scorerId: 2, assistId: 3 })
+
+    const res = await chefe.patch('/api/matches/1/encerrar')
+
+    expect(res.status).toBe(200)
+    expect(res.body.data).toMatchObject({ status: 'FINISHED', result: 'B_WINS', score: { A: 1, B: 2 } })
+    expect(res.body.data.finishedAt).toBe('2026-11-21T12:00:00.000Z')
+  })
+
+  it('sem gols termina empatada em 0 x 0', async () => {
+    const { chefe } = await partidaEmAndamento()
+    const res = await chefe.patch('/api/matches/1/encerrar')
+    expect(res.body.data).toMatchObject({ result: 'DRAW', score: { A: 0, B: 0 } })
+  })
+
+  it('422 ao encerrar duas vezes', async () => {
+    const { chefe } = await partidaEmAndamento()
+    await chefe.patch('/api/matches/1/encerrar')
+
+    const res = await chefe.patch('/api/matches/1/encerrar')
+
+    expect(res.status).toBe(422)
+    expect(res.body.erro).toBe('A partida já foi encerrada')
+  })
+
+  it('422 ao encerrar partida marcada para o futuro', async () => {
+    const { chefe } = await partidaEmAndamento({ agora: () => new Date('2026-11-19T12:00:00Z') })
+
+    const res = await chefe.patch('/api/matches/1/encerrar')
+
+    expect(res.status).toBe(422)
+    expect(res.body.erro).toMatch(/futuro/)
+  })
+
+  it('depois de encerrada, a súmula não muda (gol, remoção de gol e escalação)', async () => {
+    const { chefe } = await partidaEmAndamento()
+    await chefe.post('/api/matches/1/gols', { scorerId: 1 })
+    await chefe.patch('/api/matches/1/encerrar')
+
+    expect((await chefe.post('/api/matches/1/gols', { scorerId: 2 })).status).toBe(422)
+    expect((await chefe.delete('/api/matches/1/gols/1')).status).toBe(422)
+    expect((await chefe.put('/api/matches/1/escalacao', escalacaoCompleta)).status).toBe(422)
+    expect((await chefe.get('/api/matches/1')).body.data.score).toEqual({ A: 1, B: 0 })
+  })
+
+  it('jogador não encerra (403)', async () => {
+    const { maria } = await partidaEmAndamento()
+    expect((await maria.patch('/api/matches/1/encerrar')).status).toBe(403)
   })
 })

@@ -2,11 +2,16 @@
 import prisma from '../../db.js'
 import { BusinessRuleError } from '../../errors/AppError.js'
 
-// Escalação com o mínimo do jogador que a tela precisa.
+// Escalação e gols com o mínimo do jogador que a tela precisa.
+const apelido = { select: { id: true, nickname: true } }
 const comEscalacao = {
   players: {
     include: { player: { select: { id: true, nickname: true, position: true } } },
     orderBy: [{ team: 'asc' }, { playerId: 'asc' }],
+  },
+  goals: {
+    include: { scorer: apelido, assist: apelido },
+    orderBy: [{ minute: { sort: 'asc', nulls: 'last' } }, { id: 'asc' }],
   },
 }
 
@@ -27,9 +32,17 @@ export const matchesRepository = {
 
   // Troca o status só se ele ainda for o esperado (`de`). Se duas requisições
   // tentarem ao mesmo tempo, a segunda encontra 0 linhas e vira erro de negócio.
-  async mudarStatus(id, { de, para }) {
-    const { count } = await prisma.match.updateMany({ where: { id, status: de }, data: { status: para } })
+  // `dados` grava junto o que muda na transição (ex.: resultado ao encerrar).
+  async mudarStatus(id, { de, para, dados = {} }) {
+    const { count } = await prisma.match.updateMany({
+      where: { id, status: de },
+      data: { ...dados, status: para },
+    })
     if (count === 0) throw new BusinessRuleError('A partida mudou de estado; recarregue e tente de novo')
     return prisma.match.findUnique({ where: { id }, include: comEscalacao })
   },
+
+  criarGol: (dados) => prisma.goal.create({ data: dados }),
+
+  removerGol: (goalId) => prisma.goal.delete({ where: { id: goalId } }),
 }

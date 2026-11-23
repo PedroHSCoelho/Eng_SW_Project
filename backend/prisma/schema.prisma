@@ -34,6 +34,8 @@ model Player {
   createdAt   DateTime      @default(now())
   user        User? // conta de login ligada a este jogador (no máximo uma)
   matches     MatchPlayer[] // partidas em que foi escalado
+  goals       Goal[]        @relation("GoalScorer") // gols que marcou (inclusive contra)
+  assists     Goal[]        @relation("GoalAssist") // gols em que deu a assistência
 }
 
 // Papel do usuário no sistema. Muda pela gestão de usuários (só organizador).
@@ -92,15 +94,25 @@ enum Team {
   B
 }
 
-// Partida (a "pelada"). Placar e resultado NÃO ficam aqui por enquanto:
-// entram com os gols (F06) e o encerramento (F07).
+// Resultado gravado ao encerrar a partida.
+enum MatchResult {
+  A_WINS
+  B_WINS
+  DRAW
+}
+
+// Partida (a "pelada"). O placar NÃO é guardado: é sempre calculado a partir dos gols.
+// O resultado é gravado ao encerrar (depois disso a súmula não muda mais).
 model Match {
-  id        Int           @id @default(autoincrement())
-  date      DateTime // dia e hora da partida
-  location  String        @db.VarChar(100)
-  status    MatchStatus   @default(SCHEDULED)
-  createdAt DateTime      @default(now())
-  players   MatchPlayer[] // escalação dos dois times
+  id         Int           @id @default(autoincrement())
+  date       DateTime // dia e hora da partida
+  location   String        @db.VarChar(100)
+  status     MatchStatus   @default(SCHEDULED)
+  result     MatchResult? // vazio até a partida ser encerrada
+  finishedAt DateTime? // quando foi encerrada
+  createdAt  DateTime      @default(now())
+  players    MatchPlayer[] // escalação dos dois times
+  goals      Goal[] // gols lançados na súmula
 }
 
 // Escalação: um jogador em um time de uma partida.
@@ -115,4 +127,24 @@ model MatchPlayer {
 
   @@id([matchId, playerId])
   @@index([playerId])
+}
+
+// Gol lançado na súmula. `team` é o time que GANHA o gol (o servidor calcula):
+// no gol contra, é o adversário de quem chutou, e o gol não conta para o autor.
+model Goal {
+  id        Int      @id @default(autoincrement())
+  matchId   Int
+  scorerId  Int // quem fez o gol
+  assistId  Int? // quem deu a assistência (opcional)
+  team      Team
+  ownGoal   Boolean  @default(false)
+  minute    Int? // minuto do jogo (opcional)
+  createdAt DateTime @default(now())
+  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  scorer    Player   @relation("GoalScorer", fields: [scorerId], references: [id], onDelete: Restrict)
+  assist    Player?  @relation("GoalAssist", fields: [assistId], references: [id], onDelete: Restrict)
+
+  @@index([matchId])
+  @@index([scorerId])
+  @@index([assistId])
 }
