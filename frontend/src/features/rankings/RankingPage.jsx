@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { POSICOES } from '../players/PlayerForm.jsx'
 import { buscarRanking } from './rankingApi.js'
 
 const PERIODOS = { mes: 'Este mês', ano: 'Este ano', tudo: 'Tudo' }
@@ -37,6 +38,7 @@ const campo =
 
 export default function RankingPage() {
   const [periodo, setPeriodo] = useState('tudo')
+  const [posicao, setPosicao] = useState('') // '' = todas as posições
   const [aba, setAba] = useState('geral')
   const [ranking, setRanking] = useState(null)
   const [erro, setErro] = useState('')
@@ -46,7 +48,7 @@ export default function RankingPage() {
     // "ativo" evita que uma resposta antiga sobrescreva a nova se o período mudar rápido.
     let ativo = true
     setCarregando(true)
-    buscarRanking(periodo)
+    buscarRanking(periodo, posicao)
       .then((dados) => {
         if (!ativo) return
         setRanking(dados)
@@ -57,7 +59,7 @@ export default function RankingPage() {
     return () => {
       ativo = false
     }
-  }, [periodo])
+  }, [periodo, posicao])
 
   const config = ABAS[aba]
   // A API chama a aba "geral" de `geral`, mas as outras em português sem acento.
@@ -86,6 +88,17 @@ export default function RankingPage() {
             </button>
           ))}
         </div>
+        <label className="text-sm">
+          Posição
+          <select className={`${campo} ml-2`} value={posicao} onChange={(e) => setPosicao(e.target.value)}>
+            <option value="">Todas</option>
+            {Object.entries(POSICOES).map(([valor, nome]) => (
+              <option key={valor} value={valor}>
+                {nome}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="text-sm">
           Período
           <select className={`${campo} ml-2`} value={periodo} onChange={(e) => setPeriodo(e.target.value)}>

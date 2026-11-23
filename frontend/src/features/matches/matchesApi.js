@@ -9,6 +9,12 @@ export const buscarPartida = (id) => pedir(`/api/matches/${id}`)
 // date: texto ISO (ex.: "2026-11-20T19:00:00.000Z")
 export const criarPartida = (dados) => pedir('/api/matches', comJson('POST', dados))
 
+// Edita data e local (só partida agendada). dados: { date (ISO), location }
+export const atualizarPartida = (id, dados) => pedir(`/api/matches/${id}`, comJson('PUT', dados))
+
+// Cancela uma partida agendada ou em andamento (não volta atrás).
+export const cancelarPartida = (id) => pedir(`/api/matches/${id}/cancelar`, { method: 'PATCH' })
+
 export const definirEscalacao = (id, { teamA, teamB }) =>
   pedir(`/api/matches/${id}/escalacao`, comJson('PUT', { teamA, teamB }))
 

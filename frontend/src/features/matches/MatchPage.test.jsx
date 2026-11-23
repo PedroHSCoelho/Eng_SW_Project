@@ -288,3 +288,155 @@ describe('MatchPage: partida finalizada e jogador comum', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Partida não encontrada')
   })
 })
+
+// Mesmo formato do campo "datetime-local" (hora do navegador) que o formulário usa.
+const comoCampoLocal = (iso) => {
+  const d = new Date(iso)
+  const dois = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${dois(d.getMonth() + 1)}-${dois(d.getDate())}T${dois(d.getHours())}:${dois(d.getMinutes())}`
+}
+
+describe('MatchPage: editar data e local (partida agendada)', () => {
+  it('mostra os valores atuais e só habilita "Salvar" depois de mudar algo', async () => {
+    simularApi({ ...comJogadores, ...partidaNaApi(partida()) })
+    renderizar()
+    await screen.findByText('Data e local')
+
+    expect(screen.getByLabelText('Data e hora')).toHaveValue(comoCampoLocal('2026-11-20T22:00:00.000Z'))
+    expect(screen.getByLabelText('Local')).toHaveValue('Quadra da UNIFESP')
+    expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeDisabled()
+
+    fireEvent.change(screen.getByLabelText('Local'), { target: { value: 'Quadra nova' } })
+
+    expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeEnabled()
+  })
+
+  it('envia a data em ISO e o local, e mostra os valores novos', async () => {
+    simularApi({
+      ...comJogadores,
+      ...partidaNaApi(partida()),
+      'PUT /api/matches/7': (corpo) => {
+        expect(corpo).toEqual({ date: new Date('2026-12-05T19:00').toISOString(), location: 'Quadra nova' })
+        return resposta(200, { data: partida({ date: corpo.date, location: corpo.location }) })
+      },
+    })
+    renderizar()
+    await screen.findByText('Data e local')
+
+    fireEvent.change(screen.getByLabelText('Data e hora'), { target: { value: '2026-12-05T19:00' } })
+    fireEvent.change(screen.getByLabelText('Local'), { target: { value: 'Quadra nova' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+
+    expect(await screen.findByText(/Quadra nova/)).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeDisabled())
+  })
+
+  it('mostra o erro do back-end (ex.: local curto) e mantém o que foi digitado', async () => {
+    simularApi({
+      ...comJogadores,
+      ...partidaNaApi(partida()),
+      'PUT /api/matches/7': () => resposta(400, { erro: 'Local deve ter de 2 a 100 caracteres' }),
+    })
+    renderizar()
+    await screen.findByText('Data e local')
+
+    fireEvent.change(screen.getByLabelText('Local'), { target: { value: 'ok' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Local deve ter de 2 a 100')
+    expect(screen.getByLabelText('Local')).toHaveValue('ok')
+  })
+
+  it('não aparece com a partida em andamento nem para jogador comum', async () => {
+    simularApi({ ...comJogadores, ...partidaNaApi(partida({ status: 'IN_PROGRESS', players: escalacao })) })
+    renderizar()
+    await screen.findByRole('heading', { name: 'Lançar gol' })
+    expect(screen.queryByText('Data e local')).not.toBeInTheDocument()
+    cleanup()
+
+    simularApi({ ...partidaNaApi(partida()) })
+    renderizar('PLAYER')
+    await screen.findByText('Time A')
+    expect(screen.queryByText('Data e local')).not.toBeInTheDocument()
+  })
+})
+
+describe('MatchPage: cancelar partida', () => {
+  it('pede confirmação (nada é enviado no primeiro clique) e depois bloqueia tudo', async () => {
+    simularApi({
+      ...comJogadores,
+      ...partidaNaApi(partida({ players: escalacao })),
+      'PATCH /api/matches/7/cancelar': () => resposta(200, { data: partida({ status: 'CANCELED', players: escalacao }) }),
+    })
+    renderizar()
+    await screen.findByText('Escalação')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar partida' }))
+    expect(screen.getByText(/Cancelar esta partida\?/)).toBeInTheDocument()
+    expect(chamou('PATCH /api/matches/7/cancelar')).toBe(false)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar cancelamento' }))
+
+    expect(await screen.findByText(/Esta partida foi cancelada/)).toBeInTheDocument()
+    expect(screen.getByText('Cancelada')).toBeInTheDocument() // selo de status
+    expect(screen.queryByText('Escalação')).not.toBeInTheDocument()
+    expect(screen.queryByText('Data e local')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('"Voltar" desiste do cancelamento', async () => {
+    simularApi({ ...comJogadores, ...partidaNaApi(partida({ players: escalacao })) })
+    renderizar()
+    await screen.findByText('Escalação')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar partida' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar' }))
+
+    expect(screen.getByRole('button', { name: 'Cancelar partida' })).toBeInTheDocument()
+    expect(chamou('PATCH /api/matches/7/cancelar')).toBe(false)
+  })
+
+  it('também dá para cancelar uma partida em andamento', async () => {
+    simularApi({
+      ...comJogadores,
+      ...partidaNaApi(partida({ status: 'IN_PROGRESS', players: escalacao })),
+      'PATCH /api/matches/7/cancelar': () => resposta(200, { data: partida({ status: 'CANCELED', players: escalacao }) }),
+    })
+    renderizar()
+    await screen.findByRole('heading', { name: 'Lançar gol' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar partida' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar cancelamento' }))
+
+    expect(await screen.findByText(/Esta partida foi cancelada/)).toBeInTheDocument()
+    expect(screen.queryByLabelText('Placar')).not.toBeInTheDocument()
+  })
+
+  it('mostra o erro do back-end (ex.: já foi encerrada por outra pessoa)', async () => {
+    simularApi({
+      ...comJogadores,
+      ...partidaNaApi(partida({ players: escalacao })),
+      'PATCH /api/matches/7/cancelar': () => resposta(422, { erro: 'Uma partida finalizada não pode ser cancelada' }),
+    })
+    renderizar()
+    await screen.findByText('Escalação')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar partida' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar cancelamento' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('finalizada não pode ser cancelada')
+  })
+
+  it('não há botão de cancelar para partida finalizada, cancelada ou para jogador comum', async () => {
+    simularApi({ ...comJogadores, ...partidaNaApi(partida({ status: 'FINISHED', result: 'DRAW', players: escalacao })) })
+    renderizar()
+    await screen.findByText(/Empate/)
+    expect(screen.queryByRole('button', { name: 'Cancelar partida' })).not.toBeInTheDocument()
+    cleanup()
+
+    simularApi({ ...partidaNaApi(partida({ players: escalacao })) })
+    renderizar('PLAYER')
+    await screen.findByText('Time A')
+    expect(screen.queryByRole('button', { name: 'Cancelar partida' })).not.toBeInTheDocument()
+  })
+})

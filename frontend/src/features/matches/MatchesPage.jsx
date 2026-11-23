@@ -109,8 +109,16 @@ export default function MatchesPage() {
                   <span className="block font-semibold">{formatarData(p.date)}</span>
                   <span className="text-sm text-green-200">{p.location}</span>
                 </span>
-                <span className={`rounded-full px-3 py-0.5 text-xs font-medium ${STATUS[p.status].classe}`}>
-                  {STATUS[p.status].nome}
+                <span className="text-right">
+                  {/* O placar só faz sentido depois que a partida começou (e nunca na cancelada). */}
+                  {p.score && ['IN_PROGRESS', 'FINISHED'].includes(p.status) && (
+                    <span className="mb-1 block font-bold tabular-nums">
+                      Time A {p.score.A} x {p.score.B} Time B
+                    </span>
+                  )}
+                  <span className={`rounded-full px-3 py-0.5 text-xs font-medium ${STATUS[p.status].classe}`}>
+                    {STATUS[p.status].nome}
+                  </span>
                 </span>
               </Link>
             </li>
