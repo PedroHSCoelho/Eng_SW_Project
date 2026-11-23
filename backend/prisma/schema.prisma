@@ -84,10 +84,13 @@ model OrganizerRequest {
 }
 
 // Estados da partida: agendada -> em andamento -> finalizada (só nessa ordem).
+// Cancelada (CANCELED) é um estado final alcançável de agendada ou em andamento; não conta em
+// histórico, estatísticas nem ranking.
 enum MatchStatus {
   SCHEDULED
   IN_PROGRESS
   FINISHED
+  CANCELED
 }
 
 // Lado do campo. Não há times fixos: cada partida monta os seus dois times.
