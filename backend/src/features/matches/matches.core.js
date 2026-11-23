@@ -107,3 +107,21 @@ export function verificarPodeEncerrar({ partida, agora }) {
     throw new BusinessRuleError('Não é possível encerrar uma partida marcada para o futuro')
   }
 }
+
+// Data e local só mudam enquanto a partida está agendada (depois de começar, o jogo já aconteceu).
+export function verificarPodeEditar(partida) {
+  if (partida.status !== 'SCHEDULED') {
+    throw new BusinessRuleError('Só uma partida agendada pode ser editada')
+  }
+}
+
+// Agendada ou em andamento pode ser cancelada. Finalizada não: a súmula está fechada e as
+// estatísticas já contam com ela. Cancelada é um estado final (não volta).
+export function verificarPodeCancelar(partida) {
+  if (partida.status === 'CANCELED') {
+    throw new BusinessRuleError('A partida já foi cancelada')
+  }
+  if (partida.status === 'FINISHED') {
+    throw new BusinessRuleError('Uma partida finalizada não pode ser cancelada')
+  }
+}

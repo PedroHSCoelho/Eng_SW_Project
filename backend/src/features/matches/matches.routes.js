@@ -32,6 +32,15 @@ export function criarMatchesRouter(service) {
     res.status(201).json({ data: await service.criar(req.body ?? {}) })
   })
 
+  // Corpo: { "date": "2026-11-20T19:00", "location": "Quadra" } (só partida agendada)
+  router.put('/:id', async (req, res) => {
+    res.json({ data: await service.atualizar(lerId(req), req.body ?? {}) })
+  })
+
+  router.patch('/:id/cancelar', async (req, res) => {
+    res.json({ data: await service.cancelar(lerId(req)) })
+  })
+
   // Corpo: { "teamA": [1, 2, 3], "teamB": [4, 5, 6] }
   router.put('/:id/escalacao', async (req, res) => {
     res.json({ data: await service.definirEscalacao(lerId(req), req.body ?? {}) })

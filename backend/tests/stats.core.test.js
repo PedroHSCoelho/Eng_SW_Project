@@ -5,6 +5,8 @@ import {
   filtrarPorPeriodo,
   intervaloDoPeriodo,
   lerIntervaloExplicito,
+  lerPeriodoDasEstatisticas,
+  lerPosicao,
   montarRanking,
   ultimasPartidas,
 } from '../src/features/stats/stats.core.js'
@@ -311,5 +313,50 @@ describe('ultimasPartidas (V, E ou D das últimas partidas do jogador)', () => {
       partida(1, { time: { 1: 'B', 2: 'A' }, result: 'A_WINS', date: dia(1), goals: [gol(2, 'A'), gol(2, 'A'), gol(1, 'B')] }),
     ]
     expect(ultimasPartidas(1, partidas)[0]).toMatchObject({ date: dia(1), golsPro: 1, golsContra: 2 })
+  })
+})
+
+describe('lerPosicao (?posicao= do ranking)', () => {
+  it('ausente ou vazia: sem filtro (null)', () => {
+    expect(lerPosicao(undefined)).toBeNull()
+    expect(lerPosicao('')).toBeNull()
+  })
+
+  it.each(['GOALKEEPER', 'DEFENDER', 'MIDFIELDER', 'FORWARD'])('aceita %s', (posicao) => {
+    expect(lerPosicao(posicao)).toBe(posicao)
+  })
+
+  it.each(['goleiro', 'goalkeeper', 'ATACANTE', ['FORWARD', 'DEFENDER'], 3])('rejeita %j', (valor) => {
+    expect(() => lerPosicao(valor)).toThrow('Posição inválida')
+  })
+})
+
+describe('lerPeriodoDasEstatisticas (?periodo= ou ?de=&ate=)', () => {
+  const agora = new Date('2026-11-15T12:00:00Z')
+
+  it('sem nada: sem limite', () => {
+    expect(lerPeriodoDasEstatisticas({}, agora)).toEqual({ de: null, ate: null })
+  })
+
+  it('periodo=mes usa o mês do relógio (UTC), igual ao ranking', () => {
+    const { de, ate } = lerPeriodoDasEstatisticas({ periodo: 'mes' }, agora)
+    expect(de.toISOString()).toBe('2026-11-01T00:00:00.000Z')
+    expect(ate.toISOString()).toBe('2026-12-01T00:00:00.000Z')
+  })
+
+  it('periodo=ano e periodo=tudo', () => {
+    expect(lerPeriodoDasEstatisticas({ periodo: 'ano' }, agora).de.toISOString()).toBe('2026-01-01T00:00:00.000Z')
+    expect(lerPeriodoDasEstatisticas({ periodo: 'tudo' }, agora)).toEqual({ de: null, ate: null })
+  })
+
+  it('continua aceitando ?de=&ate=', () => {
+    const { de } = lerPeriodoDasEstatisticas({ de: '2026-11-02', ate: '2026-12-01' }, agora)
+    expect(de.toISOString()).toBe('2026-11-02T00:00:00.000Z')
+  })
+
+  it('período inválido ou periodo junto com de/ate -> 400', () => {
+    expect(() => lerPeriodoDasEstatisticas({ periodo: 'semana' }, agora)).toThrow('Período inválido')
+    expect(() => lerPeriodoDasEstatisticas({ periodo: ['mes'] }, agora)).toThrow('Período inválido')
+    expect(() => lerPeriodoDasEstatisticas({ periodo: 'mes', de: '2026-11-01' }, agora)).toThrow('não os dois')
   })
 })

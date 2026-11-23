@@ -6,6 +6,8 @@ import {
   validarDadosDaPartida,
   validarEscalacao,
   verificarEscalacaoEditavel,
+  verificarPodeCancelar,
+  verificarPodeEditar,
   verificarPodeEncerrar,
   verificarPodeIniciar,
 } from '../src/features/matches/matches.core.js'
@@ -148,3 +150,38 @@ describe('verificarPodeEncerrar', () => {
     expect(() => verificarPodeEncerrar({ partida: futura, agora })).toThrow('futuro')
   })
 })
+
+describe('verificarPodeEditar (data e local só mudam antes de a partida começar)', () => {
+  it('agendada: pode editar', () => {
+    expect(() => verificarPodeEditar({ status: 'SCHEDULED' })).not.toThrow()
+  })
+
+  it.each(['IN_PROGRESS', 'FINISHED', 'CANCELED'])('%s: não pode editar', (status) => {
+    expect(() => verificarPodeEditar({ status })).toThrow('Só uma partida agendada pode ser editada')
+  })
+})
+
+describe('verificarPodeCancelar', () => {
+  it.each(['SCHEDULED', 'IN_PROGRESS'])('%s: pode cancelar', (status) => {
+    expect(() => verificarPodeCancelar({ status })).not.toThrow()
+  })
+
+  it('finalizada não pode ser cancelada (a súmula está fechada)', () => {
+    expect(() => verificarPodeCancelar({ status: 'FINISHED' })).toThrow('finalizada não pode ser cancelada')
+  })
+
+  it('não cancela duas vezes', () => {
+    expect(() => verificarPodeCancelar({ status: 'CANCELED' })).toThrow('já foi cancelada')
+  })
+})
+
+describe('partida cancelada é recusada por todas as outras ações', () => {
+  const cancelada = { ...partidaCom(3, 3), status: 'CANCELED', date: '2026-01-01T00:00:00Z' }
+
+  it('não muda a escalação, não inicia e não encerra', () => {
+    expect(() => verificarEscalacaoEditavel(cancelada)).toThrow()
+    expect(() => verificarPodeIniciar(cancelada)).toThrow()
+    expect(() => verificarPodeEncerrar({ partida: cancelada, agora: new Date('2026-02-01T00:00:00Z') })).toThrow()
+  })
+})
+

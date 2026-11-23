@@ -274,3 +274,153 @@ describe('PATCH /api/matches/:id/encerrar', () => {
     expect((await maria.patch('/api/matches/1/encerrar')).status).toBe(403)
   })
 })
+
+describe('GET /api/matches: placar na lista', () => {
+  it('cada partida traz o placar calculado e não traz a lista de gols', async () => {
+    const { chefe, maria } = await cenario()
+    await chefe.post('/api/matches', novaPartida)
+    await chefe.put('/api/matches/1/escalacao', escalacaoCompleta)
+    await chefe.patch('/api/matches/1/iniciar')
+    await chefe.post('/api/matches/1/gols', { scorerId: 1 })
+    await chefe.post('/api/matches/1/gols', { scorerId: 2 })
+    await chefe.post('/api/matches/1/gols', { scorerId: 4 })
+    await chefe.post('/api/matches', novaPartida) // a 2ª continua agendada
+
+    const lista = (await maria.get('/api/matches')).body.data
+
+    const primeira = lista.find((p) => p.id === 1)
+    expect(primeira).toMatchObject({ status: 'IN_PROGRESS', score: { A: 2, B: 1 } })
+    expect(primeira.goals).toBeUndefined()
+    expect(lista.find((p) => p.id === 2)).toMatchObject({ status: 'SCHEDULED', score: { A: 0, B: 0 } })
+  })
+})
+
+describe('PUT /api/matches/:id (editar data e local)', () => {
+  const novosDados = { date: '2026-12-05T20:00:00-03:00', location: 'Quadra nova' }
+
+  it('organizador edita a partida agendada: 200 com os novos dados', async () => {
+    const { chefe } = await cenario()
+    await chefe.post('/api/matches', novaPartida)
+
+    const res = await chefe.put('/api/matches/1', novosDados)
+
+    expect(res.status).toBe(200)
+    expect(res.body.data.location).toBe('Quadra nova')
+    expect(new Date(res.body.data.date).toISOString()).toBe('2026-12-05T23:00:00.000Z')
+  })
+
+  it('jogador comum -> 403', async () => {
+    const { chefe, maria } = await cenario()
+    await chefe.post('/api/matches', novaPartida)
+    expect((await maria.put('/api/matches/1', novosDados)).status).toBe(403)
+  })
+
+  it('status, resultado e id enviados no corpo são ignorados', async () => {
+    const { chefe, matchesRepo } = await cenario()
+    await chefe.post('/api/matches', novaPartida)
+
+    await chefe.put('/api/matches/1', { ...novosDados, status: 'FINISHED', result: 'A_WINS', id: 99 })
+
+    expect(matchesRepo.partidas[0]).toMatchObject({ id: 1, status: 'SCHEDULED' })
+    expect(matchesRepo.partidas[0].result).toBeUndefined()
+  })
+
+  it('depois de iniciada, finalizada ou cancelada -> 422', async () => {
+    const { chefe } = await cenario()
+    await chefe.post('/api/matches', novaPartida)
+    await chefe.put('/api/matches/1/escalacao', escalacaoCompleta)
+    await chefe.patch('/api/matches/1/iniciar')
+    const emAndamento = await chefe.put('/api/matches/1', novosDados)
+    expect(emAndamento.status).toBe(422)
+    expect(emAndamento.body.erro).toMatch(/agendada/)
+
+    await chefe.patch('/api/matches/1/encerrar')
+    expect((await chefe.put('/api/matches/1', novosDados)).status).toBe(422)
+
+    await chefe.post('/api/matches', novaPartida)
+    await chefe.patch('/api/matches/2/cancelar')
+    expect((await chefe.put('/api/matches/2', novosDados)).status).toBe(422)
+  })
+
+  it('dados inválidos -> 400; partida inexistente -> 404; id inválido -> 400', async () => {
+    const { chefe } = await cenario()
+    await chefe.post('/api/matches', novaPartida)
+    expect((await chefe.put('/api/matches/1', { date: 'ontem', location: 'Quadra' })).status).toBe(400)
+    expect((await chefe.put('/api/matches/1', { date: novosDados.date, location: 'x' })).status).toBe(400)
+    expect((await chefe.put('/api/matches/99', novosDados)).status).toBe(404)
+    expect((await chefe.put('/api/matches/abc', novosDados)).status).toBe(400)
+  })
+})
+
+describe('PATCH /api/matches/:id/cancelar', () => {
+  it('cancela uma partida agendada e uma em andamento: 200 e status CANCELED', async () => {
+    const { chefe } = await cenario()
+    await chefe.post('/api/matches', novaPartida)
+    await chefe.post('/api/matches', novaPartida)
+    await chefe.put('/api/matches/2/escalacao', escalacaoCompleta)
+    await chefe.patch('/api/matches/2/iniciar')
+
+    const agendada = await chefe.patch('/api/matches/1/cancelar')
+    const andamento = await chefe.patch('/api/matches/2/cancelar')
+
+    expect(agendada.status).toBe(200)
+    expect(agendada.body.data.status).toBe('CANCELED')
+    expect(andamento.body.data.status).toBe('CANCELED')
+  })
+
+  it('jogador comum -> 403', async () => {
+    const { chefe, maria } = await cenario()
+    await chefe.post('/api/matches', novaPartida)
+    expect((await maria.patch('/api/matches/1/cancelar')).status).toBe(403)
+  })
+
+  it('finalizada ou já cancelada -> 422; inexistente -> 404', async () => {
+    const { chefe } = await cenario()
+    await chefe.post('/api/matches', novaPartida)
+    await chefe.put('/api/matches/1/escalacao', escalacaoCompleta)
+    await chefe.patch('/api/matches/1/iniciar')
+    await chefe.patch('/api/matches/1/encerrar')
+    const finalizada = await chefe.patch('/api/matches/1/cancelar')
+    expect(finalizada.status).toBe(422)
+    expect(finalizada.body.erro).toMatch(/finalizada/)
+
+    await chefe.post('/api/matches', novaPartida)
+    await chefe.patch('/api/matches/2/cancelar')
+    expect((await chefe.patch('/api/matches/2/cancelar')).status).toBe(422)
+    expect((await chefe.patch('/api/matches/99/cancelar')).status).toBe(404)
+  })
+
+  it('depois de cancelada, nenhuma outra ação é aceita (escalar, iniciar, gol, encerrar)', async () => {
+    const { chefe } = await cenario()
+    await chefe.post('/api/matches', novaPartida)
+    await chefe.put('/api/matches/1/escalacao', escalacaoCompleta)
+    await chefe.patch('/api/matches/1/iniciar')
+    await chefe.patch('/api/matches/1/cancelar')
+
+    expect((await chefe.put('/api/matches/1/escalacao', escalacaoCompleta)).status).toBe(422)
+    expect((await chefe.patch('/api/matches/1/iniciar')).status).toBe(422)
+    expect((await chefe.post('/api/matches/1/gols', { scorerId: 1 })).status).toBe(422)
+    expect((await chefe.patch('/api/matches/1/encerrar')).status).toBe(422)
+  })
+
+  it('partida cancelada fica de fora do histórico, das estatísticas e do ranking', async () => {
+    const { chefe, maria } = await cenario()
+    // Partida 1: jogada e encerrada (A vence por 1x0). Partida 2: com gol, mas cancelada.
+    for (const id of [1, 2]) {
+      await chefe.post('/api/matches', novaPartida)
+      await chefe.put(`/api/matches/${id}/escalacao`, escalacaoCompleta)
+      await chefe.patch(`/api/matches/${id}/iniciar`)
+      await chefe.post(`/api/matches/${id}/gols`, { scorerId: 1 })
+    }
+    await chefe.patch('/api/matches/1/encerrar')
+    await chefe.patch('/api/matches/2/cancelar')
+
+    const historico = (await maria.get('/api/matches/historico')).body.data
+    const stats = (await maria.get('/api/players/1/stats')).body.data
+    const ranking = (await maria.get('/api/rankings')).body.data
+
+    expect(historico.items.map((p) => p.id)).toEqual([1])
+    expect(stats).toMatchObject({ matches: 1, goals: 1 })
+    expect(ranking.artilharia[0]).toMatchObject({ playerId: 1, goals: 1 })
+  })
+})

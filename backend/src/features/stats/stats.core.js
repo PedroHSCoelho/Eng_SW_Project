@@ -157,3 +157,26 @@ export function ultimasPartidas(playerId, partidas, quantas = 5) {
       }
     })
 }
+
+// Mesmos valores do enum Position do schema.prisma.
+export const POSICOES = ['GOALKEEPER', 'DEFENDER', 'MIDFIELDER', 'FORWARD']
+
+// Lê o filtro opcional ?posicao= do ranking. Ausente ou vazio = sem filtro (null).
+export function lerPosicao(valor) {
+  if (valor === undefined || valor === '') return null
+  if (typeof valor !== 'string' || !POSICOES.includes(valor)) {
+    throw new ValidationError(`Posição inválida; use ${POSICOES.join(', ')}`)
+  }
+  return valor
+}
+
+// Período das estatísticas do jogador: ?periodo=mes|ano|tudo (igual ao ranking, em UTC)
+// OU ?de=&ate=. Os dois juntos são ambíguos, então são recusados.
+export function lerPeriodoDasEstatisticas(query, agora) {
+  const temPeriodo = query.periodo !== undefined && query.periodo !== ''
+  if (!temPeriodo) return lerIntervaloExplicito(query)
+  if ((query.de ?? '') !== '' || (query.ate ?? '') !== '') {
+    throw new ValidationError('Use "periodo" ou "de"/"ate", não os dois')
+  }
+  return intervaloDoPeriodo(typeof query.periodo === 'string' ? query.periodo : '', agora)
+}
