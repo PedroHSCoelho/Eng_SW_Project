@@ -25,6 +25,9 @@ Um termo por conceito, usado igual nas conversas, requisitos, banco, API e códi
 | Pedido de organizador | `OrganizerRequest` | Solicitação de um jogador para virar organizador, aprovada ou recusada por um organizador | convite, promoção |
 | Avaliação / Nota | `Rating` / `ratings` | Nota inteira de 1 a 5 dada por um participante a outro após a partida | review, voto |
 | Nota média | `averageRating` | Média das notas recebidas por um jogador | score |
+| Sorteio de times | `draw` / `sorteio` | Sugestão de dois times equilibrados entre os presentes, pela média de notas | divisão, montagem |
+| Força | `strength` | Média de notas do jogador (3,0 se ainda não tem média); a do time é a média dos jogadores | rating, nível |
+| Destaque da partida | `destaque` | Jogador com a maior média de notas na partida (mínimo de 3 notas; empate desfeito por gols) | craque, MVP |
 | Ranking | `rankings` | Classificação geral derivada das estatísticas | tabela |
 | Estatísticas | — | Gols, assistências, partidas disputadas (derivadas das partidas) | stats |
 

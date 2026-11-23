@@ -109,3 +109,74 @@ Modelo:
 - Arquivos principais: `schema.prisma`, `matches.core.js`, `matches.service.js`, `matches.repository.js`, `matches.routes.js`.
 - Teste que prova: 17 testes novos (9 do núcleo, 2 do serviço, 6 da API); 234 no back ao todo; conferido também contra um PostgreSQL local.
 - Quem revisou/entendeu: Luiz (autor); revisor do PR: (preencher)
+
+## 2026-11-23 — Estatísticas e ranking (F10 + F11, back-end)
+- O que mudou: `features/stats/` (núcleo puro, serviço, rotas); `GET /api/players/:id/stats` e `GET /api/rankings`; `matchesRepository.listarFinalizadas`; ADR 0009. As 5 migrações pendentes (auth, pedido de organizador, partida, gol, encerramento) foram aplicadas no Supabase com `migrate deploy` (as tabelas `User` e `Player` estavam vazias).
+- Por quê: critérios da F10 e F11; é onde mora a regra de negócio avaliada (pontos, desempates, mínimo de partidas, gol contra).
+- Conceito aprendido: dado derivado calculado x gravado; núcleo funcional/casca; TDD (Red -> Green); autenticação aplicada por rota para não transformar 404 em 401.
+- Arquivos principais: `stats.core.js`, `stats.service.js`, `stats.routes.js`, `criarApp.js`, `matches.repository.js`.
+- Teste que prova: 27 testes do núcleo e 11 da API (partidas jogadas pela própria API); 272 no back ao todo. A consulta real do Prisma foi executada no Supabase (devolveu 0 partidas: ainda não há dados).
+- Não verificado: cálculo com dados reais no Supabase; desempenho com muitas partidas.
+- Quem revisou/entendeu: (preencher)
+
+## 2026-11-23 — Avaliações e média de notas (F13 + F14, back-end)
+- O que mudou: modelo `Rating` (migração `cria-avaliacao`, com `CHECK` de nota 1–5 e avaliador diferente de avaliado, já aplicada no Supabase); `features/ratings/` (núcleo, serviço, repositório, rotas); `PUT /api/matches/:id/avaliacoes`, `GET .../avaliacoes/pendentes`, `GET .../destaque`, `GET /api/players/:id/ratings`; ADR 0010.
+- Por quê: critérios da F13 e F14; fecha as regras de negócio do README (só participantes avaliam, nota de 1 a 5, média no perfil).
+- Conceito aprendido: autoria vem da sessão, nunca do corpo; regra de prazo com relógio injetado; `upsert` + chave única (edita, não duplica); anonimato por mínimo de amostra; `CHECK` no banco como última barreira.
+- Arquivos principais: `schema.prisma`, `ratings.core.js`, `ratings.service.js`, `ratings.repository.js`, `ratings.routes.js`, `criarApp.js`.
+- Teste que prova: 28 do núcleo e 20 da API (inclui as 48h com data simulada e "raterId no corpo é ignorado"); 320 no back ao todo. Conferido também no Supabase: `upsert` edita a mesma linha e os dois `CHECK` barram nota 7 e auto-avaliação (dados de teste apagados depois).
+- Dúvidas que ficaram: mínimo de 3 notas por partida/destaque é suposição nossa; comentário hoje não é mostrado ao avaliado.
+- Não verificado: telas (F13/F14 no front ainda não existem).
+- Quem revisou/entendeu: (preencher)
+
+## 2026-11-23 — Telas de ranking e perfil (F12)
+- O que mudou: `RankingPage` (abas Geral, Artilharia e Assistências + filtro de período), `PlayerProfilePage` (estatísticas, média de notas, últimas partidas V/E/D), rotas `/ranking` e `/jogadores/:id`, item "Ranking" no menu. No back-end, `ultimasPartidas` (núcleo) e o campo `recentes` em `GET /api/players/:id/stats`.
+- Por quê: critérios da F12; é o que o professor vê das regras de F10, F11 e F14.
+- Conceito aprendido: o front não calcula nada (só mostra o que o back devolve); `Promise.all` para consultas independentes; flag `ativo` contra resposta antiga; teste de componente simulando o `fetch`.
+- Arquivos principais: `RankingPage.jsx`, `PlayerProfilePage.jsx`, `rankingApi.js`, `App.jsx`, `stats.core.js`.
+- Teste que prova: 6 testes do ranking e 6 do perfil (Testing Library); 4 testes novos no back; 55 no front e 324 no back.
+- Não verificado: a tela no navegador de verdade (o back real não subiu porque o `.env` local não tem `JWT_SECRET`); o perfil ainda não é aberto a partir da lista de Jogadores, só do ranking.
+- Quem revisou/entendeu: (preencher)
+
+## 2026-11-23 — Tela da súmula (F08)
+- O que mudou: `MatchesPage` (`/partidas`: lista e criação), `MatchPage` (`/partidas/:id`: a súmula), `LineupEditor` (escalar e iniciar), `GoalForm` (lançar gol), `matchesApi.js`; rotas e item "Partidas" no menu.
+- Por quê: critérios da F08; sem essa tela não dá para registrar uma partida pela interface, e ranking e perfil ficam vazios.
+- Conceito aprendido: a tela guarda só a `partida` e troca pela resposta da API a cada ação (o placar vem calculado do back-end); a UI evita erros óbvios (assistência só do mesmo time, "Salve antes de iniciar") mas a regra de verdade continua no back-end (422); confirmação em dois cliques para ação irreversível; tela por papel (organizador edita, jogador só lê).
+- Arquivos principais: `MatchPage.jsx`, `LineupEditor.jsx`, `GoalForm.jsx`, `MatchesPage.jsx`, `matchesApi.js`, `App.jsx`.
+- Teste que prova: 12 testes da súmula (escalar, salvar, iniciar, gol com placar, assistência filtrada, gol contra, remover, encerrar com confirmação, leitura para jogador) e 5 da lista/criação; 72 no front ao todo.
+- Não verificado: a tela no navegador com dados reais (o back sobe com `JWT_SECRET` e responde 401/404 corretamente, mas não percorri o fluxo no navegador para não gravar no banco compartilhado); a data usa o fuso do navegador.
+- Quem revisou/entendeu: (preencher)
+
+## 2026-11-23 — Avaliações e destaque na tela (F13 + F14, front)
+- O que mudou: `RatingsPanel` (destaque da partida; lista de quem falta avaliar, com nota de 1 a 5 e comentário opcional) e `ratingsApi.js`, encaixados na súmula quando a partida está finalizada.
+- Por quê: critérios da F13 e F14 (tela pós-partida com quem falta avaliar; destaque da partida); fecha a história do app: jogar, encerrar, avaliar.
+- Conceito aprendido: a tela mostra o que o back-end decide (prazo de 48h, só participantes, destaque com 3+ notas) e recarrega as pendências a cada nota; quem avalia vem do cookie, nunca do formulário; painel por papel (quem jogou avalia, os outros só veem o destaque).
+- Arquivos principais: `RatingsPanel.jsx`, `ratingsApi.js`, `MatchPage.jsx`.
+- Teste que prova: 9 testes do painel e 3 da integração na súmula; 84 no front ao todo.
+- Dúvidas que ficaram: a API não lista as notas que a pessoa já deu, então a tela não permite editar uma nota depois de enviada (o back-end aceita editar). A média do perfil aparece em `/jogadores/:id`.
+- Quem revisou/entendeu: (preencher)
+
+## 2026-11-23 — Histórico de partidas (F09)
+- O que mudou: `GET /api/matches/historico` (filtros por jogador e período, ordem, paginação, placar) com núcleo puro `history.core.js`; tela `/historico` (`HistoryPage`) com filtros, paginação e link para o detalhe (`/partidas/:id`, que já mostra times, placar, gols e assistências).
+- Por quê: critérios da F09; é a "memória" das peladas e a última feature principal do guia.
+- Conceito aprendido: paginação e filtros decididos no servidor (o front só pede); a rota fixa `/historico` vem antes de `/:id` (ordem das rotas importa); intervalo `[de, ate)` com "até" inclusivo na tela convertido para o dia seguinte; mudar o filtro volta para a página 1.
+- Arquivos principais: `history.core.js`, `matches.service.js`, `matches.routes.js`, `HistoryPage.jsx`, `historyApi.js`.
+- Teste que prova: 21 do núcleo e 9 da API (filtros por jogador, período e combinados, paginação, 400); 10 no front (inclui `diaSeguinte` na virada de mês, ano e ano bissexto); 354 no back e 92 no front.
+- Dúvidas que ficaram: o filtro de período é em UTC (partida às 22h no Brasil no último dia do mês cai no dia seguinte); o histórico carrega todas as finalizadas na memória antes de paginar (ok nesta escala; ver ADR 0009).
+- Quem revisou/entendeu: (preencher)
+
+## 2026-11-23 — README em UTF-8 e atualizado
+- O que mudou: `README.md` estava gravado em UTF-16 (ilegível em várias ferramentas e no diff) e desatualizado (citava Docker e um `docker-compose.yml` que não existe). Foi regravado em UTF-8, com as funcionalidades (escopo do grupo) mantidas sem alteração; tecnologias, "Como usar", comandos e estrutura do repositório foram atualizados.
+- Por quê: a Definition of Done pede que README e `docs/setup.md` permitam a um desconhecido rodar o projeto.
+- Não verificado: o passo a passo do zero numa máquina limpa (o `docs/setup.md` foi relido e continua correto).
+- Quem revisou/entendeu: (preencher)
+
+## 2026-11-23 — Sorteio de times (F15), edição de notas e atalhos da página inicial
+- O que mudou: `features/draw/` (núcleo `draw.core.js`, serviço, rota `POST /api/sorteio`, só organizador) e tela `/sorteio` (escolher presentes, ver os times, "sortear de novo" e "criar partida com estes times", que cria a partida e já escala); `GET /api/matches/:id/avaliacoes/minhas` e seção "Suas avaliações" no painel (editar nota até o fim do prazo); cartões da página inicial viraram atalhos (e o organizador ganhou o do sorteio); ADR 0011.
+- Por quê: critérios da F15 e fechamento de uma lacuna da F13 (a API aceitava editar a nota, mas a tela não mostrava as notas já dadas).
+- Conceito aprendido: busca exaustiva (força bruta) com limite justificado e combinações por máscara de bits; amostragem de reservatório para sortear entre empates com o sorteador injetado nos testes; núcleo puro reaproveitando a média do módulo de avaliações; criar partida + escalar como duas chamadas e como tratar a falha da segunda.
+- Arquivos principais: `draw.core.js`, `draw.service.js`, `DrawPage.jsx`, `RatingsPanel.jsx`, `ratings.service.js`, `HomePage.jsx`.
+- Teste que prova: 23 do núcleo do sorteio (tamanhos, equilíbrio, média padrão 3,0, goleiros, sorteio determinístico, 22 jogadores), 7 da API do sorteio, 4 da API das minhas notas; 10 do front do sorteio, 3 da edição de notas, 3 dos atalhos; 388 no back e 107 no front.
+- Dúvidas que ficaram: com 3 ou mais goleiros "1 por time" é impossível (dividimos 2 x 1); a força do time é média, não soma.
+- Não verificado: as telas no navegador; o sorteio com notas reais (as consultas novas rodam no Postgres e devolvem vazio porque o banco não tem dados).
+- Quem revisou/entendeu: (preencher)

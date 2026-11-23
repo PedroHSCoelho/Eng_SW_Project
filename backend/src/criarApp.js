@@ -9,6 +9,9 @@ import { criarAuthRouter } from './features/auth/auth.routes.js'
 import { criarUsersRouter } from './features/users/users.routes.js'
 import { criarOrganizerRequestsRouter } from './features/organizerRequests/organizerRequests.routes.js'
 import { criarMatchesRouter } from './features/matches/matches.routes.js'
+import { criarStatsRouter } from './features/stats/stats.routes.js'
+import { criarRatingsRouter } from './features/ratings/ratings.routes.js'
+import { criarDrawRouter } from './features/draw/draw.routes.js'
 
 export function criarApp({
   playersService,
@@ -16,6 +19,9 @@ export function criarApp({
   usersService,
   organizerRequestsService,
   matchesService,
+  statsService,
+  ratingsService,
+  drawService,
   tokens,
   cookieSeguro = false,
 }) {
@@ -40,6 +46,9 @@ export function criarApp({
     exigirPapelParaEscrever('ORGANIZER'),
     criarPlayersRouter(playersService),
   )
+  // Avaliações: qualquer logado avalia (se jogou a partida). Vem ANTES de /api/matches, que bloqueia
+  // escrita de não organizador; este router só responde pelos próprios caminhos.
+  app.use('/api', criarRatingsRouter(ratingsService, { autenticar }))
   // Partidas: qualquer logado vê; só organizador cria, escala, inicia, lança gols e encerra.
   app.use(
     '/api/matches',
@@ -47,6 +56,10 @@ export function criarApp({
     exigirPapelParaEscrever('ORGANIZER'),
     criarMatchesRouter(matchesService),
   )
+  // Estatísticas do jogador e rankings: derivados das súmulas, só leitura para qualquer logado.
+  app.use('/api', criarStatsRouter(statsService, { autenticar }))
+  // Sorteio de times: só o organizador (é ele quem monta a partida com o resultado).
+  app.use('/api/sorteio', autenticar, exigirPapel('ORGANIZER'), criarDrawRouter(drawService))
   // Gestão de usuários: só organizador, inclusive para ler.
   app.use('/api/users', autenticar, exigirPapel('ORGANIZER'), criarUsersRouter(usersService))
 

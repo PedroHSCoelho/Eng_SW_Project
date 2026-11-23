@@ -25,17 +25,19 @@ enum Position {
 // Jogador cadastrado. Estatísticas (gols, assistências, partidas) NÃO ficam aqui:
 // são calculadas a partir das súmulas, para não duplicar dado derivado.
 model Player {
-  id          Int           @id @default(autoincrement())
-  name        String        @db.VarChar(50)
-  nickname    String        @db.VarChar(30) // como o jogador quer ser exibido ("Zé")
-  nicknameKey String        @unique @db.VarChar(30) // apelido em minúsculas: garante unicidade sem diferenciar maiúsculas
-  position    Position
-  active      Boolean       @default(true) // inativar em vez de excluir quem já tem partida
-  createdAt   DateTime      @default(now())
-  user        User? // conta de login ligada a este jogador (no máximo uma)
-  matches     MatchPlayer[] // partidas em que foi escalado
-  goals       Goal[]        @relation("GoalScorer") // gols que marcou (inclusive contra)
-  assists     Goal[]        @relation("GoalAssist") // gols em que deu a assistência
+  id              Int           @id @default(autoincrement())
+  name            String        @db.VarChar(50)
+  nickname        String        @db.VarChar(30) // como o jogador quer ser exibido ("Zé")
+  nicknameKey     String        @unique @db.VarChar(30) // apelido em minúsculas: garante unicidade sem diferenciar maiúsculas
+  position        Position
+  active          Boolean       @default(true) // inativar em vez de excluir quem já tem partida
+  createdAt       DateTime      @default(now())
+  user            User? // conta de login ligada a este jogador (no máximo uma)
+  matches         MatchPlayer[] // partidas em que foi escalado
+  goals           Goal[]        @relation("GoalScorer") // gols que marcou (inclusive contra)
+  assists         Goal[]        @relation("GoalAssist") // gols em que deu a assistência
+  ratingsGiven    Rating[]      @relation("RatingGiven") // notas que deu
+  ratingsReceived Rating[]      @relation("RatingReceived") // notas que recebeu
 }
 
 // Papel do usuário no sistema. Muda pela gestão de usuários (só organizador).
@@ -113,6 +115,7 @@ model Match {
   createdAt  DateTime      @default(now())
   players    MatchPlayer[] // escalação dos dois times
   goals      Goal[] // gols lançados na súmula
+  ratings    Rating[] // notas dadas depois da partida
 }
 
 // Escalação: um jogador em um time de uma partida.
@@ -147,4 +150,25 @@ model Goal {
   @@index([matchId])
   @@index([scorerId])
   @@index([assistId])
+}
+
+// Nota de um jogador para outro depois de uma partida (1 a 5). Edita, não duplica:
+// a chave única (matchId, raterId, ratedId) permite uma nota por avaliador, avaliado e partida.
+// O CHECK de 1 a 5 existe só no SQL da migração (o Prisma não expressa CHECK): última barreira.
+model Rating {
+  id        Int      @id @default(autoincrement())
+  matchId   Int
+  raterId   Int // quem avaliou (nunca é mostrado ao avaliado)
+  ratedId   Int // quem foi avaliado
+  score     Int
+  comment   String?  @db.VarChar(200)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  rater     Player   @relation("RatingGiven", fields: [raterId], references: [id], onDelete: Restrict)
+  rated     Player   @relation("RatingReceived", fields: [ratedId], references: [id], onDelete: Restrict)
+
+  @@unique([matchId, raterId, ratedId])
+  @@index([ratedId])
+  @@index([matchId])
 }

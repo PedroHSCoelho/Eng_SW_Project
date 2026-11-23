@@ -14,6 +14,7 @@ import {
   verificarPodeIniciar,
 } from './matches.core.js'
 import { lerDadosDoGol, montarGol, verificarSumulaAberta } from './goals.core.js'
+import { lerFiltrosDoHistorico, montarHistorico } from './history.core.js'
 
 // A partida sempre sai com o placar calculado na hora (`score`).
 const comPlacar = (partida) => ({ ...partida, score: calcularPlacar(partida.goals ?? []) })
@@ -28,6 +29,11 @@ export function criarMatchesService({ matchesRepo, playersRepo, agora = () => ne
   return {
     listar() {
       return matchesRepo.listar()
+    },
+
+    // Histórico: partidas finalizadas com filtros e paginação (a decisão é do núcleo).
+    async historico(query) {
+      return montarHistorico(await matchesRepo.listarFinalizadas(), lerFiltrosDoHistorico(query))
     },
 
     async buscar(id) {
