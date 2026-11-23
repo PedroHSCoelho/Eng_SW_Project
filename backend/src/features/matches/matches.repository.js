@@ -18,6 +18,19 @@ const comEscalacao = {
 export const matchesRepository = {
   listar: () => prisma.match.findMany({ orderBy: { date: 'desc' } }),
 
+  // Partidas finalizadas com escalação e gols (só os campos que o cálculo usa).
+  // Alimenta estatísticas e ranking, que são derivados das súmulas.
+  listarFinalizadas: () =>
+    prisma.match.findMany({
+      where: { status: 'FINISHED' },
+      select: {
+        id: true, status: true, result: true, date: true, location: true,
+        players: { select: { playerId: true, team: true } },
+        goals: { select: { scorerId: true, assistId: true, team: true, ownGoal: true } },
+      },
+      orderBy: { date: 'desc' },
+    }),
+
   buscarPorId: (id) => prisma.match.findUnique({ where: { id }, include: comEscalacao }),
 
   criar: (dados) => prisma.match.create({ data: dados, include: comEscalacao }),

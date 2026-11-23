@@ -8,6 +8,9 @@ import { criarPlayersService } from '../../src/features/players/players.service.
 import { criarUsersService } from '../../src/features/users/users.service.js'
 import { criarOrganizerRequestsService } from '../../src/features/organizerRequests/organizerRequests.service.js'
 import { criarMatchesService } from '../../src/features/matches/matches.service.js'
+import { criarStatsService } from '../../src/features/stats/stats.service.js'
+import { criarRatingsService } from '../../src/features/ratings/ratings.service.js'
+import { criarDrawService } from '../../src/features/draw/draw.service.js'
 
 export const SEGREDO = 'segredo-de-teste-com-mais-de-32-caracteres!!'
 
@@ -88,6 +91,7 @@ export function criarMatchesRepoEmMemoria() {
   return {
     partidas,
     listar: async () => partidas,
+    listarFinalizadas: async () => partidas.filter((p) => p.status === 'FINISHED'),
     buscarPorId: async (id) => partidas.find((p) => p.id === id) ?? null,
     criar: async (dados) => {
       const partida = { id: proximoId++, status: 'SCHEDULED', players: [], goals: [], ...dados }
@@ -109,11 +113,32 @@ export function criarMatchesRepoEmMemoria() {
   }
 }
 
-export function montarApp({ expiraEmSegundos, jogadores = [], agora } = {}) {
+// Repositório em memória das avaliações. Como o real, `salvar` cria ou edita (uma nota por trio).
+export function criarRatingsRepoEmMemoria() {
+  let proximoId = 1
+  const notas = []
+  return {
+    notas,
+    salvar: async ({ matchId, raterId, ratedId, score, comment }) => {
+      let nota = notas.find((n) => n.matchId === matchId && n.raterId === raterId && n.ratedId === ratedId)
+      if (nota) Object.assign(nota, { score, comment })
+      else notas.push((nota = { id: proximoId++, matchId, raterId, ratedId, score, comment }))
+      return { id: nota.id, matchId, ratedId, score, comment }
+    },
+    listarDoAvaliador: async (matchId, raterId) =>
+      notas.filter((n) => n.matchId === matchId && n.raterId === raterId).sort((a, b) => a.ratedId - b.ratedId),
+    listarDaPartida: async (matchId) => notas.filter((n) => n.matchId === matchId),
+    listarRecebidas: async (ratedId) => notas.filter((n) => n.ratedId === ratedId),
+    listarRecebidasDe: async (ids) => notas.filter((n) => ids.includes(n.ratedId)),
+  }
+}
+
+export function montarApp({ expiraEmSegundos, jogadores = [], agora, aleatorio } = {}) {
   const usersRepo = criarUsersRepoEmMemoria()
   const requestsRepo = criarRequestsRepoEmMemoria(usersRepo)
   const playersRepo = criarPlayersRepoEmMemoria(jogadores)
   const matchesRepo = criarMatchesRepoEmMemoria()
+  const ratingsRepo = criarRatingsRepoEmMemoria()
   const tokens = criarTokens({ obterSegredo: () => SEGREDO, expiraEmSegundos })
   const authService = criarAuthService({
     usersRepo,
@@ -126,7 +151,10 @@ export function montarApp({ expiraEmSegundos, jogadores = [], agora } = {}) {
     usersService: criarUsersService({ usersRepo, playersRepo }),
     organizerRequestsService: criarOrganizerRequestsService({ requestsRepo, agora }),
     matchesService: criarMatchesService({ matchesRepo, playersRepo, agora }),
+    statsService: criarStatsService({ matchesRepo, playersRepo, agora }),
+    ratingsService: criarRatingsService({ ratingsRepo, matchesRepo, playersRepo, agora }),
+    drawService: criarDrawService({ playersRepo, ratingsRepo, aleatorio }),
     tokens,
   })
-  return { app, usersRepo, requestsRepo, matchesRepo, tokens }
+  return { app, usersRepo, requestsRepo, matchesRepo, ratingsRepo, tokens }
 }

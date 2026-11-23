@@ -11,6 +11,10 @@ import { criarOrganizerRequestsService } from './features/organizerRequests/orga
 import { organizerRequestsRepository } from './features/organizerRequests/organizerRequests.repository.js'
 import { criarMatchesService } from './features/matches/matches.service.js'
 import { matchesRepository } from './features/matches/matches.repository.js'
+import { criarStatsService } from './features/stats/stats.service.js'
+import { criarRatingsService } from './features/ratings/ratings.service.js'
+import { ratingsRepository } from './features/ratings/ratings.repository.js'
+import { criarDrawService } from './features/draw/draw.service.js'
 
 const tokens = criarTokens()
 
@@ -28,6 +32,13 @@ const app = criarApp({
     requestsRepo: organizerRequestsRepository,
   }),
   matchesService: criarMatchesService({ matchesRepo: matchesRepository, playersRepo: playersRepository }),
+  statsService: criarStatsService({ matchesRepo: matchesRepository, playersRepo: playersRepository }),
+  ratingsService: criarRatingsService({
+    ratingsRepo: ratingsRepository,
+    matchesRepo: matchesRepository,
+    playersRepo: playersRepository,
+  }),
+  drawService: criarDrawService({ playersRepo: playersRepository, ratingsRepo: ratingsRepository }),
   tokens,
   cookieSeguro: process.env.NODE_ENV === 'production',
 })
