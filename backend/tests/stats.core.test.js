@@ -5,6 +5,8 @@ import {
   filtrarPorPeriodo,
   intervaloDoPeriodo,
   lerIntervaloExplicito,
+  lerPeriodoDasEstatisticas,
+  lerPosicao,
   montarRanking,
   ultimasPartidas,
 } from '../src/features/stats/stats.core.js'
@@ -25,7 +27,27 @@ describe('estatisticasDoJogador', () => {
     expect(estatisticasDoJogador(1, [])).toEqual({
       playerId: 1, matches: 0, wins: 0, draws: 0, losses: 0,
       goals: 0, assists: 0, goalsPerMatch: 0, goalDifference: 0,
+      yellowCards: 0, redCards: 0, difficultSaves: 0,
     })
+  })
+
+  it('conta cartões e defesas difíceis do jogador (partida sem `events` conta zero)', () => {
+    const partidas = [
+      {
+        id: 1, status: 'FINISHED', result: 'DRAW', date: '2026-11-01',
+        players: [{ playerId: 1, team: 'A' }, { playerId: 2, team: 'B' }],
+        goals: [],
+        events: [
+          { playerId: 1, type: 'YELLOW_CARD' },
+          { playerId: 1, type: 'DIFFICULT_SAVE' },
+          { playerId: 1, type: 'DIFFICULT_SAVE' },
+          { playerId: 2, type: 'RED_CARD' },
+        ],
+      },
+      { id: 2, status: 'FINISHED', result: 'DRAW', date: '2026-11-02', players: [{ playerId: 1, team: 'A' }], goals: [] },
+    ]
+    expect(estatisticasDoJogador(1, partidas)).toMatchObject({ matches: 2, yellowCards: 1, redCards: 0, difficultSaves: 2 })
+    expect(estatisticasDoJogador(2, partidas)).toMatchObject({ matches: 1, redCards: 1 })
   })
 
   it('conta vitória, empate e derrota pelo time em que o jogador estava', () => {
@@ -311,5 +333,50 @@ describe('ultimasPartidas (V, E ou D das últimas partidas do jogador)', () => {
       partida(1, { time: { 1: 'B', 2: 'A' }, result: 'A_WINS', date: dia(1), goals: [gol(2, 'A'), gol(2, 'A'), gol(1, 'B')] }),
     ]
     expect(ultimasPartidas(1, partidas)[0]).toMatchObject({ date: dia(1), golsPro: 1, golsContra: 2 })
+  })
+})
+
+describe('lerPosicao (?posicao= do ranking)', () => {
+  it('ausente ou vazia: sem filtro (null)', () => {
+    expect(lerPosicao(undefined)).toBeNull()
+    expect(lerPosicao('')).toBeNull()
+  })
+
+  it.each(['GOALKEEPER', 'DEFENDER', 'MIDFIELDER', 'FORWARD'])('aceita %s', (posicao) => {
+    expect(lerPosicao(posicao)).toBe(posicao)
+  })
+
+  it.each(['goleiro', 'goalkeeper', 'ATACANTE', ['FORWARD', 'DEFENDER'], 3])('rejeita %j', (valor) => {
+    expect(() => lerPosicao(valor)).toThrow('Posição inválida')
+  })
+})
+
+describe('lerPeriodoDasEstatisticas (?periodo= ou ?de=&ate=)', () => {
+  const agora = new Date('2026-11-15T12:00:00Z')
+
+  it('sem nada: sem limite', () => {
+    expect(lerPeriodoDasEstatisticas({}, agora)).toEqual({ de: null, ate: null })
+  })
+
+  it('periodo=mes usa o mês do relógio (UTC), igual ao ranking', () => {
+    const { de, ate } = lerPeriodoDasEstatisticas({ periodo: 'mes' }, agora)
+    expect(de.toISOString()).toBe('2026-11-01T00:00:00.000Z')
+    expect(ate.toISOString()).toBe('2026-12-01T00:00:00.000Z')
+  })
+
+  it('periodo=ano e periodo=tudo', () => {
+    expect(lerPeriodoDasEstatisticas({ periodo: 'ano' }, agora).de.toISOString()).toBe('2026-01-01T00:00:00.000Z')
+    expect(lerPeriodoDasEstatisticas({ periodo: 'tudo' }, agora)).toEqual({ de: null, ate: null })
+  })
+
+  it('continua aceitando ?de=&ate=', () => {
+    const { de } = lerPeriodoDasEstatisticas({ de: '2026-11-02', ate: '2026-12-01' }, agora)
+    expect(de.toISOString()).toBe('2026-11-02T00:00:00.000Z')
+  })
+
+  it('período inválido ou periodo junto com de/ate -> 400', () => {
+    expect(() => lerPeriodoDasEstatisticas({ periodo: 'semana' }, agora)).toThrow('Período inválido')
+    expect(() => lerPeriodoDasEstatisticas({ periodo: ['mes'] }, agora)).toThrow('Período inválido')
+    expect(() => lerPeriodoDasEstatisticas({ periodo: 'mes', de: '2026-11-01' }, agora)).toThrow('não os dois')
   })
 })

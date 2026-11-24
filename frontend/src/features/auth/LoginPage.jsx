@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext.jsx'
 
 const campo =
@@ -9,12 +9,14 @@ const campo =
 export default function LoginPage() {
   const { usuario, entrar, cadastrar } = useAuth()
   const navegar = useNavigate()
+  // Quem chegou aqui vindo de uma página protegida (ex.: link de convite) volta para ela.
+  const voltarPara = useLocation().state?.voltarPara ?? '/'
   const [criandoConta, setCriandoConta] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', password: '' })
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
 
-  if (usuario) return <Navigate to="/" replace />
+  if (usuario) return <Navigate to={voltarPara} replace />
 
   function mudar(nome, valor) {
     setForm((atual) => ({ ...atual, [nome]: valor }))
@@ -27,7 +29,7 @@ export default function LoginPage() {
     try {
       if (criandoConta) await cadastrar(form)
       else await entrar({ email: form.email, password: form.password })
-      navegar('/', { replace: true })
+      navegar(voltarPara, { replace: true })
     } catch (e) {
       setErro(e.message)
     } finally {

@@ -22,7 +22,6 @@ export function criarAuthService({ usersRepo, hasher, tokens }) {
         name,
         email,
         passwordHash: await hasher.gerar(password),
-        role: 'PLAYER',
       })
       return { token: tokens.emitir(usuario.id), usuario: usuarioPublico(usuario) }
     },
@@ -41,7 +40,7 @@ export function criarAuthService({ usersRepo, hasher, tokens }) {
       return { token: tokens.emitir(usuario.id), usuario: usuarioPublico(usuario) }
     },
 
-    // Usado pelo middleware: token -> usuário ATUAL do banco (papel sempre atualizado).
+    // Usado pelo middleware: token -> usuário ATUAL do banco (conta apagada deixa de valer na hora).
     async usuarioDoToken(token) {
       const usuario = await usersRepo.buscarPorId(tokens.verificar(token))
       if (!usuario) throw new UnauthorizedError('Sessão inválida ou expirada')

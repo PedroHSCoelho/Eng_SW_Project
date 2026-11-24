@@ -1,20 +1,24 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../auth/AuthContext.jsx'
+import { ehOrganizadorDo, useGrupo } from '../groups/GrupoContext.jsx'
 import { criarPartida, listarPartidas } from './matchesApi.js'
 import { STATUS, formatarData } from './textos.js'
+import SeletorDeFormato from './SeletorDeFormato.jsx'
+import AbasDePartidas from './AbasDePartidas.jsx'
 
 const campo =
   'w-full rounded-lg bg-green-950 px-3 py-2 text-white ring-1 ring-green-700 focus:outline-none focus:ring-2 focus:ring-green-400'
 
 export default function MatchesPage() {
-  const ehOrganizador = useAuth().usuario?.role === 'ORGANIZER'
+  const ehOrganizador = ehOrganizadorDo(useGrupo().grupo)
   const navegar = useNavigate()
   const [partidas, setPartidas] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
   const [data, setData] = useState('')
   const [local, setLocal] = useState('')
+  const [vagas, setVagas] = useState('')
+  const [formato, setFormato] = useState({ format: 'SINGLE_GAME', teamCount: 2 })
   const [enviando, setEnviando] = useState(false)
 
   useEffect(() => {
@@ -34,7 +38,12 @@ export default function MatchesPage() {
     setEnviando(true)
     try {
       // O campo "datetime-local" é a hora do navegador; mandamos em ISO para o back-end não adivinhar o fuso.
-      const nova = await criarPartida({ date: new Date(data).toISOString(), location: local })
+      const nova = await criarPartida({
+        date: new Date(data).toISOString(),
+        location: local,
+        maxPlayers: vagas === '' ? null : Number(vagas),
+        ...formato,
+      })
       navegar(`/partidas/${nova.id}`) // já abre a súmula para escalar os times
     } catch (e) {
       setErro(e.message)
@@ -44,6 +53,7 @@ export default function MatchesPage() {
 
   return (
     <section className="mx-auto max-w-5xl px-4 pb-16" aria-labelledby="titulo-partidas">
+      <AbasDePartidas />
       <h2 id="titulo-partidas" className="text-2xl font-bold">
         📋 Partidas
       </h2>
@@ -57,9 +67,10 @@ export default function MatchesPage() {
       {ehOrganizador && (
         <form
           onSubmit={criar}
-          className="mt-4 grid gap-3 rounded-xl bg-green-900 p-5 ring-1 ring-green-700 sm:grid-cols-3"
+          className="mt-4 grid gap-3 rounded-xl bg-green-900 p-5 ring-1 ring-green-700 sm:grid-cols-4"
         >
-          <h3 className="font-semibold sm:col-span-3">Nova partida</h3>
+          <h3 className="font-semibold sm:col-span-4">Nova partida</h3>
+          <SeletorDeFormato valor={formato} aoMudar={setFormato} className="sm:col-span-4" />
           <label className="text-sm">
             Data e hora
             <input
@@ -79,6 +90,19 @@ export default function MatchesPage() {
               minLength={2}
               maxLength={100}
               required
+            />
+          </label>
+          <label className="text-sm">
+            Vagas (vazio = sem limite)
+            <input
+              type="number"
+              inputMode="numeric"
+              min="2"
+              max="100"
+              placeholder="ex.: 14"
+              className={campo}
+              value={vagas}
+              onChange={(e) => setVagas(e.target.value)}
             />
           </label>
           <div className="flex items-end">
@@ -108,9 +132,36 @@ export default function MatchesPage() {
                 <span>
                   <span className="block font-semibold">{formatarData(p.date)}</span>
                   <span className="text-sm text-green-200">{p.location}</span>
+                  {/* Agendada: quantos já estão na lista (confirmados + espera) e as vagas. */}
+                  {p.status === 'SCHEDULED' && p.attendance && (
+                    <span className="block text-sm text-green-300">
+                      {p.attendance.maxPlayers
+                        ? `${Math.min(p.attendance.total, p.attendance.maxPlayers)}/${p.attendance.maxPlayers} na lista`
+                        : `${p.attendance.total} na lista`}
+                      {p.attendance.maxPlayers && p.attendance.total > p.attendance.maxPlayers
+                        ? ` · ${p.attendance.total - p.attendance.maxPlayers} na espera`
+                        : ''}
+                    </span>
+                  )}
                 </span>
-                <span className={`rounded-full px-3 py-0.5 text-xs font-medium ${STATUS[p.status].classe}`}>
-                  {STATUS[p.status].nome}
+                <span className="text-right">
+                  {/* O placar só faz sentido depois que a partida começou (e nunca na cancelada). */}
+                  {p.format === 'PELADA' ? (
+                    <span className="mb-1 block text-sm font-semibold">
+                      Pelada · {p.teamCount} times
+                      {['IN_PROGRESS', 'FINISHED'].includes(p.status) && ` · ${p.gamesCount ?? 0} jogo(s)`}
+                    </span>
+                  ) : (
+                    p.score &&
+                    ['IN_PROGRESS', 'FINISHED'].includes(p.status) && (
+                      <span className="mb-1 block font-bold tabular-nums">
+                        Time A {p.score.A} x {p.score.B} Time B
+                      </span>
+                    )
+                  )}
+                  <span className={`rounded-full px-3 py-0.5 text-xs font-medium ${STATUS[p.status].classe}`}>
+                    {STATUS[p.status].nome}
+                  </span>
                 </span>
               </Link>
             </li>

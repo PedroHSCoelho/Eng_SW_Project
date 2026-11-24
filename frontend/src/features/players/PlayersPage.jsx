@@ -8,7 +8,7 @@ import {
   listarJogadores,
 } from './playersApi.js'
 import PlayerForm, { POSICOES } from './PlayerForm.jsx'
-import { useAuth } from '../auth/AuthContext.jsx'
+import { ehOrganizadorDo, useGrupo } from '../groups/GrupoContext.jsx'
 
 const FORM_VAZIO = { name: '', nickname: '', position: '' }
 
@@ -18,7 +18,7 @@ const botao = 'rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50'
 
 export default function PlayersPage() {
   // Só o organizador cadastra/edita/inativa/exclui. Esconder os botões é conforto: o back-end responde 403 de qualquer jeito.
-  const ehOrganizador = useAuth().usuario?.role === 'ORGANIZER'
+  const ehOrganizador = ehOrganizadorDo(useGrupo().grupo)
   const [jogadores, setJogadores] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')

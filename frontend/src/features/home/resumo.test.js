@@ -1,0 +1,58 @@
+import { describe, expect, it } from 'vitest'
+import { artilheirosPorTime, escolherCobra, montarPodio } from './resumo.js'
+
+const gol = (team, id, nickname, ownGoal = false) => ({ team, ownGoal, scorer: { id, nickname } })
+
+describe('artilheirosPorTime', () => {
+  it('agrupa os gols por time e por jogador, do maior para o menor', () => {
+    const gols = [gol('A', 1, 'Zé'), gol('B', 2, 'Tico'), gol('A', 3, 'Bia'), gol('A', 3, 'Bia')]
+
+    expect(artilheirosPorTime(gols)).toEqual({
+      A: [
+        { nome: 'Bia', gols: 2 },
+        { nome: 'Zé', gols: 1 },
+      ],
+      B: [{ nome: 'Tico', gols: 1 }],
+    })
+  })
+
+  it('ignora gol contra e aceita lista vazia ou ausente', () => {
+    expect(artilheirosPorTime([gol('A', 1, 'Zé', true)])).toEqual({ A: [], B: [] })
+    expect(artilheirosPorTime(undefined)).toEqual({ A: [], B: [] })
+  })
+})
+
+describe('montarPodio', () => {
+  it('usa o ranking geral (pontos) e pega só o top 3', () => {
+    const geral = [1, 2, 3, 4].map((i) => ({ playerId: i, nickname: `J${i}`, points: 10 - i }))
+
+    const podio = montarPodio({ geral, artilharia: [] })
+
+    expect(podio.criterio).toBe('pontos')
+    expect(podio.linhas.map((l) => l.nome)).toEqual(['J1', 'J2', 'J3'])
+    expect(podio.linhas[0].valor).toBe(9)
+  })
+
+  it('sem ninguém com o mínimo de jogos, cai para a artilharia', () => {
+    const podio = montarPodio({ geral: [], artilharia: [{ playerId: 7, name: 'Ana', nickname: null, goals: 4 }] })
+    expect(podio).toEqual({ criterio: 'gols', linhas: [{ id: 7, nome: 'Ana', valor: 4 }] })
+  })
+
+  it('sem dados devolve pódio vazio (inclusive se a API respondeu algo inesperado)', () => {
+    expect(montarPodio(null).linhas).toEqual([])
+    expect(montarPodio([]).linhas).toEqual([])
+  })
+})
+
+describe('escolherCobra', () => {
+  it('prefere o destaque da última partida', () => {
+    const destaque = { playerId: 2, nickname: 'Tico', average: 8.5, count: 4, goals: 1 }
+    expect(escolherCobra(destaque, null)).toEqual({ tipo: 'destaque', id: 2, nome: 'Tico', media: 8.5, gols: 1 })
+  })
+
+  it('sem destaque usa o artilheiro geral; sem nada, null', () => {
+    const ranking = { artilharia: [{ playerId: 3, nickname: 'Bia', goals: 9 }] }
+    expect(escolherCobra(null, ranking)).toEqual({ tipo: 'artilheiro', id: 3, nome: 'Bia', gols: 9 })
+    expect(escolherCobra(null, null)).toBeNull()
+  })
+})

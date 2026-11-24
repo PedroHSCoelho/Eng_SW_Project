@@ -24,9 +24,9 @@ async function cadastrar(app, nome) {
 async function cenario() {
   const ctx = montarApp({ jogadores, aleatorio: () => 0 })
   const chefe = await cadastrar(ctx.app, 'Chefe')
-  ctx.usersRepo.usuarios.find((u) => u.email === 'chefe@x.com').role = 'ORGANIZER'
+  ctx.participacaoDe('chefe@x.com').role = 'ORGANIZER'
   const maria = await cadastrar(ctx.app, 'Maria')
-  const sortear = (cookie, corpo) => request(ctx.app).post('/api/sorteio').set('Cookie', cookie).send(corpo)
+  const sortear = (cookie, corpo) => request(ctx.app).post('/api/grupos/1/sorteio').set('Cookie', cookie).send(corpo)
   // Notas recebidas direto no repositório em memória: `deNotas(5, [5, 5, 5])` = jogador 5 com média 5.
   const darNotas = (ratedId, scores) =>
     scores.forEach((score, i) => ctx.ratingsRepo.notas.push({ id: 1000 + ratedId * 10 + i, matchId: 1, raterId: 90 + i, ratedId, score }))
@@ -35,10 +35,10 @@ async function cenario() {
 
 const idsDe = (time) => time.players.map((p) => p.id).sort((a, b) => a - b)
 
-describe('POST /api/sorteio', () => {
+describe('POST /api/grupos/1/sorteio', () => {
   it('sem login -> 401; jogador comum -> 403', async () => {
     const { app, maria, sortear } = await cenario()
-    expect((await request(app).post('/api/sorteio').send({ playerIds: [1, 2, 3, 4, 5, 6] })).status).toBe(401)
+    expect((await request(app).post('/api/grupos/1/sorteio').send({ playerIds: [1, 2, 3, 4, 5, 6] })).status).toBe(401)
     expect((await sortear(maria, { playerIds: [1, 2, 3, 4, 5, 6] })).status).toBe(403)
   })
 

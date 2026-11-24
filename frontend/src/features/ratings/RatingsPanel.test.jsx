@@ -2,6 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import RatingsPanel from './RatingsPanel.jsx'
+import { definirGrupoAtual } from '../../api/grupoAtual.js'
+
+// As APIs montam as URLs com o grupo atual: nos testes, o grupo 1.
+beforeEach(() => definirGrupoAtual(1))
 
 const DESTAQUE = { playerId: 2, nickname: 'Beto', average: 4.7, count: 3, goals: 1 }
 const prazo = '2026-11-22T22:00:00.000Z'
@@ -34,7 +38,7 @@ afterEach(() => {
 
 describe('RatingsPanel: destaque', () => {
   it('mostra o destaque da partida com média e gols', async () => {
-    simularApi({ 'GET /api/matches/7/destaque': () => resposta(200, { data: DESTAQUE }) })
+    simularApi({ 'GET /api/grupos/1/matches/7/destaque': () => resposta(200, { data: DESTAQUE }) })
 
     render(<RatingsPanel matchId={7} podeAvaliar={false} />)
 
@@ -42,7 +46,7 @@ describe('RatingsPanel: destaque', () => {
   })
 
   it('sem destaque explica a regra das 3 avaliações', async () => {
-    simularApi({ 'GET /api/matches/7/destaque': () => resposta(200, { data: null }) })
+    simularApi({ 'GET /api/grupos/1/matches/7/destaque': () => resposta(200, { data: null }) })
 
     render(<RatingsPanel matchId={7} podeAvaliar={false} />)
 
@@ -50,24 +54,24 @@ describe('RatingsPanel: destaque', () => {
   })
 
   it('quem não jogou vê o destaque, mas não pede nem vê pendências', async () => {
-    simularApi({ 'GET /api/matches/7/destaque': () => resposta(200, { data: DESTAQUE }) })
+    simularApi({ 'GET /api/grupos/1/matches/7/destaque': () => resposta(200, { data: DESTAQUE }) })
 
     render(<RatingsPanel matchId={7} podeAvaliar={false} />)
     await screen.findByText(/Destaque da partida/)
 
-    expect(chamou('GET /api/matches/7/avaliacoes/pendentes')).toBe(false)
+    expect(chamou('GET /api/grupos/1/matches/7/avaliacoes/pendentes')).toBe(false)
     expect(screen.queryByRole('button', { name: /Avaliar/ })).not.toBeInTheDocument()
   })
 })
 
 describe('RatingsPanel: avaliar', () => {
   const base = {
-    'GET /api/matches/7/destaque': () => resposta(200, { data: null }),
-    'GET /api/matches/7/avaliacoes/minhas': () => resposta(200, { data: [] }),
+    'GET /api/grupos/1/matches/7/destaque': () => resposta(200, { data: null }),
+    'GET /api/grupos/1/matches/7/avaliacoes/minhas': () => resposta(200, { data: [] }),
   }
 
   it('lista quem falta avaliar e avisa o prazo e o anonimato', async () => {
-    simularApi({ ...base, 'GET /api/matches/7/avaliacoes/pendentes': () => resposta(200, { data: pendentes(2, 3) }) })
+    simularApi({ ...base, 'GET /api/grupos/1/matches/7/avaliacoes/pendentes': () => resposta(200, { data: pendentes(2, 3) }) })
 
     render(<RatingsPanel matchId={7} podeAvaliar />)
 
@@ -78,7 +82,7 @@ describe('RatingsPanel: avaliar', () => {
   })
 
   it('só habilita "Avaliar" depois de escolher a nota', async () => {
-    simularApi({ ...base, 'GET /api/matches/7/avaliacoes/pendentes': () => resposta(200, { data: pendentes(2) }) })
+    simularApi({ ...base, 'GET /api/grupos/1/matches/7/avaliacoes/pendentes': () => resposta(200, { data: pendentes(2) }) })
     render(<RatingsPanel matchId={7} podeAvaliar />)
     const botao = await screen.findByRole('button', { name: 'Avaliar J2' })
     expect(botao).toBeDisabled()
@@ -92,8 +96,8 @@ describe('RatingsPanel: avaliar', () => {
     let lista = pendentes(2, 3)
     simularApi({
       ...base,
-      'GET /api/matches/7/avaliacoes/pendentes': () => resposta(200, { data: lista }),
-      'PUT /api/matches/7/avaliacoes': (corpo) => {
+      'GET /api/grupos/1/matches/7/avaliacoes/pendentes': () => resposta(200, { data: lista }),
+      'PUT /api/grupos/1/matches/7/avaliacoes': (corpo) => {
         expect(corpo).toEqual({ ratedId: 2, score: 4, comment: 'jogou bem' })
         lista = pendentes(3) // a API passa a devolver só quem ainda falta
         return resposta(200, { data: { id: 1, matchId: 7, ratedId: 2, score: 4, comment: 'jogou bem' } })
@@ -112,7 +116,7 @@ describe('RatingsPanel: avaliar', () => {
   })
 
   it('quando avaliou todo mundo, mostra a confirmação', async () => {
-    simularApi({ ...base, 'GET /api/matches/7/avaliacoes/pendentes': () => resposta(200, { data: pendentes() }) })
+    simularApi({ ...base, 'GET /api/grupos/1/matches/7/avaliacoes/pendentes': () => resposta(200, { data: pendentes() }) })
 
     render(<RatingsPanel matchId={7} podeAvaliar />)
 
@@ -122,7 +126,7 @@ describe('RatingsPanel: avaliar', () => {
   it('depois do prazo avisa e não oferece formulário', async () => {
     simularApi({
       ...base,
-      'GET /api/matches/7/avaliacoes/pendentes': () => resposta(200, { data: { open: false, deadline: prazo, pending: [] } }),
+      'GET /api/grupos/1/matches/7/avaliacoes/pendentes': () => resposta(200, { data: { open: false, deadline: prazo, pending: [] } }),
     })
 
     render(<RatingsPanel matchId={7} podeAvaliar />)
@@ -134,8 +138,8 @@ describe('RatingsPanel: avaliar', () => {
   it('mostra o erro do back-end (ex.: prazo de 48h) e mantém a lista', async () => {
     simularApi({
       ...base,
-      'GET /api/matches/7/avaliacoes/pendentes': () => resposta(200, { data: pendentes(2) }),
-      'PUT /api/matches/7/avaliacoes': () => resposta(422, { erro: 'O prazo de 48 horas para avaliar esta partida acabou' }),
+      'GET /api/grupos/1/matches/7/avaliacoes/pendentes': () => resposta(200, { data: pendentes(2) }),
+      'PUT /api/grupos/1/matches/7/avaliacoes': () => resposta(422, { erro: 'O prazo de 48 horas para avaliar esta partida acabou' }),
     })
     render(<RatingsPanel matchId={7} podeAvaliar />)
     await screen.findByText(/Faltam 1 jogador|Falta 1 jogador/)
@@ -149,16 +153,16 @@ describe('RatingsPanel: avaliar', () => {
 })
 
 describe('RatingsPanel: editar minhas notas', () => {
-  const destaqueNulo = { 'GET /api/matches/7/destaque': () => resposta(200, { data: null }) }
+  const destaqueNulo = { 'GET /api/grupos/1/matches/7/destaque': () => resposta(200, { data: null }) }
   const minha = { ratedId: 2, nickname: 'J2', score: 4, comment: 'jogou bem' }
 
   it('mostra a nota que já dei, com os valores preenchidos, e permite atualizar', async () => {
     let minhas = [minha]
     simularApi({
       ...destaqueNulo,
-      'GET /api/matches/7/avaliacoes/pendentes': () => resposta(200, { data: pendentes() }),
-      'GET /api/matches/7/avaliacoes/minhas': () => resposta(200, { data: minhas }),
-      'PUT /api/matches/7/avaliacoes': (corpo) => {
+      'GET /api/grupos/1/matches/7/avaliacoes/pendentes': () => resposta(200, { data: pendentes() }),
+      'GET /api/grupos/1/matches/7/avaliacoes/minhas': () => resposta(200, { data: minhas }),
+      'PUT /api/grupos/1/matches/7/avaliacoes': (corpo) => {
         expect(corpo).toEqual({ ratedId: 2, score: 2, comment: 'mudei de ideia' })
         minhas = [{ ...minha, score: 2, comment: 'mudei de ideia' }]
         return resposta(200, { data: { id: 1, matchId: 7, ratedId: 2, score: 2, comment: 'mudei de ideia' } })
@@ -182,8 +186,8 @@ describe('RatingsPanel: editar minhas notas', () => {
   it('depois do prazo as minhas notas aparecem só para leitura', async () => {
     simularApi({
       ...destaqueNulo,
-      'GET /api/matches/7/avaliacoes/pendentes': () => resposta(200, { data: { open: false, deadline: prazo, pending: [] } }),
-      'GET /api/matches/7/avaliacoes/minhas': () => resposta(200, { data: [minha] }),
+      'GET /api/grupos/1/matches/7/avaliacoes/pendentes': () => resposta(200, { data: { open: false, deadline: prazo, pending: [] } }),
+      'GET /api/grupos/1/matches/7/avaliacoes/minhas': () => resposta(200, { data: [minha] }),
     })
 
     render(<RatingsPanel matchId={7} podeAvaliar />)
@@ -195,8 +199,8 @@ describe('RatingsPanel: editar minhas notas', () => {
   it('quem ainda não avaliou ninguém não vê a seção "Suas avaliações"', async () => {
     simularApi({
       ...destaqueNulo,
-      'GET /api/matches/7/avaliacoes/pendentes': () => resposta(200, { data: pendentes(2) }),
-      'GET /api/matches/7/avaliacoes/minhas': () => resposta(200, { data: [] }),
+      'GET /api/grupos/1/matches/7/avaliacoes/pendentes': () => resposta(200, { data: pendentes(2) }),
+      'GET /api/grupos/1/matches/7/avaliacoes/minhas': () => resposta(200, { data: [] }),
     })
 
     render(<RatingsPanel matchId={7} podeAvaliar />)

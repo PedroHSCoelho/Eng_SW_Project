@@ -1,1 +1,135 @@
 @import "tailwindcss";
+
+/*
+ * Tokens visuais do Cobra da Bola. TODA cor, fonte e medida do layout sai daqui.
+ * O @theme do Tailwind 4 vira variáveis CSS (:root) e também classes: --color-ouro gera
+ * bg-ouro, text-ouro, ring-ouro... Mudou aqui, muda no app inteiro.
+ */
+@theme {
+  /* Fundo e superfícies (neutros escuros puxados para o verde) */
+  --color-fundo: #0b1410;
+  --color-superficie: #12211a;
+  --color-superficie-2: #1a2e24;
+  --color-borda: #2a4536;
+
+  /* Gramado: verde vivo para a ação principal */
+  --color-gramado: #22c55e;
+  --color-gramado-claro: #4ade80;
+  --color-gramado-tinta: #052e16; /* texto em cima do gramado */
+  --color-campo: #166534; /* listras e decoração */
+
+  /* Destaques do pódio e do craque */
+  --color-ouro: #f5c518;
+  --color-prata: #c9d1d9;
+  --color-bronze: #d08c4a;
+
+  /* Texto e estados */
+  --color-texto: #f1f5f2;
+  --color-texto-suave: #a7bfb0;
+  --color-perigo: #f87171;
+
+  /*
+   * As telas antigas usam as classes green-* do Tailwind. Em vez de reescrever cada tela,
+   * o verde padrão passa a apontar para a paleta acima: o app inteiro fica com a cara nova.
+   */
+  --color-green-950: var(--color-fundo);
+  --color-green-900: var(--color-superficie);
+  --color-green-800: var(--color-superficie-2);
+  --color-green-700: var(--color-borda);
+  --color-green-600: #16a34a;
+  --color-green-500: var(--color-gramado);
+  --color-green-400: var(--color-gramado-claro);
+  --color-green-300: #8fd9a8;
+  --color-green-200: var(--color-texto-suave);
+  --color-green-100: #dcf5e4;
+  --color-yellow-300: var(--color-ouro);
+
+  /* Fontes: título com personalidade, corpo legível */
+  --font-titulo: "Bebas Neue", Impact, "Arial Narrow Bold", sans-serif;
+  --font-corpo: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-sans: var(--font-corpo);
+
+  /* Raios e animações */
+  --radius-cartao: 1rem;
+  --animate-pulsar: pulsar 1.4s ease-in-out infinite;
+
+  @keyframes pulsar {
+    0%,
+    100% {
+      opacity: 0.45;
+    }
+    50% {
+      opacity: 0.9;
+    }
+  }
+}
+
+/* Medidas do layout (não geram classes; usadas com var()) */
+:root {
+  --altura-header: 3.5rem;
+  --altura-barra-inferior: 4rem;
+  --largura-conteudo: 64rem;
+  --transicao: 150ms ease-out;
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: var(--color-fundo);
+    color: var(--color-texto);
+    font-family: var(--font-corpo);
+  }
+
+  /* Foco sempre visível para quem navega pelo teclado */
+  :focus-visible {
+    outline: 3px solid var(--color-ouro);
+    outline-offset: 2px;
+    border-radius: 0.375rem;
+  }
+}
+
+@layer components {
+  .titulo {
+    font-family: var(--font-titulo);
+    letter-spacing: 0.03em;
+    line-height: 1;
+  }
+
+  /* Cartão padrão das telas novas */
+  .cartao {
+    background-color: var(--color-superficie);
+    border: 1px solid var(--color-borda);
+    border-radius: var(--radius-cartao);
+  }
+
+  /* Bloco cinza que pulsa enquanto os dados chegam */
+  .esqueleto {
+    background-color: var(--color-superficie-2);
+    border-radius: 0.5rem;
+    animation: var(--animate-pulsar);
+  }
+
+  /* Gramado listrado, com cara de campo de várzea */
+  .gramado-listrado {
+    background-image: repeating-linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--color-campo) 55%, transparent) 0 2.5rem,
+      color-mix(in oklab, var(--color-campo) 35%, transparent) 2.5rem 5rem
+    );
+  }
+}
+
+/* Quem pediu menos movimento no sistema não vê animações */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

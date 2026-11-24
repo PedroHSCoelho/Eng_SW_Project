@@ -1,22 +1,52 @@
 // Acesso HTTP à API de partidas (o formato { data } / { erro } é tratado em api/http.js).
 // Toda ação devolve a partida inteira já com o placar (`score`) calculado pelo back-end.
 import { comJson, pedir } from '../../api/http.js'
+import { apiDoGrupo } from '../../api/grupoAtual.js'
 
-export const listarPartidas = () => pedir('/api/matches')
+export const listarPartidas = () => pedir(`${apiDoGrupo()}/matches`)
 
-export const buscarPartida = (id) => pedir(`/api/matches/${id}`)
+export const buscarPartida = (id) => pedir(`${apiDoGrupo()}/matches/${id}`)
 
 // date: texto ISO (ex.: "2026-11-20T19:00:00.000Z")
-export const criarPartida = (dados) => pedir('/api/matches', comJson('POST', dados))
+export const criarPartida = (dados) => pedir(`${apiDoGrupo()}/matches`, comJson('POST', dados))
 
-export const definirEscalacao = (id, { teamA, teamB }) =>
-  pedir(`/api/matches/${id}/escalacao`, comJson('PUT', { teamA, teamB }))
+// Edita data e local (só partida agendada). dados: { date (ISO), location }
+export const atualizarPartida = (id, dados) => pedir(`${apiDoGrupo()}/matches/${id}`, comJson('PUT', dados))
 
-export const iniciarPartida = (id) => pedir(`/api/matches/${id}/iniciar`, { method: 'PATCH' })
+// Cancela uma partida agendada ou em andamento (não volta atrás).
+export const cancelarPartida = (id) => pedir(`${apiDoGrupo()}/matches/${id}/cancelar`, { method: 'PATCH' })
 
-export const encerrarPartida = (id) => pedir(`/api/matches/${id}/encerrar`, { method: 'PATCH' })
+// times: { teamA: [ids], teamB: [ids] } (na pelada também teamC, teamD...)
+export const definirEscalacao = (id, times) => pedir(`${apiDoGrupo()}/matches/${id}/escalacao`, comJson('PUT', times))
+
+export const iniciarPartida = (id) => pedir(`${apiDoGrupo()}/matches/${id}/iniciar`, { method: 'PATCH' })
+
+export const encerrarPartida = (id) => pedir(`${apiDoGrupo()}/matches/${id}/encerrar`, { method: 'PATCH' })
 
 // gol: { scorerId, assistId?, minute?, ownGoal? }
-export const lancarGol = (id, gol) => pedir(`/api/matches/${id}/gols`, comJson('POST', gol))
+export const lancarGol = (id, gol) => pedir(`${apiDoGrupo()}/matches/${id}/gols`, comJson('POST', gol))
 
-export const removerGol = (id, goalId) => pedir(`/api/matches/${id}/gols/${goalId}`, { method: 'DELETE' })
+export const removerGol = (id, goalId) => pedir(`${apiDoGrupo()}/matches/${id}/gols/${goalId}`, { method: 'DELETE' })
+
+// Cartões e defesas difíceis. lance: { type: 'YELLOW_CARD' | 'RED_CARD' | 'DIFFICULT_SAVE', playerId, minute? }
+export const lancarLance = (id, lance) => pedir(`${apiDoGrupo()}/matches/${id}/lances`, comJson('POST', lance))
+
+export const removerLance = (id, eventId) =>
+  pedir(`${apiDoGrupo()}/matches/${id}/lances/${eventId}`, { method: 'DELETE' })
+
+// Lista de presença: { maxPlayers, confirmed: [...], waitlist: [...], openSpots, me }
+export const buscarPresencas = (id) => pedir(`${apiDoGrupo()}/matches/${id}/presencas`)
+
+// Sem playerId: confirma o MEU nome; com playerId: o organizador põe outro jogador.
+export const confirmarPresenca = (id, playerId) =>
+  pedir(`${apiDoGrupo()}/matches/${id}/presencas`, comJson('POST', playerId ? { playerId } : {}))
+
+export const sairDaLista = (id, playerId) =>
+  pedir(`${apiDoGrupo()}/matches/${id}/presencas/${playerId}`, { method: 'DELETE' })
+
+// Pelada: começa um jogo entre dois times da partida e encerra o jogo aberto.
+export const comecarJogo = (id, { homeTeam, awayTeam }) =>
+  pedir(`${apiDoGrupo()}/matches/${id}/jogos`, comJson('POST', { homeTeam, awayTeam }))
+
+export const encerrarJogo = (id, gameId) =>
+  pedir(`${apiDoGrupo()}/matches/${id}/jogos/${gameId}/encerrar`, { method: 'PATCH' })

@@ -180,3 +180,31 @@ Modelo:
 - Dúvidas que ficaram: com 3 ou mais goleiros "1 por time" é impossível (dividimos 2 x 1); a força do time é média, não soma.
 - Não verificado: as telas no navegador; o sorteio com notas reais (as consultas novas rodam no Postgres e devolvem vazio porque o banco não tem dados).
 - Quem revisou/entendeu: (preencher)
+
+## 2026-11-23 — Deploy na Vercel funcionando
+- O que mudou: a produção estava no ar, mas o banco não conectava (`Environment variable not found: DATABASE_URL` no log da função). Foram criadas na Vercel as variáveis `DATABASE_URL`, `DIRECT_URL` e `JWT_SECRET` (ambiente Production) e feito um novo deploy. `docs/setup.md` ganhou o endereço publicado, como conferir se está tudo certo e uma tabela de problemas comuns; o README ganhou a seção "Aplicação publicada".
+- Por quê: o ADR 0006 deixou o deploy real como "não verificado"; sem as variáveis, login, cadastro e tudo que toca o banco falhava em produção.
+- Conceito aprendido: variável de ambiente vale por ambiente (Production x Preview) e só entra em deploy novo; o log da função mostra o erro real; segredo nunca vai para o Git; verificar produção com um teste ponta a ponta que apaga os próprios dados.
+- Teste que prova: teste na URL pública (19 checagens: cadastro com token, sessão por cookie, permissões, sorteio, partida completa, estatísticas, ranking, histórico, avaliações e destaque) e conferência de que os dados de teste foram apagados. Primeiro organizador criado com `npm run organizador:promover`.
+- Não verificado: o visual das telas em produção e o deploy de prévia dos PRs (as variáveis podem ter sido criadas só para Production).
+- Quem revisou/entendeu: (preencher)
+
+## 2026-11-23 — Editar e cancelar partida, placar na lista, ranking por posição e perfil por período
+- O que mudou: `PUT /api/matches/:id` (editar data e local só de partida agendada) e `PATCH /api/matches/:id/cancelar`; novo estado `CANCELED` no `MatchStatus` (migração `cancela-partida`, só aditiva, já aplicada no Supabase); `GET /api/matches` passa a trazer o placar de cada partida; ranking com `?posicao=` e estatísticas do jogador com `?periodo=mes|ano|tudo`. No front: formulário "Data e local" e botão "Cancelar partida" (com confirmação) na súmula, placar e selo "Cancelada" na lista, seletor de posição no ranking e de período no perfil. ADR 0012.
+- Por quê: ajustes pedidos para o sistema ficar mais completo no uso real (corrigir uma partida marcada errada, cancelar por chuva, ver o placar sem abrir cada partida, comparar goleiros com goleiros e ver a fase atual de um jogador).
+- Conceito aprendido: estado em vez de exclusão (a partida cancelada some das contas porque elas já só olhavam `FINISHED`); atualização condicional (`where status`) contra corrida; migração aditiva aplicada antes do código; filtro opcional validado no núcleo; resposta antiga não sobrescreve a nova (`useRef` com número do pedido).
+- Arquivos principais: `matches.core.js` (`verificarPodeEditar`, `verificarPodeCancelar`), `matches.service.js`, `stats.core.js` (`lerPosicao`, `lerPeriodoDasEstatisticas`), `MatchPage.jsx`, `MatchEditForm.jsx`, `RankingPage.jsx`, `PlayerProfilePage.jsx`.
+- Teste que prova: 41 testes novos no back (núcleo, API de editar/cancelar/lista e dos filtros) e 17 no front; 429 no back e 124 no front. As mudanças no repositório foram conferidas no Postgres real com uma partida temporária (apagada).
+- Dúvidas que ficaram: cancelar não pode ser desfeito (criar outra partida); o período do perfil é em UTC como o ranking.
+- Não verificado: as telas no navegador; o código novo ainda não está em produção (depende de commit, PR e deploy).
+- Quem revisou/entendeu: (preencher)
+
+## 2026-11-24 — Grupos: qualquer pessoa organiza a sua pelada (back-end)
+- O que mudou: modelos `Group` e `Membership` (migrações `cria-grupos`, que leva os dados atuais para o grupo padrão "Pelada da turma", e `remove-papel-global`); módulo `features/groups/` (criar grupo, meus grupos, convite por código, entrar, membros, mudar papel, remover e sair); todas as features passaram para `/api/grupos/:grupoId/...` com o middleware `carregarParticipacao`; saíram o papel global, os pedidos de organizador, a gestão de usuários e o comando `organizador:promover`. ADR 0013.
+- Por quê: o organizador era um só para o sistema inteiro, e virar organizador dependia de vínculo e aprovação. O pedido foi funcionar como grupo de WhatsApp: qualquer um cria e convida.
+- Conceito aprendido: autorização por recurso (papel no grupo, não na conta); 404 em vez de 403 para não revelar o que existe; isolamento entre grupos (multi-tenancy simples); migração expand & contract com dados (preencher antes de tornar a coluna obrigatória); a mesma regra de negócio ("nunca sem organizador") reaproveitada num escopo novo.
+- Arquivos principais: `schema.prisma`, as duas migrações, `groups.core.js`, `groups.service.js`, `middlewares/auth.js`, `criarApp.js` e os serviços de players, matches, stats, ratings e draw.
+- Teste que prova: 25 do núcleo dos grupos, 25 da API dos grupos e 6 de isolamento entre grupos (um grupo não vê nem usa nada do outro); os testes de rota antigos agora rodam dentro de um grupo de teste. As duas migrações rodaram num Postgres local com dados de exemplo (contas, jogadores, partida, gol e pedido de organizador) e o schema bateu com o banco.
+- Dúvidas que ficaram: dois organizadores rebaixando um ao outro ao mesmo tempo (ver ADR 0013); excluir grupo ficou de fora.
+- Não verificado: as telas (o front ainda chama as rotas antigas e é a próxima etapa); a migração no Supabase real.
+- Quem revisou/entendeu: (preencher)

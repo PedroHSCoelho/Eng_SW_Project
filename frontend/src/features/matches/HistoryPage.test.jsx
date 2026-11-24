@@ -4,6 +4,10 @@ import { MemoryRouter } from 'react-router-dom'
 import '@testing-library/jest-dom/vitest'
 import HistoryPage from './HistoryPage.jsx'
 import { diaSeguinte } from './historyApi.js'
+import { definirGrupoAtual } from '../../api/grupoAtual.js'
+
+// As APIs montam as URLs com o grupo atual: nos testes, o grupo 1.
+beforeEach(() => definirGrupoAtual(1))
 
 const jogadores = [
   { id: 1, name: 'José', nickname: 'Zé', position: 'FORWARD', active: true },
@@ -21,13 +25,13 @@ function resposta(status, corpo) {
 // Simula a API: lista de jogadores fixa e histórico decidido por `historico(url)`.
 function simularApi(historico) {
   fetch.mockImplementation(async (url) => {
-    if (url === '/api/players') return resposta(200, { data: jogadores })
-    if (url.startsWith('/api/matches/historico')) return historico(url)
+    if (url === '/api/grupos/1/players') return resposta(200, { data: jogadores })
+    if (url.startsWith('/api/grupos/1/matches/historico')) return historico(url)
     return resposta(404, { erro: 'Rota não encontrada' })
   })
 }
 
-const urlsDoHistorico = () => fetch.mock.calls.map(([u]) => u).filter((u) => u.startsWith('/api/matches/historico'))
+const urlsDoHistorico = () => fetch.mock.calls.map(([u]) => u).filter((u) => u.startsWith('/api/grupos/1/matches/historico'))
 const ultimaUrl = () => new URL(urlsDoHistorico().at(-1), 'http://x')
 
 const renderizar = () =>
