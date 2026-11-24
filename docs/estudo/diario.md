@@ -198,3 +198,13 @@ Modelo:
 - Dúvidas que ficaram: cancelar não pode ser desfeito (criar outra partida); o período do perfil é em UTC como o ranking.
 - Não verificado: as telas no navegador; o código novo ainda não está em produção (depende de commit, PR e deploy).
 - Quem revisou/entendeu: (preencher)
+
+## 2026-11-24 — Grupos: qualquer pessoa organiza a sua pelada (back-end)
+- O que mudou: modelos `Group` e `Membership` (migrações `cria-grupos`, que leva os dados atuais para o grupo padrão "Pelada da turma", e `remove-papel-global`); módulo `features/groups/` (criar grupo, meus grupos, convite por código, entrar, membros, mudar papel, remover e sair); todas as features passaram para `/api/grupos/:grupoId/...` com o middleware `carregarParticipacao`; saíram o papel global, os pedidos de organizador, a gestão de usuários e o comando `organizador:promover`. ADR 0013.
+- Por quê: o organizador era um só para o sistema inteiro, e virar organizador dependia de vínculo e aprovação. O pedido foi funcionar como grupo de WhatsApp: qualquer um cria e convida.
+- Conceito aprendido: autorização por recurso (papel no grupo, não na conta); 404 em vez de 403 para não revelar o que existe; isolamento entre grupos (multi-tenancy simples); migração expand & contract com dados (preencher antes de tornar a coluna obrigatória); a mesma regra de negócio ("nunca sem organizador") reaproveitada num escopo novo.
+- Arquivos principais: `schema.prisma`, as duas migrações, `groups.core.js`, `groups.service.js`, `middlewares/auth.js`, `criarApp.js` e os serviços de players, matches, stats, ratings e draw.
+- Teste que prova: 25 do núcleo dos grupos, 25 da API dos grupos e 6 de isolamento entre grupos (um grupo não vê nem usa nada do outro); os testes de rota antigos agora rodam dentro de um grupo de teste. As duas migrações rodaram num Postgres local com dados de exemplo (contas, jogadores, partida, gol e pedido de organizador) e o schema bateu com o banco.
+- Dúvidas que ficaram: dois organizadores rebaixando um ao outro ao mesmo tempo (ver ADR 0013); excluir grupo ficou de fora.
+- Não verificado: as telas (o front ainda chama as rotas antigas e é a próxima etapa); a migração no Supabase real.
+- Quem revisou/entendeu: (preencher)

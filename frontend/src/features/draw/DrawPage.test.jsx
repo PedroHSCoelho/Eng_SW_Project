@@ -3,6 +3,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import '@testing-library/jest-dom/vitest'
 import DrawPage from './DrawPage.jsx'
+import { definirGrupoAtual } from '../../api/grupoAtual.js'
+
+// As APIs montam as URLs com o grupo atual: nos testes, o grupo 1.
+beforeEach(() => definirGrupoAtual(1))
 
 const jogadores = [1, 2, 3, 4, 5, 6, 7].map((id) => ({
   id, name: `Jogador ${id}`, nickname: `J${id}`, position: id === 1 ? 'GOALKEEPER' : 'MIDFIELDER', active: true,
@@ -22,7 +26,7 @@ function resposta(status, corpo) {
 function simularApi(rotas = {}) {
   fetch.mockImplementation(async (url, opcoes = {}) => {
     const chave = `${opcoes.method ?? 'GET'} ${url}`
-    if (chave === 'GET /api/players?ativos=true') return resposta(200, { data: jogadores })
+    if (chave === 'GET /api/grupos/1/players?ativos=true') return resposta(200, { data: jogadores })
     const rota = rotas[chave]
     return rota ? rota(opcoes.body && JSON.parse(opcoes.body)) : resposta(404, { erro: 'Rota não encontrada' })
   })
@@ -82,7 +86,7 @@ describe('DrawPage: escolher quem joga', () => {
 describe('DrawPage: sorteio', () => {
   it('envia os ids marcados e mostra os dois times com força e diferença', async () => {
     simularApi({
-      'POST /api/sorteio': (corpo) => {
+      'POST /api/grupos/1/sorteio': (corpo) => {
         expect(corpo.playerIds.sort()).toEqual([1, 2, 3, 4, 5, 6])
         return resposta(200, { data: sorteado })
       },
@@ -101,7 +105,7 @@ describe('DrawPage: sorteio', () => {
   })
 
   it('mudar quem está presente descarta o sorteio anterior', async () => {
-    simularApi({ 'POST /api/sorteio': () => resposta(200, { data: sorteado }) })
+    simularApi({ 'POST /api/grupos/1/sorteio': () => resposta(200, { data: sorteado }) })
     renderizar()
     await screen.findByLabelText(/^J1\b/)
     marcar(1, 2, 3, 4, 5, 6)
@@ -114,7 +118,7 @@ describe('DrawPage: sorteio', () => {
   })
 
   it('mostra o erro do back-end (ex.: jogador inativo)', async () => {
-    simularApi({ 'POST /api/sorteio': () => resposta(422, { erro: 'Jogador inativo não pode ser sorteado: J7' }) })
+    simularApi({ 'POST /api/grupos/1/sorteio': () => resposta(422, { erro: 'Jogador inativo não pode ser sorteado: J7' }) })
     renderizar()
     await screen.findByLabelText(/^J1\b/)
     marcar(1, 2, 3, 4, 5, 6)
@@ -128,7 +132,7 @@ describe('DrawPage: sorteio', () => {
 
 describe('DrawPage: usar o sorteio', () => {
   async function ateOResultado(rotas) {
-    simularApi({ 'POST /api/sorteio': () => resposta(200, { data: sorteado }), ...rotas })
+    simularApi({ 'POST /api/grupos/1/sorteio': () => resposta(200, { data: sorteado }), ...rotas })
     renderizar()
     await screen.findByLabelText(/^J1\b/)
     marcar(1, 2, 3, 4, 5, 6)
@@ -141,13 +145,13 @@ describe('DrawPage: usar o sorteio', () => {
   it('cria a partida, escala os times sorteados e abre a súmula', async () => {
     const ordem = []
     await ateOResultado({
-      'POST /api/matches': (corpo) => {
+      'POST /api/grupos/1/matches': (corpo) => {
         ordem.push('criar')
         expect(corpo.location).toBe('Quadra da UNIFESP')
         expect(corpo.date).toBe(new Date('2026-11-20T19:00').toISOString())
         return resposta(201, { data: { id: 9 } })
       },
-      'PUT /api/matches/9/escalacao': (corpo) => {
+      'PUT /api/grupos/1/matches/9/escalacao': (corpo) => {
         ordem.push('escalar')
         expect(corpo).toEqual({ teamA: [1, 2, 3], teamB: [4, 5, 6] })
         return resposta(200, { data: { id: 9 } })
@@ -162,8 +166,8 @@ describe('DrawPage: usar o sorteio', () => {
 
   it('se a escalação falhar depois de criar a partida, avisa e oferece abrir a partida', async () => {
     await ateOResultado({
-      'POST /api/matches': () => resposta(201, { data: { id: 9 } }),
-      'PUT /api/matches/9/escalacao': () => resposta(422, { erro: 'Jogador inativo não pode ser escalado: J3' }),
+      'POST /api/grupos/1/matches': () => resposta(201, { data: { id: 9 } }),
+      'PUT /api/grupos/1/matches/9/escalacao': () => resposta(422, { erro: 'Jogador inativo não pode ser escalado: J3' }),
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'Criar partida com estes times' }))

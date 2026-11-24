@@ -27,7 +27,27 @@ describe('estatisticasDoJogador', () => {
     expect(estatisticasDoJogador(1, [])).toEqual({
       playerId: 1, matches: 0, wins: 0, draws: 0, losses: 0,
       goals: 0, assists: 0, goalsPerMatch: 0, goalDifference: 0,
+      yellowCards: 0, redCards: 0, difficultSaves: 0,
     })
+  })
+
+  it('conta cartões e defesas difíceis do jogador (partida sem `events` conta zero)', () => {
+    const partidas = [
+      {
+        id: 1, status: 'FINISHED', result: 'DRAW', date: '2026-11-01',
+        players: [{ playerId: 1, team: 'A' }, { playerId: 2, team: 'B' }],
+        goals: [],
+        events: [
+          { playerId: 1, type: 'YELLOW_CARD' },
+          { playerId: 1, type: 'DIFFICULT_SAVE' },
+          { playerId: 1, type: 'DIFFICULT_SAVE' },
+          { playerId: 2, type: 'RED_CARD' },
+        ],
+      },
+      { id: 2, status: 'FINISHED', result: 'DRAW', date: '2026-11-02', players: [{ playerId: 1, team: 'A' }], goals: [] },
+    ]
+    expect(estatisticasDoJogador(1, partidas)).toMatchObject({ matches: 2, yellowCards: 1, redCards: 0, difficultSaves: 2 })
+    expect(estatisticasDoJogador(2, partidas)).toMatchObject({ matches: 1, redCards: 1 })
   })
 
   it('conta vitória, empate e derrota pelo time em que o jogador estava', () => {

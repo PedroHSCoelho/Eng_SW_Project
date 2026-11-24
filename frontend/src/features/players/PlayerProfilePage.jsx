@@ -111,6 +111,9 @@ export default function PlayerProfilePage() {
         <Numero rotulo="Assistências" valor={stats.assists} />
         <Numero rotulo="Gols por partida" valor={stats.goalsPerMatch.toFixed(2)} />
         <Numero rotulo="Saldo de gols" valor={stats.goalDifference} />
+        <Numero rotulo="Defesas difíceis" valor={stats.difficultSaves ?? 0} />
+        <Numero rotulo="Cartões amarelos" valor={stats.yellowCards ?? 0} />
+        <Numero rotulo="Cartões vermelhos" valor={stats.redCards ?? 0} />
       </div>
 
       <h3 className="mt-6 text-lg font-semibold">Média de notas</h3>

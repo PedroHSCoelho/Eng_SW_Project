@@ -29,7 +29,7 @@ export function AuthProvider({ children }) {
 
   const entrar = useCallback(async (dados) => setUsuario(await authApi.entrar(dados)), [])
   const cadastrar = useCallback(async (dados) => setUsuario(await authApi.cadastrar(dados)), [])
-  // Pergunta de novo ao back-end quem sou eu (ex.: depois de um pedido de organizador aprovado).
+  // Pergunta de novo ao back-end quem sou eu.
   const recarregar = useCallback(async () => {
     try {
       setUsuario(await authApi.buscarUsuarioLogado())

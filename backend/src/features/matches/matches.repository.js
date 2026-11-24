@@ -13,22 +13,33 @@ const comEscalacao = {
     include: { scorer: apelido, assist: apelido },
     orderBy: [{ minute: { sort: 'asc', nulls: 'last' } }, { id: 'asc' }],
   },
+  // Cartões e defesas difíceis, na ordem em que foram lançados.
+  events: { include: { player: apelido }, orderBy: { id: 'asc' } },
+  // Jogos da pelada, na ordem da noite (vazio no jogo único).
+  games: { orderBy: { number: 'asc' } },
 }
 
 export const matchesRepository = {
   // Com os gols (só o time de cada um): o serviço calcula o placar de cada partida da lista.
-  listar: () =>
-    prisma.match.findMany({ orderBy: { date: 'desc' }, include: { goals: { select: { team: true } } } }),
+  listar: (groupId) =>
+    prisma.match.findMany({
+      where: { groupId },
+      orderBy: { date: 'desc' },
+      // Quantos confirmaram presença: a lista mostra "8/12" sem carregar a lista inteira.
+      include: { goals: { select: { team: true } }, _count: { select: { attendances: true, games: true } } },
+    }),
 
   // Partidas finalizadas com escalação e gols (só os campos que o cálculo usa).
   // Alimenta estatísticas e ranking, que são derivados das súmulas.
-  listarFinalizadas: () =>
+  listarFinalizadas: (groupId) =>
     prisma.match.findMany({
-      where: { status: 'FINISHED' },
+      where: { groupId, status: 'FINISHED' },
       select: {
-        id: true, status: true, result: true, date: true, location: true,
+        id: true, status: true, result: true, date: true, location: true, format: true, teamCount: true,
         players: { select: { playerId: true, team: true } },
-        goals: { select: { scorerId: true, assistId: true, team: true, ownGoal: true } },
+        goals: { select: { scorerId: true, assistId: true, team: true, ownGoal: true, gameId: true } },
+        games: { select: { id: true, number: true, homeTeam: true, awayTeam: true, result: true } },
+        events: { select: { playerId: true, type: true } },
       },
       orderBy: { date: 'desc' },
     }),
@@ -67,4 +78,24 @@ export const matchesRepository = {
   criarGol: (dados) => prisma.goal.create({ data: dados }),
 
   removerGol: (goalId) => prisma.goal.delete({ where: { id: goalId } }),
+
+  criarEvento: (dados) => prisma.matchEvent.create({ data: dados }),
+
+  removerEvento: (eventId) => prisma.matchEvent.delete({ where: { id: eventId } }),
+
+  // O índice único parcial (um jogo aberto por partida) barra dois "começar jogo" ao mesmo tempo.
+  async criarJogo(dados) {
+    try {
+      return await prisma.matchGame.create({ data: dados })
+    } catch (erro) {
+      if (erro.code === 'P2002') throw new BusinessRuleError('Já existe um jogo aberto; recarregue a súmula')
+      throw erro
+    }
+  },
+
+  // Encerra só se ainda estiver aberto (dois cliques ao mesmo tempo não gravam duas vezes).
+  async encerrarJogo(gameId, { result, finishedAt }) {
+    const { count } = await prisma.matchGame.updateMany({ where: { id: gameId, finishedAt: null }, data: { result, finishedAt } })
+    if (count === 0) throw new BusinessRuleError('O jogo já foi encerrado; recarregue a súmula')
+  },
 }

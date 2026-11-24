@@ -2,6 +2,7 @@
 // Recebe as partidas já lidas (com escalação e gols) e devolve números.
 // Tudo sai das súmulas: nada disso é gravado (dado derivado não se duplica).
 import { ValidationError } from '../../errors/AppError.js'
+import { desempenhoNoJogo } from '../matches/pelada.core.js'
 
 export const MINIMO_PARTIDAS_NO_RANKING = 3
 const PONTOS = { vitoria: 3, empate: 1, derrota: 0 }
@@ -15,27 +16,62 @@ function estatisticasZeradas(playerId) {
   return {
     playerId, matches: 0, wins: 0, draws: 0, losses: 0,
     goals: 0, assists: 0, goalsPerMatch: 0, goalDifference: 0,
+    yellowCards: 0, redCards: 0, difficultSaves: 0,
+  }
+}
+
+// Vitórias, empates, derrotas e saldo do time de um jogador na partida.
+// Jogo único: o resultado da partida. Pelada: soma de cada JOGO em que o time dele entrou
+// (numa noite de pelada dá para ganhar 4 e perder 1, por exemplo).
+function desempenhoNaPartida(partida, time) {
+  if (partida.format === 'PELADA') {
+    const jogos = (partida.games ?? []).map((j) => desempenhoNoJogo(j, time, partida.goals)).filter(Boolean)
+    return {
+      wins: jogos.filter((j) => j.resultado === 'V').length,
+      draws: jogos.filter((j) => j.resultado === 'E').length,
+      losses: jogos.filter((j) => j.resultado === 'D').length,
+      saldo: jogos.reduce((s, j) => s + j.pro - j.contra, 0),
+      pro: jogos.reduce((s, j) => s + j.pro, 0),
+      contra: jogos.reduce((s, j) => s + j.contra, 0),
+    }
+  }
+  const adversario = time === 'A' ? 'B' : 'A'
+  const pro = partida.goals.filter((g) => g.team === time).length
+  const contra = partida.goals.filter((g) => g.team === adversario).length
+  const ganhou = partida.result === (time === 'A' ? 'A_WINS' : 'B_WINS')
+  const empate = partida.result === 'DRAW'
+  return {
+    wins: !empate && ganhou ? 1 : 0,
+    draws: empate ? 1 : 0,
+    losses: !empate && !ganhou ? 1 : 0,
+    saldo: pro - contra,
+    pro,
+    contra,
   }
 }
 
 // Soma uma partida nas estatísticas de UM jogador (que já sabemos que jogou nela).
 function acumular(stats, partida, time) {
-  const adversario = time === 'A' ? 'B' : 'A'
-  const doTime = partida.goals.filter((g) => g.team === time).length
-  const doAdversario = partida.goals.filter((g) => g.team === adversario).length
-
+  const d = desempenhoNaPartida(partida, time)
   stats.matches += 1
-  stats.goalDifference += doTime - doAdversario
+  stats.goalDifference += d.saldo
+  stats.wins += d.wins
+  stats.draws += d.draws
+  stats.losses += d.losses
+  acumularLances(stats, partida)
+}
 
-  const ganhou = partida.result === (time === 'A' ? 'A_WINS' : 'B_WINS')
-  if (partida.result === 'DRAW') stats.draws += 1
-  else if (ganhou) stats.wins += 1
-  else stats.losses += 1
-
+function acumularLances(stats, partida) {
   for (const g of partida.goals) {
     // Gol contra conta para o adversário e NÃO é gol do autor; não tem assistência.
     if (g.scorerId === stats.playerId && !g.ownGoal) stats.goals += 1
     if (g.assistId === stats.playerId) stats.assists += 1
+  }
+
+  // Cartões e defesas difíceis (partidas antigas, de antes dos lances, não têm `events`).
+  const campoDoTipo = { YELLOW_CARD: 'yellowCards', RED_CARD: 'redCards', DIFFICULT_SAVE: 'difficultSaves' }
+  for (const e of partida.events ?? []) {
+    if (e.playerId === stats.playerId) stats[campoDoTipo[e.type]] += 1
   }
 }
 
@@ -67,7 +103,7 @@ function compararGeral(a, b) {
 
 const comPosicao = (linhas) => linhas.map((linha, i) => ({ ...linha, position: i + 1 }))
 
-// Monta o ranking geral e os dois secundários (artilharia e assistências).
+// Monta o ranking geral e os secundários (artilharia, assistências e defesas difíceis).
 // `jogadores` traz os cadastros (nome/apelido); quem não jogou nenhuma partida fica de fora.
 export function montarRanking({ partidas, jogadores, minimoPartidas = MINIMO_PARTIDAS_NO_RANKING }) {
   const linhas = jogadores.map((jogador) => {
@@ -89,6 +125,7 @@ export function montarRanking({ partidas, jogadores, minimoPartidas = MINIMO_PAR
     geral: comPosicao(geral),
     artilharia: comPosicao(por('goals')),
     assistencias: comPosicao(por('assists')),
+    defesas: comPosicao(por('difficultSaves')),
   }
 }
 
@@ -145,15 +182,16 @@ export function ultimasPartidas(playerId, partidas, quantas = 5) {
     .sort((a, b) => new Date(b.partida.date) - new Date(a.partida.date) || b.partida.id - a.partida.id)
     .slice(0, quantas)
     .map(({ partida, escalado }) => {
-      const adversario = escalado.team === 'A' ? 'B' : 'A'
-      const resultado =
-        partida.result === 'DRAW' ? 'E' : partida.result === (escalado.team === 'A' ? 'A_WINS' : 'B_WINS') ? 'V' : 'D'
+      const d = desempenhoNaPartida(partida, escalado.team)
+      // Pelada: V se ganhou mais jogos do que perdeu, D se perdeu mais, E se empatou no saldo de jogos.
+      const resultado = d.wins > d.losses ? 'V' : d.losses > d.wins ? 'D' : 'E'
       return {
         matchId: partida.id,
         date: partida.date,
         resultado,
-        golsPro: partida.goals.filter((g) => g.team === escalado.team).length,
-        golsContra: partida.goals.filter((g) => g.team === adversario).length,
+        golsPro: d.pro,
+        golsContra: d.contra,
+        ...(partida.format === 'PELADA' && { format: 'PELADA', wins: d.wins, draws: d.draws, losses: d.losses }),
       }
     })
 }

@@ -3,6 +3,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import '@testing-library/jest-dom/vitest'
 import PlayerProfilePage from './PlayerProfilePage.jsx'
+import { definirGrupoAtual } from '../../api/grupoAtual.js'
+
+// As APIs montam as URLs com o grupo atual: nos testes, o grupo 1.
+beforeEach(() => definirGrupoAtual(1))
 
 const jogador = { id: 1, name: 'José da Silva', nickname: 'Zé', position: 'FORWARD', active: true }
 const stats = {
@@ -25,9 +29,9 @@ function resposta(status, corpo) {
 // Simula a API por URL; o que não for configurado devolve 404.
 function simularApi({ jogadorResp = resposta(200, { data: jogador }), statsResp = stats, notas = notasSuficientes } = {}) {
   fetch.mockImplementation(async (url) => {
-    if (url === '/api/players/1') return jogadorResp
-    if (url === '/api/players/1/stats') return resposta(200, { data: statsResp })
-    if (url === '/api/players/1/ratings') return resposta(200, { data: notas })
+    if (url === '/api/grupos/1/players/1') return jogadorResp
+    if (url === '/api/grupos/1/players/1/stats') return resposta(200, { data: statsResp })
+    if (url === '/api/grupos/1/players/1/ratings') return resposta(200, { data: notas })
     return resposta(404, { erro: 'Rota não encontrada' })
   })
 }
@@ -113,11 +117,11 @@ describe('PlayerProfilePage: estatísticas por período', () => {
   // API que responde pelo período pedido (sem ?periodo = tudo).
   function simularPorPeriodo(extra = {}) {
     fetch.mockImplementation(async (url) => {
-      if (url === '/api/players/1') return resposta(200, { data: jogador })
-      if (url === '/api/players/1/stats') return resposta(200, { data: stats })
-      if (url === '/api/players/1/stats?periodo=mes') return resposta(200, { data: doMes })
-      if (url === '/api/players/1/stats?periodo=ano') return extra.ano ?? resposta(200, { data: stats })
-      if (url === '/api/players/1/ratings') return resposta(200, { data: notasSuficientes })
+      if (url === '/api/grupos/1/players/1') return resposta(200, { data: jogador })
+      if (url === '/api/grupos/1/players/1/stats') return resposta(200, { data: stats })
+      if (url === '/api/grupos/1/players/1/stats?periodo=mes') return resposta(200, { data: doMes })
+      if (url === '/api/grupos/1/players/1/stats?periodo=ano') return extra.ano ?? resposta(200, { data: stats })
+      if (url === '/api/grupos/1/players/1/ratings') return resposta(200, { data: notasSuficientes })
       return resposta(404, { erro: 'Rota não encontrada' })
     })
   }
@@ -134,9 +138,9 @@ describe('PlayerProfilePage: estatísticas por período', () => {
     expect(screen.getByText('Gols').previousSibling).toHaveTextContent('2')
     // O jogador e as notas não são buscados de novo: só as estatísticas.
     const urls = fetch.mock.calls.map(([u]) => u)
-    expect(urls.filter((u) => u === '/api/players/1')).toHaveLength(1)
-    expect(urls.filter((u) => u === '/api/players/1/ratings')).toHaveLength(1)
-    expect(urls).toContain('/api/players/1/stats?periodo=mes')
+    expect(urls.filter((u) => u === '/api/grupos/1/players/1')).toHaveLength(1)
+    expect(urls.filter((u) => u === '/api/grupos/1/players/1/ratings')).toHaveLength(1)
+    expect(urls).toContain('/api/grupos/1/players/1/stats?periodo=mes')
   })
 
   it('as últimas partidas também seguem o período', async () => {

@@ -3,11 +3,19 @@ import { Link, useNavigate } from 'react-router-dom'
 import { criarPartida, definirEscalacao } from '../matches/matchesApi.js'
 import { POSICOES } from '../players/PlayerForm.jsx'
 import { listarJogadores } from '../players/playersApi.js'
-import { MAX_JOGADORES, MIN_JOGADORES, sortearTimes } from './drawApi.js'
+import { maximoParaSortear, minimoParaSortear, sortearTimes } from './drawApi.js'
+import AbasDePartidas from '../matches/AbasDePartidas.jsx'
 
 const campo =
   'w-full rounded-lg bg-green-950 px-3 py-2 text-white ring-1 ring-green-700 focus:outline-none focus:ring-2 focus:ring-green-400'
 const botao = 'rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50'
+
+// Times do sorteio como lista ({ name, players, strength }); a resposta de 2 times também traz teamA/teamB.
+const timesDoResultado = (r) =>
+  r.teams ?? [
+    { name: 'A', ...r.teamA },
+    { name: 'B', ...r.teamB },
+  ]
 
 function CartaoDoTime({ nome, time }) {
   return (
@@ -35,6 +43,7 @@ export default function DrawPage() {
   const navegar = useNavigate()
   const [jogadores, setJogadores] = useState([])
   const [presentes, setPresentes] = useState(() => new Set())
+  const [quantosTimes, setQuantosTimes] = useState(2) // 2 = jogo único; 3 a 6 = pelada
   const [resultado, setResultado] = useState(null)
   const [data, setData] = useState('')
   const [local, setLocal] = useState('')
@@ -65,13 +74,15 @@ export default function DrawPage() {
   }
 
   const quantos = presentes.size
+  const MIN_JOGADORES = minimoParaSortear(quantosTimes)
+  const MAX_JOGADORES = maximoParaSortear(quantosTimes)
   const quantidadeValida = quantos >= MIN_JOGADORES && quantos <= MAX_JOGADORES
 
   async function sortear() {
     setErro('')
     setEnviando(true)
     try {
-      setResultado(await sortearTimes([...presentes]))
+      setResultado(await sortearTimes([...presentes], quantosTimes))
     } catch (e) {
       setErro(e.message)
     } finally {
@@ -87,12 +98,11 @@ export default function DrawPage() {
     setEnviando(true)
     let id = null
     try {
-      const partida = await criarPartida({ date: new Date(data).toISOString(), location: local })
+      const times = timesDoResultado(resultado)
+      const formato = times.length > 2 ? { format: 'PELADA', teamCount: times.length } : {}
+      const partida = await criarPartida({ date: new Date(data).toISOString(), location: local, ...formato })
       id = partida.id
-      await definirEscalacao(id, {
-        teamA: resultado.teamA.players.map((p) => p.id),
-        teamB: resultado.teamB.players.map((p) => p.id),
-      })
+      await definirEscalacao(id, Object.fromEntries(times.map((t) => [`team${t.name}`, t.players.map((p) => p.id)])))
       navegar(`/partidas/${id}`)
     } catch (e) {
       setErro(e.message)
@@ -103,6 +113,7 @@ export default function DrawPage() {
 
   return (
     <section className="mx-auto max-w-5xl px-4 pb-16" aria-labelledby="titulo-sorteio">
+      <AbasDePartidas />
       <h2 id="titulo-sorteio" className="text-2xl font-bold">
         🎲 Sorteio de times
       </h2>
@@ -144,6 +155,24 @@ export default function DrawPage() {
             ))}
           </ul>
           <div className="mt-4 flex flex-wrap items-center gap-4">
+            <label className="text-sm">
+              Quantos times
+              <select
+                value={quantosTimes}
+                onChange={(e) => {
+                  setQuantosTimes(Number(e.target.value))
+                  setResultado(null)
+                }}
+                className="ml-2 rounded-lg bg-green-950 px-2 py-1.5 text-white ring-1 ring-green-700"
+              >
+                <option value={2}>2 (jogo único)</option>
+                {[3, 4, 5, 6].map((n) => (
+                  <option key={n} value={n}>
+                    {n} (pelada)
+                  </option>
+                ))}
+              </select>
+            </label>
             <button
               type="button"
               disabled={!quantidadeValida || enviando}
@@ -162,9 +191,10 @@ export default function DrawPage() {
       {resultado && (
         <div className="mt-6">
           <h3 className="text-lg font-semibold">Times sugeridos</h3>
-          <div className="mt-2 grid gap-3 sm:grid-cols-2">
-            <CartaoDoTime nome="Time A" time={resultado.teamA} />
-            <CartaoDoTime nome="Time B" time={resultado.teamB} />
+          <div className={`mt-2 grid gap-3 sm:grid-cols-2 ${timesDoResultado(resultado).length > 2 ? 'lg:grid-cols-3' : ''}`}>
+            {timesDoResultado(resultado).map((t) => (
+              <CartaoDoTime key={t.name} nome={`Time ${t.name}`} time={t} />
+            ))}
           </div>
           <p className="mt-2 text-sm text-green-200">
             Diferença de força entre os times: {resultado.difference.toFixed(2)}
@@ -202,7 +232,7 @@ export default function DrawPage() {
                 disabled={enviando}
                 className={`${botao} bg-blue-200 text-blue-950 hover:bg-blue-100`}
               >
-                Criar partida com estes times
+                {timesDoResultado(resultado).length > 2 ? 'Criar pelada com estes times' : 'Criar partida com estes times'}
               </button>
             </div>
           </form>

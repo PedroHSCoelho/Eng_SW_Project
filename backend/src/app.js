@@ -5,16 +5,17 @@ import { playersRepository } from './features/players/players.repository.js'
 import { criarAuthService } from './features/auth/auth.service.js'
 import { criarHasher } from './features/auth/hasher.js'
 import { criarTokens } from './features/auth/tokens.js'
-import { criarUsersService } from './features/users/users.service.js'
 import { usersRepository } from './features/users/users.repository.js'
-import { criarOrganizerRequestsService } from './features/organizerRequests/organizerRequests.service.js'
-import { organizerRequestsRepository } from './features/organizerRequests/organizerRequests.repository.js'
 import { criarMatchesService } from './features/matches/matches.service.js'
 import { matchesRepository } from './features/matches/matches.repository.js'
 import { criarStatsService } from './features/stats/stats.service.js'
 import { criarRatingsService } from './features/ratings/ratings.service.js'
 import { ratingsRepository } from './features/ratings/ratings.repository.js'
 import { criarDrawService } from './features/draw/draw.service.js'
+import { criarGroupsService } from './features/groups/groups.service.js'
+import { groupsRepository } from './features/groups/groups.repository.js'
+import { criarAttendanceService } from './features/attendance/attendance.service.js'
+import { attendanceRepository } from './features/attendance/attendance.repository.js'
 
 const tokens = criarTokens()
 
@@ -27,10 +28,6 @@ const authService = criarAuthService({
 const app = criarApp({
   playersService: criarPlayersService(playersRepository),
   authService,
-  usersService: criarUsersService({ usersRepo: usersRepository, playersRepo: playersRepository }),
-  organizerRequestsService: criarOrganizerRequestsService({
-    requestsRepo: organizerRequestsRepository,
-  }),
   matchesService: criarMatchesService({ matchesRepo: matchesRepository, playersRepo: playersRepository }),
   statsService: criarStatsService({ matchesRepo: matchesRepository, playersRepo: playersRepository }),
   ratingsService: criarRatingsService({
@@ -39,6 +36,12 @@ const app = criarApp({
     playersRepo: playersRepository,
   }),
   drawService: criarDrawService({ playersRepo: playersRepository, ratingsRepo: ratingsRepository }),
+  groupsService: criarGroupsService({ groupsRepo: groupsRepository, playersRepo: playersRepository }),
+  attendanceService: criarAttendanceService({
+    attendanceRepo: attendanceRepository,
+    matchesRepo: matchesRepository,
+    playersRepo: playersRepository,
+  }),
   tokens,
   cookieSeguro: process.env.NODE_ENV === 'production',
 })

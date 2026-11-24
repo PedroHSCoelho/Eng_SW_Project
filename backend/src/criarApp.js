@@ -1,32 +1,38 @@
 // Monta o Express recebendo os serviços prontos. Separado do app.js para que os testes
 // montem o app COMPLETO (rotas + guardas + errorHandler) com repositórios em memória.
-import express from 'express'
+import express, { Router } from 'express'
 import healthRouter from './routes/health.js'
 import { errorHandler, notFound } from './middlewares/errorHandler.js'
-import { criarAutenticar, exigirPapel, exigirPapelParaEscrever } from './middlewares/auth.js'
+import {
+  criarAutenticar,
+  criarCarregarParticipacao,
+  exigirOrganizadorDoGrupo,
+  exigirOrganizadorDoGrupoParaEscrever,
+} from './middlewares/auth.js'
 import { criarPlayersRouter } from './features/players/players.routes.js'
 import { criarAuthRouter } from './features/auth/auth.routes.js'
-import { criarUsersRouter } from './features/users/users.routes.js'
-import { criarOrganizerRequestsRouter } from './features/organizerRequests/organizerRequests.routes.js'
 import { criarMatchesRouter } from './features/matches/matches.routes.js'
 import { criarStatsRouter } from './features/stats/stats.routes.js'
 import { criarRatingsRouter } from './features/ratings/ratings.routes.js'
 import { criarDrawRouter } from './features/draw/draw.routes.js'
+import { criarAttendanceRouter } from './features/attendance/attendance.routes.js'
+import { criarConvitesRouter, criarGroupRouter, criarGroupsRouter } from './features/groups/groups.routes.js'
 
 export function criarApp({
   playersService,
   authService,
-  usersService,
-  organizerRequestsService,
   matchesService,
   statsService,
   ratingsService,
   drawService,
+  groupsService,
+  attendanceService,
   tokens,
   cookieSeguro = false,
 }) {
   const app = express()
   const autenticar = criarAutenticar(authService)
+  const carregarParticipacao = criarCarregarParticipacao(groupsService)
 
   app.use(express.json())
 
@@ -39,38 +45,30 @@ export function criarApp({
       cookieSeguro,
     }),
   )
-  // Jogadores: qualquer logado lê; só organizador escreve.
-  app.use(
-    '/api/players',
-    autenticar,
-    exigirPapelParaEscrever('ORGANIZER'),
-    criarPlayersRouter(playersService),
-  )
-  // Avaliações: qualquer logado avalia (se jogou a partida). Vem ANTES de /api/matches, que bloqueia
-  // escrita de não organizador; este router só responde pelos próprios caminhos.
-  app.use('/api', criarRatingsRouter(ratingsService, { autenticar }))
-  // Partidas: qualquer logado vê; só organizador cria, escala, inicia, lança gols e encerra.
-  app.use(
-    '/api/matches',
-    autenticar,
-    exigirPapelParaEscrever('ORGANIZER'),
-    criarMatchesRouter(matchesService),
-  )
-  // Estatísticas do jogador e rankings: derivados das súmulas, só leitura para qualquer logado.
-  app.use('/api', criarStatsRouter(statsService, { autenticar }))
+  // Dentro de um grupo: toda rota passa por login + participação (req.participacao), e quem pode
+  // escrever é o organizador DESTE grupo. Vem ANTES de /api/grupos: "/api/grupos" sozinho não casa
+  // com ":grupoId" e cai no router de baixo.
+  const dentroDoGrupo = Router({ mergeParams: true })
+  // O grupo em si: ver, renomear, convite, membros.
+  dentroDoGrupo.use('/', criarGroupRouter(groupsService, { exigirOrganizadorDoGrupo }))
+  // Avaliações: qualquer participante avalia (se jogou a partida). Vem ANTES de /matches, que bloqueia
+  // escrita de quem não é organizador; este router só responde pelos próprios caminhos.
+  dentroDoGrupo.use('/', criarRatingsRouter(ratingsService))
+  // Lista de presença: cada membro confirma o próprio nome; o organizador mexe em qualquer um.
+  // Também ANTES de /matches, pelo mesmo motivo.
+  dentroDoGrupo.use('/', criarAttendanceRouter(attendanceService))
+  // Jogadores e partidas: qualquer participante vê; só organizador cria, edita, escala, lança gols e encerra.
+  dentroDoGrupo.use('/players', exigirOrganizadorDoGrupoParaEscrever, criarPlayersRouter(playersService))
+  dentroDoGrupo.use('/matches', exigirOrganizadorDoGrupoParaEscrever, criarMatchesRouter(matchesService))
+  // Estatísticas do jogador e rankings: derivados das súmulas do grupo, só leitura.
+  dentroDoGrupo.use('/', criarStatsRouter(statsService))
   // Sorteio de times: só o organizador (é ele quem monta a partida com o resultado).
-  app.use('/api/sorteio', autenticar, exigirPapel('ORGANIZER'), criarDrawRouter(drawService))
-  // Gestão de usuários: só organizador, inclusive para ler.
-  app.use('/api/users', autenticar, exigirPapel('ORGANIZER'), criarUsersRouter(usersService))
+  dentroDoGrupo.use('/sorteio', exigirOrganizadorDoGrupo, criarDrawRouter(drawService))
+  app.use('/api/grupos/:grupoId', autenticar, carregarParticipacao, dentroDoGrupo)
 
-  // Pedidos de organizador: o próprio router aplica as guardas (qualquer logado pede; só organizador decide).
-  app.use(
-    '/api/organizer-requests',
-    criarOrganizerRequestsRouter(organizerRequestsService, {
-      autenticar,
-      exigirOrganizador: exigirPapel('ORGANIZER'),
-    }),
-  )
+  // Criar grupo, listar os meus e entrar por convite: qualquer pessoa logada.
+  app.use('/api/grupos', autenticar, criarGroupsRouter(groupsService))
+  app.use('/api/convites', autenticar, criarConvitesRouter(groupsService))
 
   app.use(notFound)
   app.use(errorHandler)
