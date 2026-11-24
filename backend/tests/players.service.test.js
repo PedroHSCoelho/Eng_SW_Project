@@ -238,7 +238,7 @@ describe('listar jogadores', () => {
 
     await service.listar(1, { busca: '  ze ', apenasAtivos: true })
 
-    expect(filtros).toEqual({ groupId: 1, busca: 'ze', apenasAtivos: true })
+    expect(filtros).toEqual({ groupId: 1, busca: 'ze', apenasAtivos: true, comNota: false })
   })
 
   it('sem filtros: busca vazia e inclui inativos', async () => {
@@ -253,7 +253,7 @@ describe('listar jogadores', () => {
 
     await service.listar(1, {})
 
-    expect(filtros).toEqual({ groupId: 1, busca: '', apenasAtivos: false })
+    expect(filtros).toEqual({ groupId: 1, busca: '', apenasAtivos: false, comNota: false })
   })
 })
 

@@ -33,7 +33,7 @@ const ranking = {
   artilharia: [{ playerId: 1, nickname: 'Bia', goals: 8 }],
   assistencias: [],
 }
-const destaque = { playerId: 2, nickname: 'Tico', average: 8.7, count: 5, goals: 1 }
+const votacao = { craques: [{ playerId: 2, nickname: 'Tico', votes: 5, team: 'A' }], candidates: [] }
 
 // Simula as rotas que a home já usava nas outras telas (nenhuma rota nova).
 function simularApi(dados = {}) {
@@ -42,7 +42,7 @@ function simularApi(dados = {}) {
     vi.fn(async (url) => {
       if (url.startsWith('/api/grupos/1/matches/historico')) return resposta(200, { data: dados.historico ?? historico })
       if (url === '/api/grupos/1/matches/9') return resposta(200, { data: partida })
-      if (url === '/api/grupos/1/matches/9/destaque') return resposta(200, { data: dados.destaque ?? null })
+      if (url === '/api/grupos/1/matches/9/craque') return resposta(200, { data: dados.votacao ?? { craques: [], candidates: [] } })
       if (url.startsWith('/api/grupos/1/rankings')) return resposta(200, { data: dados.ranking ?? ranking })
       return resposta(404, { erro: 'não simulado' })
     }),
@@ -62,7 +62,7 @@ function renderizar(usuario = { id: 1, name: 'Maria' }, grupo = { id: 1, name: '
   )
 }
 
-beforeEach(() => simularApi({ destaque }))
+beforeEach(() => simularApi({ votacao }))
 
 afterEach(() => {
   cleanup()
@@ -97,16 +97,16 @@ describe('HomePage', () => {
     expect(within(podio).getByText('Zé')).toBeInTheDocument()
   })
 
-  it('cobra da rodada = destaque (melhor nota) da última partida', async () => {
+  it('cobra da rodada = craque votado na última partida', async () => {
     renderizar()
 
     const bloco = screen.getByRole('region', { name: 'Cobra da rodada' })
     expect(await within(bloco).findByText('Tico')).toBeInTheDocument()
-    expect(within(bloco).getByText('8.7')).toBeInTheDocument()
+    expect(within(bloco).getByText(/Craque da última partida, com/)).toHaveTextContent('com 5 votos')
   })
 
-  it('sem notas suficientes, o cobra da rodada vira o artilheiro geral', async () => {
-    simularApi({ destaque: null })
+  it('sem votos ainda, o cobra da rodada vira o artilheiro geral', async () => {
+    simularApi({ votacao: null })
     renderizar()
 
     const bloco = screen.getByRole('region', { name: 'Cobra da rodada' })

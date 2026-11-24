@@ -61,7 +61,7 @@ export function UltimoJogo({ carregando, jogo }) {
         >
           <p className="titulo text-3xl">Pelada · {jogo.pelada.jogos} jogo(s)</p>
           <p className="mt-1 text-texto-suave">
-            {jogo.pelada.lider ? `Time ${jogo.pelada.lider} terminou a noite na frente` : 'Nenhum jogo encerrado'}
+            {jogo.pelada.lider ? `${jogo.pelada.lider} terminou a noite na frente` : 'Nenhum jogo encerrado'}
           </p>
           <p className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-texto-suave">
             <span className="flex items-center gap-1">
@@ -83,16 +83,16 @@ export function UltimoJogo({ carregando, jogo }) {
         <Link
           to={`/partidas/${jogo.id}`}
           className="gramado-listrado group block rounded-xl border border-borda p-4 transition-colors duration-150 hover:border-gramado"
-          aria-label={`Ver súmula: Time A ${jogo.placar.A} a ${jogo.placar.B} Time B`}
+          aria-label={`Ver súmula: ${jogo.nomes?.A ?? 'Time A'} ${jogo.placar.A} a ${jogo.placar.B} ${jogo.nomes?.B ?? 'Time B'}`}
         >
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-            <p className="titulo text-right text-xl">Time A</p>
+            <p className="titulo text-right text-xl">{jogo.nomes?.A ?? 'Time A'}</p>
             <p className="titulo rounded-lg bg-fundo/80 px-4 py-1 text-5xl tabular-nums text-texto">
               {jogo.placar.A}
               <span className="mx-2 text-texto-suave">×</span>
               {jogo.placar.B}
             </p>
-            <p className="titulo text-xl">Time B</p>
+            <p className="titulo text-xl">{jogo.nomes?.B ?? 'Time B'}</p>
             <ListaArtilheiros lista={jogo.artilheiros.A} alinhamento="text-right" />
             <span />
             <ListaArtilheiros lista={jogo.artilheiros.B} alinhamento="" />
@@ -180,22 +180,23 @@ export function CobraDaRodada({ carregando, cobra }) {
       {carregando ? (
         <Esqueleto className="h-40" />
       ) : !cobra ? (
-        <Vazio>Ninguém brilhou ainda. Depois do jogo, avalie a galera e o cobra aparece aqui.</Vazio>
+        <Vazio>Ninguém brilhou ainda. Depois do jogo, vote no craque e o cobra aparece aqui.</Vazio>
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center rounded-xl bg-gradient-to-b from-ouro/15 to-transparent p-4 text-center ring-1 ring-ouro/40">
           <span className="flex size-14 items-center justify-center rounded-full bg-ouro text-fundo">
-            <Icone nome={cobra.tipo === 'destaque' ? 'estrela' : 'bola'} tamanho={28} />
+            <Icone nome={cobra.tipo === 'craque' ? 'estrela' : 'bola'} tamanho={28} />
           </span>
           <p className="titulo mt-3 text-3xl text-ouro">{cobra.nome}</p>
-          {cobra.tipo === 'destaque' ? (
+          {cobra.tipo === 'craque' ? (
             <p className="text-sm text-texto-suave">
-              Nota média <strong className="text-texto">{cobra.media}</strong>
-              {cobra.gols > 0 && ` · ${cobra.gols} ${cobra.gols === 1 ? 'gol' : 'gols'}`}
+              {cobra.empate ? 'Craques' : 'Craque'} da última partida, com{' '}
+              <strong className="text-texto">{cobra.votos}</strong> {cobra.votos === 1 ? 'voto' : 'votos'}
+              {cobra.empate && ' cada'}
             </p>
           ) : (
             <p className="text-sm text-texto-suave">
               Artilheiro geral com <strong className="text-texto">{cobra.gols}</strong> gols
-              <span className="block text-xs">A última rodada ainda não tem notas suficientes.</span>
+              <span className="block text-xs">Ninguém votou no craque da última rodada ainda.</span>
             </p>
           )}
         </div>

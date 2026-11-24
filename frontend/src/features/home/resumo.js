@@ -1,9 +1,8 @@
 // Busca e organiza os dados da home. Só REUSA as funções de API que já existem
-// (histórico, partida, destaque e ranking): nenhuma rota nova, nenhuma regra de negócio nova.
+// (histórico, partida, craque e ranking): nenhuma rota nova, nenhuma regra de negócio nova.
 // Cada parte que falhar vira "sem dados" (null/[]): a home mostra estado vazio, nunca erro.
 import { buscarHistorico } from '../matches/historyApi.js'
-import { buscarPartida } from '../matches/matchesApi.js'
-import { buscarDestaque } from '../ratings/ratingsApi.js'
+import { buscarCraque, buscarPartida } from '../matches/matchesApi.js'
 import { buscarRanking } from '../rankings/rankingApi.js'
 
 const ouNulo = (promessa) => promessa.catch(() => null)
@@ -37,11 +36,18 @@ export function montarPodio(ranking) {
   return { criterio: null, linhas: [] }
 }
 
-// "Cobra da rodada": o destaque (maior média de notas) da última partida.
-// Sem notas suficientes, mostramos o artilheiro geral como plano B.
-export function escolherCobra(destaque, ranking) {
-  if (destaque) {
-    return { tipo: 'destaque', id: destaque.playerId, nome: nomeDe(destaque), media: destaque.average, gols: destaque.goals }
+// "Cobra da rodada": o craque votado pela galera na última partida (empate = os dois).
+// Sem votos ainda, mostramos o artilheiro geral como plano B.
+export function escolherCobra(votacao, ranking) {
+  const craques = votacao?.craques ?? []
+  if (craques.length > 0) {
+    return {
+      tipo: 'craque',
+      id: craques[0].playerId,
+      nome: craques.map(nomeDe).join(' e '),
+      votos: craques[0].votes,
+      empate: craques.length > 1,
+    }
   }
   const artilheiro = ranking?.artilharia?.[0]
   if (artilheiro) return { tipo: 'artilheiro', id: artilheiro.playerId, nome: nomeDe(artilheiro), gols: artilheiro.goals }
@@ -56,9 +62,9 @@ export async function carregarResumoDaHome() {
   const ultima = historico?.items?.[0] ?? null
 
   let partida = null
-  let destaque = null
+  let votacao = null
   if (ultima) {
-    ;[partida, destaque] = await Promise.all([ouNulo(buscarPartida(ultima.id)), ouNulo(buscarDestaque(ultima.id))])
+    ;[partida, votacao] = await Promise.all([ouNulo(buscarPartida(ultima.id)), ouNulo(buscarCraque(ultima.id))])
   }
 
   return {
@@ -67,11 +73,16 @@ export async function carregarResumoDaHome() {
       data: ultima.date,
       local: ultima.location,
       placar: ultima.score ?? { A: 0, B: 0 },
+      // Nomes livres dos times ("Amarelo"), ou "Time A" / "Time B".
+      nomes: { A: ultima.teamNames?.A || 'Time A', B: ultima.teamNames?.B || 'Time B' },
       // Pelada: não há um placar A x B; a home mostra quantos jogos teve e quem terminou na frente.
-      pelada: ultima.format === 'PELADA' ? { jogos: ultima.gamesCount ?? 0, lider: ultima.leader ?? null } : null,
+      pelada:
+        ultima.format === 'PELADA'
+          ? { jogos: ultima.gamesCount ?? 0, lider: ultima.leader ? ultima.teamNames?.[ultima.leader] || `Time ${ultima.leader}` : null }
+          : null,
       artilheiros: artilheirosPorTime(partida?.goals),
     },
     podio: montarPodio(ranking),
-    cobra: escolherCobra(destaque, ranking),
+    cobra: escolherCobra(votacao, ranking),
   }
 }

@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
 import Icone from '../../ui/Icones.jsx'
-import { buscarPresencas, confirmarPresenca, sairDaLista } from './matchesApi.js'
-import { textoDaLista } from './lances.js'
+import { buscarPresencas, confirmarPresenca, levarConvidado, sairDaLista, tirarConvidado } from './matchesApi.js'
+import { nomeDoConvidado, textoDaLista } from './lances.js'
 import { formatarData } from './textos.js'
 
 const botao = 'rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50'
 
 // Lista de presença da partida agendada (substitui a "lista do fut" do WhatsApp).
 // Cada um confirma o próprio nome; passou das vagas, vai para a espera e sobe sozinho quando
-// alguém sai. O organizador também põe e tira qualquer jogador (o amigo sem conta).
+// alguém sai. Quem não sabe se vai marca "talvez": fica na espera mesmo com vaga, até confirmar.
+// Convidados (gente de fora do grupo) entram nas vagas que sobram depois do pessoal do grupo.
+// O admin também põe e tira qualquer jogador (o amigo sem conta) e qualquer convidado.
 // `aoMudar` avisa a página da lista nova (a escalação usa os confirmados).
 export default function PresencaPanel({ partida, ehOrganizador, meuJogadorId, jogadores = [], aoMudar }) {
   const [lista, setLista] = useState(null)
@@ -16,6 +18,7 @@ export default function PresencaPanel({ partida, ehOrganizador, meuJogadorId, jo
   const [enviando, setEnviando] = useState(false)
   const [adicionar, setAdicionar] = useState('')
   const [copiado, setCopiado] = useState(false)
+  const [convidado, setConvidado] = useState('')
 
   useEffect(() => {
     let ativo = true
@@ -72,10 +75,16 @@ export default function PresencaPanel({ partida, ehOrganizador, meuJogadorId, jo
   const lotada = lista.openSpots === 0
   const minhaPosicaoNaEspera = lista.waitlist.findIndex((l) => l.playerId === meuJogadorId) + 1
 
+  const podeLevarConvidado = Boolean(meuJogadorId) || ehOrganizador
+  const convidados = lista.guests ?? []
+  // Confirmados = pessoal do grupo + convidados que pegaram vaga.
+  const totalDentro = lista.confirmed.length + convidados.filter((g) => g.status === 'CONFIRMED').length
+
   const linha = (l, i) => (
     <li key={l.playerId} className="flex items-center justify-between gap-2 rounded-lg bg-green-950 px-3 py-1.5">
       <span>
         <span className="tabular-nums text-green-300">{i + 1}.</span> {l.nickname}
+        {l.maybe && <span className="text-yellow-200"> (talvez)</span>}
         {l.playerId === meuJogadorId && <span className="text-green-300"> (você)</span>}
       </span>
       {ehOrganizador && (
@@ -99,8 +108,8 @@ export default function PresencaPanel({ partida, ehOrganizador, meuJogadorId, jo
           Lista de presença{' '}
           <span className="font-normal text-green-200">
             {lista.maxPlayers
-              ? `· ${lista.confirmed.length}/${lista.maxPlayers} confirmados`
-              : `· ${lista.confirmed.length} confirmados (sem limite de vagas)`}
+              ? `· ${totalDentro}/${lista.maxPlayers} confirmados`
+              : `· ${totalDentro} confirmados (sem limite de vagas)`}
           </span>
         </h3>
         <button type="button" onClick={copiar} className={`${botao} flex items-center gap-1.5 bg-green-800 hover:bg-green-700`}>
@@ -115,21 +124,53 @@ export default function PresencaPanel({ partida, ehOrganizador, meuJogadorId, jo
       <div className="mt-3 flex flex-wrap items-center gap-3">
         {meuJogadorId ? (
           lista.me === null ? (
-            <button
-              type="button"
-              disabled={enviando}
-              onClick={() => executar(() => confirmarPresenca(partida.id))}
-              className={`${botao} bg-green-500 text-green-950 hover:bg-green-400`}
-            >
-              {lotada ? 'Entrar na lista de espera' : 'Confirmar presença'}
-            </button>
+            <>
+              <button
+                type="button"
+                disabled={enviando}
+                onClick={() => executar(() => confirmarPresenca(partida.id))}
+                className={`${botao} bg-green-500 text-green-950 hover:bg-green-400`}
+              >
+                {lotada ? 'Entrar na lista de espera' : 'Confirmar presença'}
+              </button>
+              <button
+                type="button"
+                disabled={enviando}
+                onClick={() => executar(() => confirmarPresenca(partida.id, { maybe: true }))}
+                className={`${botao} bg-yellow-200 text-yellow-900 hover:bg-yellow-100`}
+              >
+                Talvez (fico na espera)
+              </button>
+            </>
           ) : (
             <>
               <span className="text-sm font-medium">
                 {lista.me === 'CONFIRMED'
                   ? '✓ Você está confirmado'
-                  : `Você é o ${minhaPosicaoNaEspera}º da lista de espera`}
+                  : lista.me === 'MAYBE'
+                    ? `Você está como talvez (${minhaPosicaoNaEspera}º da espera)`
+                    : `Você é o ${minhaPosicaoNaEspera}º da lista de espera`}
               </span>
+              {lista.me === 'MAYBE' && (
+                <button
+                  type="button"
+                  disabled={enviando}
+                  onClick={() => executar(() => confirmarPresenca(partida.id, { maybe: false }))}
+                  className={`${botao} bg-green-500 text-green-950 hover:bg-green-400`}
+                >
+                  {lotada ? 'Vou! Entrar na fila de espera' : 'Vou! Confirmar presença'}
+                </button>
+              )}
+              {lista.me === 'CONFIRMED' && (
+                <button
+                  type="button"
+                  disabled={enviando}
+                  onClick={() => executar(() => confirmarPresenca(partida.id, { maybe: true }))}
+                  className={`${botao} bg-yellow-200 text-yellow-900 hover:bg-yellow-100`}
+                >
+                  Mudar para talvez
+                </button>
+              )}
               <button
                 type="button"
                 disabled={enviando}
@@ -167,7 +208,7 @@ export default function PresencaPanel({ partida, ehOrganizador, meuJogadorId, jo
           <h4 className="text-sm font-semibold text-green-200">Lista de espera</h4>
           {lista.waitlist.length === 0 ? (
             <p className="mt-1 text-sm text-green-200">
-              {lista.maxPlayers ? 'Ninguém na espera.' : 'Sem limite de vagas: todo mundo entra.'}
+              {lista.maxPlayers ? 'Ninguém na espera.' : 'Sem limite de vagas: só fica na espera quem marcou talvez.'}
             </p>
           ) : (
             <ol className="mt-1 grid gap-1 text-sm" aria-label="Lista de espera">
@@ -177,12 +218,73 @@ export default function PresencaPanel({ partida, ehOrganizador, meuJogadorId, jo
         </div>
       </div>
 
+      <div className="mt-4">
+        <h4 className="text-sm font-semibold text-green-200">Convidados</h4>
+        <p className="text-xs text-green-300">Gente de fora do grupo. Entra nas vagas que sobram depois do pessoal do grupo.</p>
+        {convidados.length === 0 ? (
+          <p className="mt-1 text-sm text-green-200">Nenhum convidado.</p>
+        ) : (
+          <ol className="mt-1 grid gap-1 text-sm" aria-label="Convidados">
+            {convidados.map((g, i) => {
+              const podeTirar = ehOrganizador || (meuJogadorId && g.invitedBy?.playerId === meuJogadorId)
+              return (
+                <li key={g.id} className="flex items-center justify-between gap-2 rounded-lg bg-green-950 px-3 py-1.5">
+                  <span>
+                    <span className="tabular-nums text-green-300">{i + 1}.</span> {nomeDoConvidado(g)}
+                    {g.status === 'WAITLIST' && <span className="text-yellow-200"> · na espera</span>}
+                  </span>
+                  {podeTirar && (
+                    <button
+                      type="button"
+                      disabled={enviando}
+                      onClick={() => executar(() => tirarConvidado(partida.id, g.id))}
+                      aria-label={`Tirar o convidado ${g.name}`}
+                      className="rounded p-1 text-green-300 hover:bg-green-800 hover:text-white disabled:opacity-50"
+                    >
+                      <Icone nome="fechar" tamanho={16} />
+                    </button>
+                  )}
+                </li>
+              )
+            })}
+          </ol>
+        )}
+        {podeLevarConvidado && (
+          <form
+            className="mt-2 flex flex-wrap items-end gap-2"
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (await executar(() => levarConvidado(partida.id, convidado))) setConvidado('')
+            }}
+          >
+            <label className="text-sm">
+              Levar um convidado
+              <input
+                value={convidado}
+                onChange={(e) => setConvidado(e.target.value)}
+                minLength={2}
+                maxLength={40}
+                placeholder="Nome do convidado"
+                className="mt-1 block rounded-lg bg-green-950 px-3 py-2 text-white ring-1 ring-green-700"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={enviando || convidado.trim().length < 2}
+              className={`${botao} bg-green-800 hover:bg-green-700`}
+            >
+              Adicionar convidado
+            </button>
+          </form>
+        )}
+      </div>
+
       {ehOrganizador && foraDaLista.length > 0 && (
         <form
           className="mt-4 flex flex-wrap items-end gap-2"
           onSubmit={async (e) => {
             e.preventDefault()
-            if (await executar(() => confirmarPresenca(partida.id, Number(adicionar)))) setAdicionar('')
+            if (await executar(() => confirmarPresenca(partida.id, { playerId: Number(adicionar) }))) setAdicionar('')
           }}
         >
           <label className="text-sm">

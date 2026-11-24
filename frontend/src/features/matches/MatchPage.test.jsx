@@ -324,35 +324,68 @@ describe('MatchPage: partida finalizada e jogador comum', () => {
   })
 
   const finalizada = partida({ status: 'FINISHED', result: 'A_WINS', players: escalacao, score: { A: 1, B: 0 } })
-  const apiDeAvaliacoes = {
-    'GET /api/grupos/1/matches/7/destaque': () => resposta(200, { data: null }),
-    'GET /api/grupos/1/matches/7/avaliacoes/minhas': () => resposta(200, { data: [] }),
-    'GET /api/grupos/1/matches/7/avaliacoes/pendentes': () =>
-      resposta(200, { data: { open: true, deadline: '2026-11-22T22:00:00.000Z', pending: [{ playerId: 2, nickname: 'J2' }] } }),
-  }
+  const candidatos = [
+    { playerId: 4, nickname: 'J4', team: 'B', votes: 2 },
+    { playerId: 1, nickname: 'J1', team: 'A', votes: 0 },
+    { playerId: 2, nickname: 'J2', team: 'A', votes: 0 },
+  ]
+  const votacao = (extra = {}) => ({
+    open: true, deadline: '2026-11-22T22:00:00.000Z', canVote: true, myVote: null, totalVotes: 2, totalVoters: 6,
+    candidates: candidatos, craques: [candidatos[0]], ...extra,
+  })
 
-  it('finalizada: quem jogou vê o painel de avaliações com quem falta avaliar', async () => {
-    simularApi({ ...partidaNaApi(finalizada), ...apiDeAvaliacoes })
+  it('finalizada: quem jogou vota no craque (menos em si mesmo) e vê o voto marcado', async () => {
+    let corpo
+    simularApi({
+      ...partidaNaApi(finalizada),
+      'GET /api/grupos/1/matches/7/craque': () => resposta(200, { data: votacao() }),
+      'POST /api/grupos/1/matches/7/craque': (c) => {
+        corpo = c
+        const novos = [{ ...candidatos[0], votes: 3 }, ...candidatos.slice(1)]
+        return resposta(200, { data: votacao({ myVote: 4, totalVotes: 3, candidates: novos, craques: [novos[0]] }) })
+      },
+    })
     renderizar('PLAYER', 1) // jogador 1 jogou esta partida
 
-    expect(await screen.findByRole('button', { name: 'Avaliar J2' })).toBeInTheDocument()
+    const painel = await screen.findByLabelText('Votação do craque')
+    expect(await within(painel).findByText(/J4, com 2 votos/)).toBeInTheDocument()
+    expect(within(painel).queryByRole('button', { name: 'Votar em J1' })).not.toBeInTheDocument()
+    fireEvent.click(within(painel).getByRole('button', { name: 'Votar em J4' }))
+
+    await waitFor(() => expect(corpo).toEqual({ playerId: 4 }))
+    expect(await within(painel).findByText(/J4, com 3 votos/)).toBeInTheDocument()
+    expect(within(painel).getByRole('button', { name: 'Votar em J4' })).toHaveTextContent('Votado')
   })
 
-  it('finalizada: quem não jogou (ex.: organizador sem jogador) vê o painel, mas sem poder avaliar', async () => {
-    simularApi({ ...comJogadores, ...partidaNaApi(finalizada), ...apiDeAvaliacoes })
+  it('finalizada: quem não jogou vê o resultado (e o empate), mas sem botões de voto', async () => {
+    const empate = [{ ...candidatos[0], votes: 1 }, { ...candidatos[1], votes: 1 }, candidatos[2]]
+    simularApi({
+      ...comJogadores,
+      ...partidaNaApi(finalizada),
+      'GET /api/grupos/1/matches/7/craque': () => resposta(200, { data: votacao({ canVote: false, candidates: empate, craques: empate.slice(0, 2) }) }),
+    })
     renderizar('ORGANIZER', null)
 
-    expect(await screen.findByRole('heading', { name: /Avaliações/ })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Avaliar/ })).not.toBeInTheDocument()
-    expect(chamou('GET /api/grupos/1/matches/7/avaliacoes/pendentes')).toBe(false)
+    expect(await screen.findByText(/Empate: J4 e J1, com 1 voto cada/)).toBeInTheDocument()
+    expect(screen.getByText(/Só quem jogou a partida vota/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Votar em/ })).not.toBeInTheDocument()
   })
 
-  it('partida ainda não finalizada não mostra avaliações', async () => {
+  it('partida ainda não finalizada não mostra a votação do craque', async () => {
     simularApi({ ...partidaNaApi(partida({ status: 'IN_PROGRESS', players: escalacao })) })
     renderizar('PLAYER', 1)
 
     expect(await screen.findByText('Time A')).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: /Avaliações/ })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Craque da partida/)).not.toBeInTheDocument()
+    expect(chamou('GET /api/grupos/1/matches/7/craque')).toBe(false)
+  })
+
+  it('mostra os nomes livres dos times no placar e no resultado', async () => {
+    simularApi({ ...partidaNaApi({ ...finalizada, teamNames: { A: 'Amarelo', B: 'Azul' } }) })
+    renderizar('PLAYER', 1)
+
+    expect(await screen.findByLabelText('Placar')).toHaveTextContent('Amarelo 1 x 0 Azul')
+    expect(screen.getByText(/Vitória de Amarelo/)).toBeInTheDocument()
   })
 
   it('partida inexistente mostra o erro da API', async () => {
@@ -374,7 +407,7 @@ describe('MatchPage: editar data e local (partida agendada)', () => {
   it('mostra os valores atuais e só habilita "Salvar" depois de mudar algo', async () => {
     simularApi({ ...comJogadores, ...partidaNaApi(partida()) })
     renderizar()
-    await screen.findByText('Data, local e vagas')
+    await screen.findByText('Data, local, vagas e times')
 
     expect(screen.getByLabelText('Data e hora')).toHaveValue(comoCampoLocal('2026-11-20T22:00:00.000Z'))
     expect(screen.getByLabelText('Local')).toHaveValue('Quadra da UNIFESP')
@@ -390,12 +423,12 @@ describe('MatchPage: editar data e local (partida agendada)', () => {
       ...comJogadores,
       ...partidaNaApi(partida()),
       'PUT /api/grupos/1/matches/7': (corpo) => {
-        expect(corpo).toEqual({ date: new Date('2026-12-05T19:00').toISOString(), location: 'Quadra nova', maxPlayers: null, format: 'SINGLE_GAME', teamCount: 2 })
+        expect(corpo).toEqual({ date: new Date('2026-12-05T19:00').toISOString(), location: 'Quadra nova', maxPlayers: null, format: 'SINGLE_GAME', teamCount: 2, teamNames: null })
         return resposta(200, { data: partida({ date: corpo.date, location: corpo.location }) })
       },
     })
     renderizar()
-    await screen.findByText('Data, local e vagas')
+    await screen.findByText('Data, local, vagas e times')
 
     fireEvent.change(screen.getByLabelText('Data e hora'), { target: { value: '2026-12-05T19:00' } })
     fireEvent.change(screen.getByLabelText('Local'), { target: { value: 'Quadra nova' } })
@@ -412,7 +445,7 @@ describe('MatchPage: editar data e local (partida agendada)', () => {
       'PUT /api/grupos/1/matches/7': () => resposta(400, { erro: 'Local deve ter de 2 a 100 caracteres' }),
     })
     renderizar()
-    await screen.findByText('Data, local e vagas')
+    await screen.findByText('Data, local, vagas e times')
 
     fireEvent.change(screen.getByLabelText('Local'), { target: { value: 'ok' } })
     fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
@@ -425,13 +458,13 @@ describe('MatchPage: editar data e local (partida agendada)', () => {
     simularApi({ ...comJogadores, ...partidaNaApi(partida({ status: 'IN_PROGRESS', players: escalacao })) })
     renderizar()
     await screen.findByRole('button', { name: 'Lances de J1' })
-    expect(screen.queryByText('Data, local e vagas')).not.toBeInTheDocument()
+    expect(screen.queryByText('Data, local, vagas e times')).not.toBeInTheDocument()
     cleanup()
 
     simularApi({ ...partidaNaApi(partida()) })
     renderizar('PLAYER')
     await screen.findByText('Time A')
-    expect(screen.queryByText('Data, local e vagas')).not.toBeInTheDocument()
+    expect(screen.queryByText('Data, local, vagas e times')).not.toBeInTheDocument()
   })
 })
 
@@ -454,7 +487,7 @@ describe('MatchPage: cancelar partida', () => {
     expect(await screen.findByText(/Esta partida foi cancelada/)).toBeInTheDocument()
     expect(screen.getByText('Cancelada')).toBeInTheDocument() // selo de status
     expect(screen.queryByText('Escalação')).not.toBeInTheDocument()
-    expect(screen.queryByText('Data, local e vagas')).not.toBeInTheDocument()
+    expect(screen.queryByText('Data, local, vagas e times')).not.toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 

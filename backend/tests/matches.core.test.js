@@ -4,6 +4,7 @@ import {
   lerIdsDoTime,
   resultadoDoPlacar,
   validarDadosDaPartida,
+  lerNomesDosTimes,
   validarEscalacao,
   verificarEscalacaoEditavel,
   verificarPodeCancelar,
@@ -34,7 +35,7 @@ describe('validarDadosDaPartida', () => {
       location: '  Quadra da UNIFESP  ',
       status: 'FINISHED',
     })
-    expect(dados).toEqual({ date: new Date('2026-11-20T22:00:00Z'), location: 'Quadra da UNIFESP', maxPlayers: null, format: 'SINGLE_GAME', teamCount: 2 })
+    expect(dados).toEqual({ date: new Date('2026-11-20T22:00:00Z'), location: 'Quadra da UNIFESP', maxPlayers: null, format: 'SINGLE_GAME', teamCount: 2, teamNames: null })
   })
 
   it.each([[undefined], ['amanhã'], [20261120]])('rejeita data %s', (date) => {
@@ -185,3 +186,29 @@ describe('partida cancelada é recusada por todas as outras ações', () => {
   })
 })
 
+
+describe('lerNomesDosTimes (nomes livres dos times)', () => {
+  it('aceita os nomes dos times da partida, tirando espaços; vazio usa o padrão', () => {
+    expect(lerNomesDosTimes({ A: '  Amarelo ', B: '' }, ['A', 'B'])).toEqual({ A: 'Amarelo' })
+    expect(lerNomesDosTimes({ A: 'Amarelo', B: 'Azul', C: 'Verde' }, ['A', 'B', 'C'])).toEqual({ A: 'Amarelo', B: 'Azul', C: 'Verde' })
+  })
+
+  it('sem nomes = null; time que a partida não tem é ignorado', () => {
+    expect(lerNomesDosTimes(undefined, ['A', 'B'])).toBeNull()
+    expect(lerNomesDosTimes({}, ['A', 'B'])).toBeNull()
+    expect(lerNomesDosTimes({ C: 'Verde' }, ['A', 'B'])).toBeNull()
+  })
+
+  it('nome repetido (sem diferenciar maiúsculas) -> 422; formato ou tamanho inválido -> 400', () => {
+    expect(() => lerNomesDosTimes({ A: 'Azul', B: 'azul' }, ['A', 'B'])).toThrow(/mesmo nome/)
+    expect(() => lerNomesDosTimes(['Azul'], ['A', 'B'])).toThrow(/inválidos/)
+    expect(() => lerNomesDosTimes({ Z: 'Azul' }, ['A', 'B'])).toThrow(/Time inválido/)
+    expect(() => lerNomesDosTimes({ A: 3 }, ['A', 'B'])).toThrow(/texto/)
+    expect(() => lerNomesDosTimes({ A: 'x'.repeat(21) }, ['A', 'B'])).toThrow(/20 caracteres/)
+  })
+
+  it('validarDadosDaPartida guarda os nomes', () => {
+    const dados = validarDadosDaPartida({ date: '2026-11-20T19:00', location: 'Quadra', teamNames: { A: 'Com camisa', B: 'Sem camisa' } })
+    expect(dados.teamNames).toEqual({ A: 'Com camisa', B: 'Sem camisa' })
+  })
+})

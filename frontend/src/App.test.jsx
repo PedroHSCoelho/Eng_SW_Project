@@ -174,7 +174,7 @@ describe('App: grupos', () => {
     fireEvent.change(screen.getByLabelText('Posição'), { target: { value: 'FORWARD' } })
     fireEvent.click(screen.getByRole('button', { name: 'Criar grupo' }))
 
-    expect(await screen.findByText('Maria (Organizador)')).toBeInTheDocument()
+    expect(await screen.findByText('Maria (Admin)')).toBeInTheDocument()
     const [, opcoes] = fetch.mock.calls.find(([url, o]) => url === '/api/grupos' && o?.method === 'POST')
     expect(JSON.parse(opcoes.body)).toEqual({ name: 'Racha', nickname: 'Mari', position: 'FORWARD' })
   })
@@ -218,7 +218,7 @@ describe('App: grupos', () => {
     const padrao = fetch.getMockImplementation()
     fetch.mockImplementation(async (url, opcoes = {}) =>
       url === '/api/grupos/1/membros/2' && opcoes.method === 'PATCH'
-        ? resposta(422, { erro: 'O grupo precisa ter ao menos um organizador' })
+        ? resposta(422, { erro: 'O grupo precisa ter ao menos um admin' })
         : padrao(url, opcoes),
     )
     renderizar('/membros')
@@ -226,7 +226,7 @@ describe('App: grupos', () => {
     expect(await screen.findByLabelText('Link de convite')).toHaveValue(`${window.location.origin}/convite/ABCD2345`)
     fireEvent.change(await screen.findByLabelText('Papel de Chefe'), { target: { value: 'MEMBER' } })
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('ao menos um organizador')
+    expect(await screen.findByRole('alert')).toHaveTextContent('ao menos um admin')
     const [, opcoes] = fetch.mock.calls.find(([url, o]) => url === '/api/grupos/1/membros/2' && o?.method === 'PATCH')
     expect(JSON.parse(opcoes.body)).toEqual({ role: 'MEMBER' })
     expect(screen.getByLabelText('Papel de Chefe')).toHaveValue('ORGANIZER')

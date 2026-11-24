@@ -66,6 +66,7 @@ model Player {
   nicknameKey     String        @db.VarChar(30) // apelido em minúsculas: único DENTRO do grupo, sem diferenciar maiúsculas
   position        Position
   active          Boolean       @default(true) // inativar em vez de excluir quem já tem partida
+  skill           Float? // nota do admin (0 a 5, de 0,5 em 0,5) para o sorteio; só admins veem
   createdAt       DateTime      @default(now())
   group           Group         @relation(fields: [groupId], references: [id], onDelete: Restrict)
   membership      Membership? // conta ligada a este jogador no grupo (no máximo uma)
@@ -76,6 +77,9 @@ model Player {
   ratingsReceived Rating[]      @relation("RatingReceived") // notas que recebeu
   events          MatchEvent[] // cartões e defesas difíceis lançados na súmula
   attendances     Attendance[] // presenças confirmadas nas partidas
+  guestsInvited   MatchGuest[] // convidados que levou para as partidas
+  votesGiven      MvpVote[]     @relation("VoteGiven") // votos de craque que deu
+  votesReceived   MvpVote[]     @relation("VoteReceived") // votos de craque que recebeu
 
   @@unique([groupId, nicknameKey])
 }
@@ -146,13 +150,16 @@ model Match {
   maxPlayers  Int? // vagas da lista de presença (vazio = sem limite); quem passa disso vai para a espera
   format      MatchFormat   @default(SINGLE_GAME)
   teamCount   Int           @default(2) // quantos times: 2 no jogo único, de 3 a 6 na pelada
+  teamNames   Json? // nomes livres dos times, ex.: { "A": "Amarelo", "B": "Azul" } (vazio = "Time A")
   createdAt   DateTime      @default(now())
   players     MatchPlayer[] // escalação dos times
   goals       Goal[] // gols lançados na súmula
   events      MatchEvent[] // cartões e defesas difíceis
   attendances Attendance[] // lista de presença (confirmados + espera)
+  guests      MatchGuest[] // convidados (gente de fora do grupo)
+  mvpVotes    MvpVote[] // votação do craque depois da partida
   games       MatchGame[] // jogos da pelada (vazio no jogo único)
-  ratings     Rating[] // notas dadas depois da partida
+  ratings     Rating[] // LEGADO: avaliação pós-partida, fora de uso (a tabela fica até uma limpeza futura)
   group       Group         @relation(fields: [groupId], references: [id], onDelete: Restrict)
 
   @@index([groupId])
@@ -247,7 +254,8 @@ model MatchEvent {
 model Attendance {
   matchId   Int
   playerId  Int
-  createdAt DateTime @default(now())
+  maybe     Boolean  @default(false) // "talvez": fica na espera por vontade própria, mesmo com vaga
+  createdAt DateTime @default(now()) // ordem de chegada (muda quando a pessoa troca entre confirmado e talvez)
   match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
   player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
@@ -272,4 +280,34 @@ model MatchGame {
   events     MatchEvent[]
 
   @@unique([matchId, number])
+}
+
+// Convidado de uma partida: alguém de fora do grupo, só com o nome (o amigo que vem uma vez).
+// Ocupa vaga só depois dos jogadores do grupo; quem convidou aparece ao lado do nome.
+model MatchGuest {
+  id          Int      @id @default(autoincrement())
+  matchId     Int
+  name        String   @db.VarChar(40)
+  invitedById Int? // jogador que levou (vazio = posto por um admin sem jogador)
+  createdAt   DateTime @default(now())
+  match       Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  invitedBy   Player?  @relation(fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@index([matchId])
+}
+
+// Voto de craque: cada jogador que jogou dá um voto por partida (pode trocar até a votação fechar).
+// O CHECK "não vota em si mesmo" existe só no SQL da migração.
+model MvpVote {
+  matchId   Int
+  voterId   Int
+  votedId   Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  voter     Player   @relation("VoteGiven", fields: [voterId], references: [id], onDelete: Cascade)
+  voted     Player   @relation("VoteReceived", fields: [votedId], references: [id], onDelete: Cascade)
+
+  @@id([matchId, voterId])
+  @@index([votedId])
 }

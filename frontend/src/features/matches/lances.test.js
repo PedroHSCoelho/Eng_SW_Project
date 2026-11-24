@@ -52,4 +52,22 @@ describe('textoDaLista', () => {
     const livre = textoDaLista({ partida, formatarData: () => 'sex', lista: { maxPlayers: null, confirmed: [linha(1, 'Zé')], waitlist: [] } })
     expect(livre).toBe('⚽ sex · Quadra\nConfirmados (1):\n1. Zé')
   })
+
+  it('convidados entram na numeração (com quem convidou) e o talvez aparece marcado na espera', () => {
+    const texto = textoDaLista({
+      partida,
+      formatarData: () => 'sex',
+      lista: {
+        maxPlayers: 3,
+        confirmed: [linha(1, 'Zé')],
+        waitlist: [{ ...linha(2, 'Beto'), maybe: true }],
+        guests: [
+          { id: 1, name: 'Primo', invitedBy: { playerId: 1, nickname: 'Zé' }, status: 'CONFIRMED' },
+          { id: 2, name: 'Amigo', invitedBy: null, status: 'WAITLIST' },
+        ],
+      },
+    })
+    expect(texto).toContain('Confirmados (2/3):\n1. Zé\n2. Primo (convidado do Zé)\n3.')
+    expect(texto).toContain('Lista de espera:\n1. Beto (talvez)\n2. Amigo (convidado)')
+  })
 })

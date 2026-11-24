@@ -38,8 +38,22 @@ export const removerLance = (id, eventId) =>
 export const buscarPresencas = (id) => pedir(`${apiDoGrupo()}/matches/${id}/presencas`)
 
 // Sem playerId: confirma o MEU nome; com playerId: o organizador põe outro jogador.
-export const confirmarPresenca = (id, playerId) =>
-  pedir(`${apiDoGrupo()}/matches/${id}/presencas`, comJson('POST', playerId ? { playerId } : {}))
+// opcoes: { playerId } (admin põe outro jogador) e/ou { maybe: true } ("talvez": vai para a espera).
+// Sem nada, confirma o meu nome. Quem já está na lista e manda o outro estado troca entre confirmado e talvez.
+export const confirmarPresenca = (id, { playerId, maybe } = {}) =>
+  pedir(
+    `${apiDoGrupo()}/matches/${id}/presencas`,
+    comJson('POST', { ...(playerId && { playerId }), ...(maybe !== undefined && { maybe }) }),
+  )
+
+// Convidados (gente de fora do grupo): devolvem a lista inteira, como as presenças.
+export const levarConvidado = (id, name) => pedir(`${apiDoGrupo()}/matches/${id}/convidados`, comJson('POST', { name }))
+export const tirarConvidado = (id, guestId) =>
+  pedir(`${apiDoGrupo()}/matches/${id}/convidados/${guestId}`, { method: 'DELETE' })
+
+// Votação do craque: { open, deadline, canVote, myVote, totalVotes, totalVoters, candidates, craques }
+export const buscarCraque = (id) => pedir(`${apiDoGrupo()}/matches/${id}/craque`)
+export const votarNoCraque = (id, playerId) => pedir(`${apiDoGrupo()}/matches/${id}/craque`, comJson('POST', { playerId }))
 
 export const sairDaLista = (id, playerId) =>
   pedir(`${apiDoGrupo()}/matches/${id}/presencas/${playerId}`, { method: 'DELETE' })

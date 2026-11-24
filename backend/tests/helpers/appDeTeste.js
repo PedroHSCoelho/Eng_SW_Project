@@ -7,7 +7,7 @@ import { criarTokens } from '../../src/features/auth/tokens.js'
 import { criarPlayersService } from '../../src/features/players/players.service.js'
 import { criarMatchesService } from '../../src/features/matches/matches.service.js'
 import { criarStatsService } from '../../src/features/stats/stats.service.js'
-import { criarRatingsService } from '../../src/features/ratings/ratings.service.js'
+import { criarCraqueService } from '../../src/features/craque/craque.service.js'
 import { criarDrawService } from '../../src/features/draw/draw.service.js'
 import { criarGroupsService } from '../../src/features/groups/groups.service.js'
 import { criarAttendanceService } from '../../src/features/attendance/attendance.service.js'
@@ -31,15 +31,23 @@ export function criarUsersRepoEmMemoria() {
   }
 }
 
+const semNota = ({ skill, ...resto }) => resto
+
 // Jogadores iniciais sem grupo informado ficam no grupo 1 (o grupo de teste).
 export function criarPlayersRepoEmMemoria(iniciais = []) {
   let proximoId = iniciais.length + 1
   const jogadores = iniciais.map((j) => ({ groupId: 1, ...j }))
   return {
     jogadores,
-    listar: async ({ groupId }) => jogadores.filter((j) => j.groupId === groupId),
-    buscarPorId: async (id) => jogadores.find((j) => j.id === id) ?? null,
-    buscarPorIds: async (ids) => jogadores.filter((j) => ids.includes(j.id)),
+    // Como o real (db.js), a nota do admin só vem quando pedida (`comNota`).
+    listar: async ({ groupId, comNota = false }) =>
+      jogadores.filter((j) => j.groupId === groupId).map((j) => (comNota ? { ...j } : semNota(j))),
+    buscarPorId: async (id, { comNota = false } = {}) => {
+      const j = jogadores.find((x) => x.id === id)
+      return j ? (comNota ? { ...j } : semNota(j)) : null
+    },
+    buscarPorIds: async (ids, { comNota = false } = {}) =>
+      jogadores.filter((j) => ids.includes(j.id)).map((j) => (comNota ? { ...j } : semNota(j))),
     buscarPorNicknameKey: async (groupId, key) =>
       jogadores.find((j) => j.groupId === groupId && j.nicknameKey === key) ?? null,
     criar: async (dados) => {
@@ -47,14 +55,17 @@ export function criarPlayersRepoEmMemoria(iniciais = []) {
       jogadores.push(jogador)
       return jogador
     },
-    atualizar: async (id, dados) => Object.assign(jogadores.find((j) => j.id === id), dados),
+    atualizar: async (id, dados, { comNota = false } = {}) => {
+      const j = Object.assign(jogadores.find((x) => x.id === id), dados)
+      return comNota ? { ...j } : semNota(j)
+    },
     excluir: async () => {},
     possuiPartidas: async () => false,
   }
 }
 
 // Repositório em memória das partidas. Como o real, devolve a partida com a escalação e os gols.
-export function criarMatchesRepoEmMemoria() {
+export function criarMatchesRepoEmMemoria({ playersRepo } = {}) {
   let proximoId = 1
   let proximoGolId = 1
   let proximoEventoId = 1
@@ -72,7 +83,13 @@ export function criarMatchesRepoEmMemoria() {
     },
     atualizarDados: async (id, dados) => Object.assign(partidas.find((p) => p.id === id), dados),
     substituirEscalacao: async (id, escalacao) =>
-      Object.assign(partidas.find((p) => p.id === id), { players: escalacao.map((e) => ({ matchId: id, ...e })) }),
+      Object.assign(partidas.find((p) => p.id === id), {
+        // Como o real, cada escalado traz o mínimo do jogador (apelido e posição).
+        players: escalacao.map((e) => {
+          const j = playersRepo?.jogadores.find((x) => x.id === e.playerId)
+          return { matchId: id, ...e, ...(j && { player: { id: j.id, nickname: j.nickname, position: j.position } }) }
+        }),
+      }),
     mudarStatus: async (id, { para, dados = {} }) =>
       Object.assign(partidas.find((p) => p.id === id), { ...dados, status: para }),
     criarGol: async ({ matchId, ...gol }) => {
@@ -106,6 +123,8 @@ export function criarMatchesRepoEmMemoria() {
 // e traz o jogador (apelido e posição) de cada presença.
 export function criarAttendanceRepoEmMemoria({ playersRepo, relogio = () => new Date() }) {
   const presencas = []
+  const convidados = []
+  let proximoConvidado = 1
   return {
     presencas,
     listarDaPartida: async (matchId) =>
@@ -115,35 +134,48 @@ export function criarAttendanceRepoEmMemoria({ playersRepo, relogio = () => new 
           const j = playersRepo.jogadores.find((x) => x.id === p.playerId)
           return { ...p, player: { id: j.id, nickname: j.nickname, position: j.position } }
         }),
-    adicionar: async ({ matchId, playerId }) => {
+    adicionar: async ({ matchId, playerId, maybe = false }) => {
       if (!presencas.some((p) => p.matchId === matchId && p.playerId === playerId)) {
-        presencas.push({ matchId, playerId, createdAt: relogio() })
+        presencas.push({ matchId, playerId, maybe, createdAt: relogio() })
       }
     },
+    mudarTalvez: async ({ matchId, playerId, maybe }) =>
+      Object.assign(presencas.find((p) => p.matchId === matchId && p.playerId === playerId), { maybe, createdAt: relogio() }),
     remover: async ({ matchId, playerId }) => {
       const i = presencas.findIndex((p) => p.matchId === matchId && p.playerId === playerId)
       if (i >= 0) presencas.splice(i, 1)
     },
+    convidados,
+    listarConvidados: async (matchId) =>
+      convidados
+        .filter((c) => c.matchId === matchId)
+        .map((c) => {
+          const j = playersRepo.jogadores.find((x) => x.id === c.invitedById)
+          return { ...c, invitedBy: j ? { id: j.id, nickname: j.nickname } : null }
+        }),
+    buscarConvidado: async (id) => convidados.find((c) => c.id === id) ?? null,
+    adicionarConvidado: async ({ matchId, name, invitedById }) => {
+      const novo = { id: proximoConvidado++, matchId, name, invitedById, createdAt: relogio() }
+      convidados.push(novo)
+      return novo
+    },
+    removerConvidado: async (id) => {
+      convidados.splice(convidados.findIndex((c) => c.id === id), 1)
+    },
   }
 }
 
-// Repositório em memória das avaliações. Como o real, `salvar` cria ou edita (uma nota por trio).
-export function criarRatingsRepoEmMemoria() {
-  let proximoId = 1
-  const notas = []
+// Repositório em memória dos votos de craque. Como o real, votar de novo troca o voto.
+export function criarCraqueRepoEmMemoria() {
+  const votos = []
   return {
-    notas,
-    salvar: async ({ matchId, raterId, ratedId, score, comment }) => {
-      let nota = notas.find((n) => n.matchId === matchId && n.raterId === raterId && n.ratedId === ratedId)
-      if (nota) Object.assign(nota, { score, comment })
-      else notas.push((nota = { id: proximoId++, matchId, raterId, ratedId, score, comment }))
-      return { id: nota.id, matchId, ratedId, score, comment }
+    votos,
+    listarDaPartida: async (matchId) => votos.filter((v) => v.matchId === matchId),
+    votar: async ({ matchId, voterId, votedId }) => {
+      const voto = votos.find((v) => v.matchId === matchId && v.voterId === voterId)
+      if (voto) voto.votedId = votedId
+      else votos.push({ matchId, voterId, votedId })
     },
-    listarDoAvaliador: async (matchId, raterId) =>
-      notas.filter((n) => n.matchId === matchId && n.raterId === raterId).sort((a, b) => a.ratedId - b.ratedId),
-    listarDaPartida: async (matchId) => notas.filter((n) => n.matchId === matchId),
-    listarRecebidas: async (ratedId) => notas.filter((n) => n.ratedId === ratedId),
-    listarRecebidasDe: async (ids) => notas.filter((n) => ids.includes(n.ratedId)),
   }
 }
 
@@ -218,8 +250,8 @@ export function criarGroupsRepoEmMemoria({ usersRepo, playersRepo }) {
 export function montarApp({ expiraEmSegundos, jogadores = [], agora, aleatorio, gerarBytes, comGrupoDeTeste = true } = {}) {
   const usersRepo = criarUsersRepoEmMemoria()
   const playersRepo = criarPlayersRepoEmMemoria(jogadores)
-  const matchesRepo = criarMatchesRepoEmMemoria()
-  const ratingsRepo = criarRatingsRepoEmMemoria()
+  const matchesRepo = criarMatchesRepoEmMemoria({ playersRepo })
+  const craqueRepo = criarCraqueRepoEmMemoria()
   const groupsRepo = criarGroupsRepoEmMemoria({ usersRepo, playersRepo })
   // Relógio da presença: cada confirmação 1 minuto depois da anterior (a ordem de chegada importa).
   let minuto = 0
@@ -251,11 +283,11 @@ export function montarApp({ expiraEmSegundos, jogadores = [], agora, aleatorio, 
     authService,
     matchesService: criarMatchesService({ matchesRepo, playersRepo, agora }),
     statsService: criarStatsService({ matchesRepo, playersRepo, agora }),
-    ratingsService: criarRatingsService({ ratingsRepo, matchesRepo, playersRepo, agora }),
-    drawService: criarDrawService({ playersRepo, ratingsRepo, aleatorio }),
+    craqueService: criarCraqueService({ craqueRepo, matchesRepo, agora }),
+    drawService: criarDrawService({ playersRepo, aleatorio }),
     groupsService: criarGroupsService({ groupsRepo, playersRepo, ...(gerarBytes && { gerarBytes }) }),
     attendanceService: criarAttendanceService({ attendanceRepo, matchesRepo, playersRepo }),
     tokens,
   })
-  return { app, usersRepo, playersRepo, matchesRepo, ratingsRepo, groupsRepo, attendanceRepo, participacaoDe, tokens }
+  return { app, usersRepo, playersRepo, matchesRepo, craqueRepo, groupsRepo, attendanceRepo, participacaoDe, tokens }
 }
