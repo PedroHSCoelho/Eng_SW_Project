@@ -9,8 +9,8 @@ import { usersRepository } from './features/users/users.repository.js'
 import { criarMatchesService } from './features/matches/matches.service.js'
 import { matchesRepository } from './features/matches/matches.repository.js'
 import { criarStatsService } from './features/stats/stats.service.js'
-import { criarRatingsService } from './features/ratings/ratings.service.js'
-import { ratingsRepository } from './features/ratings/ratings.repository.js'
+import { criarCraqueService } from './features/craque/craque.service.js'
+import { craqueRepository } from './features/craque/craque.repository.js'
 import { criarDrawService } from './features/draw/draw.service.js'
 import { criarGroupsService } from './features/groups/groups.service.js'
 import { groupsRepository } from './features/groups/groups.repository.js'
@@ -30,12 +30,8 @@ const app = criarApp({
   authService,
   matchesService: criarMatchesService({ matchesRepo: matchesRepository, playersRepo: playersRepository }),
   statsService: criarStatsService({ matchesRepo: matchesRepository, playersRepo: playersRepository }),
-  ratingsService: criarRatingsService({
-    ratingsRepo: ratingsRepository,
-    matchesRepo: matchesRepository,
-    playersRepo: playersRepository,
-  }),
-  drawService: criarDrawService({ playersRepo: playersRepository, ratingsRepo: ratingsRepository }),
+  craqueService: criarCraqueService({ craqueRepo: craqueRepository, matchesRepo: matchesRepository }),
+  drawService: criarDrawService({ playersRepo: playersRepository }),
   groupsService: criarGroupsService({ groupsRepo: groupsRepository, playersRepo: playersRepository }),
   attendanceService: criarAttendanceService({
     attendanceRepo: attendanceRepository,

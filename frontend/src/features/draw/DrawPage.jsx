@@ -118,8 +118,8 @@ export default function DrawPage() {
         🎲 Sorteio de times
       </h2>
       <p className="mt-1 text-sm text-green-200">
-        Marque quem está presente. Os times saem equilibrados pela média de notas de cada um (quem ainda não tem
-        média entra com 3,0) e, havendo 2 goleiros, cada time fica com um.
+        Marque quem está presente. Os times saem equilibrados pela nota de 0 a 5 que os admins deram a cada um (quem
+        ainda não tem nota entra com 2,5; a nota se dá na tela de Jogadores) e, havendo 2 goleiros, cada time fica com um.
       </p>
 
       {erro && (

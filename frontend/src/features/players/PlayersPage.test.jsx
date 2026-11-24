@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import '@testing-library/jest-dom/vitest'
 import PlayersPage from './PlayersPage.jsx'
@@ -63,7 +63,8 @@ describe('PlayersPage', () => {
     it('mostra os jogadores com posição em português e marca os inativos', async () => {
       simularApi(listaCom(ze, beto))
 
-      renderizarPagina()
+      // Como membro, sem o aviso de "sem conta" que só o admin vê.
+      renderizarPagina('MEMBER')
 
       expect(await screen.findByText('Zé')).toBeInTheDocument()
       expect(screen.getByText('José da Silva · Atacante')).toBeInTheDocument()
@@ -275,5 +276,87 @@ describe('PlayersPage: perfil', () => {
 
     expect(await screen.findByRole('link', { name: 'Zé' })).toHaveAttribute('href', '/jogadores/1')
     expect(screen.getByRole('link', { name: 'Beto' })).toHaveAttribute('href', '/jogadores/2')
+  })
+})
+
+describe('PlayersPage: dar e tirar admin', () => {
+  // Zé tem conta (userId 7) e é membro; Beto tem conta (userId 8) e já é admin; Lu não tem conta.
+  const lu = { id: 3, name: 'Luana Reis', nickname: 'Lu', position: 'DEFENDER', active: true }
+  const membros = [
+    { userId: 7, role: 'MEMBER', playerId: 1, user: { id: 7, name: 'José' }, player: { id: 1, nickname: 'Zé' } },
+    { userId: 8, role: 'ORGANIZER', playerId: 2, user: { id: 8, name: 'Roberto' }, player: { id: 2, nickname: 'Beto' } },
+  ]
+  const comMembros = (extra = {}) => ({
+    ...listaCom(ze, beto, lu),
+    'GET /api/grupos/1/membros': () => resposta(200, { data: membros }),
+    ...extra,
+  })
+
+  it('admin vê quem é admin, quem não tem conta, e torna um jogador admin', async () => {
+    simularApi(comMembros({ 'PATCH /api/grupos/1/membros/7': () => resposta(200, { data: { ...membros[0], role: 'ORGANIZER' } }) }))
+
+    renderizarPagina()
+
+    const tornar = await screen.findByRole('button', { name: 'Tornar Zé admin' })
+    expect(screen.getByText('Admin')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Tirar admin de Beto' })).toBeInTheDocument()
+    expect(screen.getByText('Luana Reis · Defensor · sem conta')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Lu admin/ })).not.toBeInTheDocument()
+
+    fireEvent.click(tornar)
+
+    await waitFor(() => expect(chamadas()).toContain('PATCH /api/grupos/1/membros/7'))
+    expect(corpoDaChamada('PATCH /api/grupos/1/membros/7')).toEqual({ role: 'ORGANIZER' })
+  })
+
+  it('tirar admin manda MEMBER; se o back-end recusa (último admin), mostra o motivo', async () => {
+    simularApi(
+      comMembros({ 'PATCH /api/grupos/1/membros/8': () => resposta(422, { erro: 'O grupo precisa ter ao menos um admin' }) }),
+    )
+
+    renderizarPagina()
+    fireEvent.click(await screen.findByRole('button', { name: 'Tirar admin de Beto' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('ao menos um admin')
+    expect(corpoDaChamada('PATCH /api/grupos/1/membros/8')).toEqual({ role: 'MEMBER' })
+  })
+
+  it('membro comum vê a marca de admin, mas não os botões nem o convite', async () => {
+    simularApi(comMembros())
+
+    renderizarPagina('MEMBER')
+
+    expect(await screen.findByText('Admin')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /admin/ })).not.toBeInTheDocument()
+    expect(screen.queryByText('Adicionar pessoas')).not.toBeInTheDocument()
+  })
+})
+
+describe('PlayersPage: nota do admin', () => {
+  it('admin vê a nota de cada um e muda (inclusive meio ponto e "sem nota")', async () => {
+    simularApi({
+      'GET /api/grupos/1/players': () => resposta(200, { data: [{ ...ze, skill: 3.5 }, { ...beto, skill: null }] }),
+      'PATCH /api/grupos/1/players/2/nota': () => resposta(200, { data: { id: 2, nickname: 'Beto', skill: 4.5 } }),
+      'PATCH /api/grupos/1/players/1/nota': () => resposta(200, { data: { id: 1, nickname: 'Zé', skill: null } }),
+    })
+    renderizarPagina()
+
+    expect(await screen.findByLabelText('Nota de Zé')).toHaveValue('3.5')
+    expect(screen.getByLabelText('Nota de Beto')).toHaveValue('')
+    expect(within(screen.getByLabelText('Nota de Zé')).getByRole('option', { name: '0,5' })).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Nota de Beto'), { target: { value: '4.5' } })
+    await waitFor(() => expect(chamadas()).toContain('PATCH /api/grupos/1/players/2/nota'))
+    expect(corpoDaChamada('PATCH /api/grupos/1/players/2/nota')).toEqual({ skill: 4.5 })
+
+    fireEvent.change(screen.getByLabelText('Nota de Zé'), { target: { value: '' } })
+    await waitFor(() => expect(corpoDaChamada('PATCH /api/grupos/1/players/1/nota')).toEqual({ skill: null }))
+  })
+
+  it('membro não vê nota nenhuma', async () => {
+    simularApi(listaCom(ze, beto))
+    renderizarPagina('MEMBER')
+    await screen.findByText('Zé')
+    expect(screen.queryByLabelText(/Nota de/)).not.toBeInTheDocument()
   })
 })

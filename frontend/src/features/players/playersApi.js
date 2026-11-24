@@ -25,3 +25,6 @@ export function inativarJogador(id) {
 export function excluirJogador(id) {
   return pedir(`${apiDoGrupo()}/players/${id}`, { method: 'DELETE' })
 }
+
+// Nota do admin (0 a 5, de 0,5 em 0,5; null apaga). Só admin consegue; a API devolve { id, nickname, skill }.
+export const definirNota = (id, skill) => pedir(`${apiDoGrupo()}/players/${id}/nota`, comJson('PATCH', { skill }))

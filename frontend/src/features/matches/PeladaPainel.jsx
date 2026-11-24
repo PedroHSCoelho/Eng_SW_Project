@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { jogoAberto, sugerirProximoJogo, textoDoResultado } from './pelada.js'
-import { timesDaPartida } from './textos.js'
+import { nomeDoTime, timesDaPartida } from './textos.js'
 
 const botao = 'rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50'
 const campo = 'mt-1 block rounded-lg bg-green-950 px-3 py-2 text-white ring-1 ring-green-700'
@@ -19,7 +19,8 @@ export default function PeladaPainel({ partida, ehOrganizador, enviando, aoComec
         <div className="rounded-xl bg-green-900 p-5 text-center ring-1 ring-green-700">
           <p className="text-sm text-green-200">Jogo {aberto.number} · rolando agora</p>
           <p className="text-4xl font-bold tabular-nums" aria-label="Placar do jogo">
-            Time {aberto.homeTeam} {aberto.score?.home ?? 0} x {aberto.score?.away ?? 0} Time {aberto.awayTeam}
+            {nomeDoTime(partida, aberto.homeTeam)} {aberto.score?.home ?? 0} x {aberto.score?.away ?? 0}{' '}
+            {nomeDoTime(partida, aberto.awayTeam)}
           </p>
           {podeMexer && (
             <button
@@ -52,18 +53,18 @@ export default function PeladaPainel({ partida, ehOrganizador, enviando, aoComec
               {jogos.map((j) => (
                 <li key={j.id} className="flex justify-between gap-2 rounded-lg bg-green-950 px-3 py-1.5">
                   <span>
-                    <span className="text-green-300">{j.number}.</span> Time {j.homeTeam}{' '}
+                    <span className="text-green-300">{j.number}.</span> {nomeDoTime(partida, j.homeTeam)}{' '}
                     <strong className="tabular-nums">
                       {j.score?.home ?? 0} x {j.score?.away ?? 0}
                     </strong>{' '}
-                    Time {j.awayTeam}
+                    {nomeDoTime(partida, j.awayTeam)}
                   </span>
-                  <span className="text-green-200">{textoDoResultado(j)}</span>
+                  <span className="text-green-200">{textoDoResultado(j, partida)}</span>
                 </li>
               ))}
             </ol>
           </div>
-          <Classificacao linhas={partida.standings ?? []} />
+          <Classificacao linhas={partida.standings ?? []} partida={partida} />
         </div>
       )}
     </div>
@@ -98,7 +99,7 @@ function ComecarJogo({ partida, enviando, aoComecar }) {
         <select value={casa} onChange={(e) => setCasa(e.target.value)} className={campo}>
           {times.map((t) => (
             <option key={t} value={t}>
-              Time {t}
+              {nomeDoTime(partida, t)}
             </option>
           ))}
         </select>
@@ -109,7 +110,7 @@ function ComecarJogo({ partida, enviando, aoComecar }) {
         <select value={fora} onChange={(e) => setFora(e.target.value)} className={campo}>
           {times.map((t) => (
             <option key={t} value={t}>
-              Time {t}
+              {nomeDoTime(partida, t)}
             </option>
           ))}
         </select>
@@ -126,7 +127,7 @@ function ComecarJogo({ partida, enviando, aoComecar }) {
   )
 }
 
-function Classificacao({ linhas }) {
+function Classificacao({ linhas, partida }) {
   return (
     <div className="rounded-xl bg-green-900 p-4 ring-1 ring-green-700">
       <h3 className="font-semibold">Classificação da noite</h3>
@@ -145,7 +146,7 @@ function Classificacao({ linhas }) {
         <tbody>
           {linhas.map((l) => (
             <tr key={l.team} className="border-t border-green-800 text-center">
-              <td className="py-1 text-left font-semibold">Time {l.team}</td>
+              <td className="py-1 text-left font-semibold">{nomeDoTime(partida, l.team)}</td>
               <td>{l.games}</td>
               <td>{l.wins}</td>
               <td>{l.draws}</td>

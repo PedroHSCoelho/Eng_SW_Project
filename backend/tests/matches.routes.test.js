@@ -371,6 +371,18 @@ describe('GET /api/grupos/1/matches: placar na lista', () => {
 describe('PUT /api/grupos/1/matches/:id (editar data e local)', () => {
   const novosDados = { date: '2026-12-05T20:00:00-03:00', location: 'Quadra nova' }
 
+  it('nomes livres dos times: guarda ao criar, aparece na lista e muda ao editar', async () => {
+    const { chefe } = await cenario()
+    const criada = await chefe.post('/api/grupos/1/matches', { ...novaPartida, teamNames: { A: 'Amarelo', B: 'Azul' } })
+    expect(criada.status).toBe(201)
+    expect(criada.body.data.teamNames).toEqual({ A: 'Amarelo', B: 'Azul' })
+    const lista = (await chefe.get('/api/grupos/1/matches')).body.data
+    expect(lista.find((p) => p.id === criada.body.data.id).teamNames).toEqual({ A: 'Amarelo', B: 'Azul' })
+    const editada = await chefe.put(`/api/grupos/1/matches/${criada.body.data.id}`, { ...novaPartida, teamNames: { A: 'Com camisa' } })
+    expect(editada.body.data.teamNames).toEqual({ A: 'Com camisa' })
+    expect((await chefe.post('/api/grupos/1/matches', { ...novaPartida, teamNames: { A: 'Azul', B: 'AZUL' } })).status).toBe(422)
+  })
+
   it('organizador edita a partida agendada: 200 com os novos dados', async () => {
     const { chefe } = await cenario()
     await chefe.post('/api/grupos/1/matches', novaPartida)

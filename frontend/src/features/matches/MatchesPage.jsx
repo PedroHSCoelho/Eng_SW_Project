@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ehOrganizadorDo, useGrupo } from '../groups/GrupoContext.jsx'
 import { criarPartida, listarPartidas } from './matchesApi.js'
-import { STATUS, formatarData } from './textos.js'
+import { STATUS, formatarData, nomeDoTime } from './textos.js'
 import SeletorDeFormato from './SeletorDeFormato.jsx'
+import NomesDosTimes, { nomesParaEnviar } from './NomesDosTimes.jsx'
 import AbasDePartidas from './AbasDePartidas.jsx'
 
 const campo =
@@ -19,6 +20,7 @@ export default function MatchesPage() {
   const [local, setLocal] = useState('')
   const [vagas, setVagas] = useState('')
   const [formato, setFormato] = useState({ format: 'SINGLE_GAME', teamCount: 2 })
+  const [nomes, setNomes] = useState({})
   const [enviando, setEnviando] = useState(false)
 
   useEffect(() => {
@@ -43,6 +45,8 @@ export default function MatchesPage() {
         location: local,
         maxPlayers: vagas === '' ? null : Number(vagas),
         ...formato,
+        // Nomes livres dos times só vão quando alguém preencheu.
+        ...(nomesParaEnviar(formato, nomes) && { teamNames: nomesParaEnviar(formato, nomes) }),
       })
       navegar(`/partidas/${nova.id}`) // já abre a súmula para escalar os times
     } catch (e) {
@@ -71,6 +75,7 @@ export default function MatchesPage() {
         >
           <h3 className="font-semibold sm:col-span-4">Nova partida</h3>
           <SeletorDeFormato valor={formato} aoMudar={setFormato} className="sm:col-span-4" />
+          <NomesDosTimes formato={formato} valor={nomes} aoMudar={setNomes} className="sm:col-span-4" />
           <label className="text-sm">
             Data e hora
             <input
@@ -155,7 +160,7 @@ export default function MatchesPage() {
                     p.score &&
                     ['IN_PROGRESS', 'FINISHED'].includes(p.status) && (
                       <span className="mb-1 block font-bold tabular-nums">
-                        Time A {p.score.A} x {p.score.B} Time B
+                        {nomeDoTime(p, 'A')} {p.score.A} x {p.score.B} {nomeDoTime(p, 'B')}
                       </span>
                     )
                   )}

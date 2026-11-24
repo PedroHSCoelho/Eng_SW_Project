@@ -6,7 +6,7 @@ import { ehOrganizadorDo, useGrupo } from './GrupoContext.jsx'
 import { alterarMembro, gerarNovoConvite, listarMembros, removerMembro } from './groupsApi.js'
 import { alerta, botaoSecundario, campo, cartao } from './estilos.js'
 
-const PAPEL = { ORGANIZER: 'Organizador', MEMBER: 'Membro' }
+const PAPEL = { ORGANIZER: 'Admin', MEMBER: 'Membro' }
 
 // Membros do grupo atual. Todos veem a lista e podem sair; o organizador também convida,
 // muda papéis, vincula conta a jogador e remove pessoas. As regras (ex.: nunca ficar sem
@@ -150,7 +150,7 @@ export default function MembersPage() {
                       }}
                     >
                       <option value="MEMBER">Membro</option>
-                      <option value="ORGANIZER">Organizador</option>
+                      <option value="ORGANIZER">Admin</option>
                     </select>
                     <select
                       aria-label={`Jogador de ${m.user.name}`}

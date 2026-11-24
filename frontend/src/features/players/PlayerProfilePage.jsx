@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { buscarEstatisticas, buscarJogador, buscarNotas } from '../rankings/rankingApi.js'
+import { buscarEstatisticas, buscarJogador } from '../rankings/rankingApi.js'
 import { POSICOES } from './PlayerForm.jsx'
 
 const PERIODOS = { tudo: 'Tudo', ano: 'Este ano', mes: 'Este mês' }
+
+// 3.5 -> "3,5"; 4 -> "4"
+export const formatarNota = (nota) => nota.toLocaleString('pt-BR', { maximumFractionDigits: 1 })
 
 const RESULTADOS = {
   V: { nome: 'Vitória', classe: 'bg-green-500 text-green-950' },
@@ -35,9 +38,9 @@ export default function PlayerProfilePage() {
     setErro('')
     setPeriodo('tudo')
     setErroDoPeriodo('')
-    // As três consultas são independentes: rodam juntas e a tela só aparece quando todas voltam.
-    Promise.all([buscarJogador(id), buscarEstatisticas(id), buscarNotas(id)])
-      .then(([jogador, stats, notas]) => ativo && setDados({ jogador, stats, notas }))
+    // As duas consultas são independentes: rodam juntas e a tela só aparece quando as duas voltam.
+    Promise.all([buscarJogador(id), buscarEstatisticas(id)])
+      .then(([jogador, stats]) => ativo && setDados({ jogador, stats }))
       .catch((e) => ativo && setErro(e.message))
     return () => {
       ativo = false
@@ -66,7 +69,7 @@ export default function PlayerProfilePage() {
   }
   if (!dados) return <p className="text-center text-green-200">Carregando…</p>
 
-  const { jogador, stats, notas } = dados
+  const { jogador, stats } = dados
   return (
     <section className="mx-auto max-w-5xl px-4 pb-16" aria-labelledby="titulo-perfil">
       <Link to="/ranking" className="text-sm underline">
@@ -116,15 +119,22 @@ export default function PlayerProfilePage() {
         <Numero rotulo="Cartões vermelhos" valor={stats.redCards ?? 0} />
       </div>
 
-      <h3 className="mt-6 text-lg font-semibold">Média de notas</h3>
-      <p className="text-xs text-green-300">A média considera todas as avaliações (o período vale só para as estatísticas).</p>
-      {notas.geral.average === null ? (
-        <p className="mt-2 text-green-200">{notas.mensagem ?? 'sem avaliações suficientes'}</p>
-      ) : (
-        <p className="mt-2 text-green-100">
-          <span className="text-3xl font-bold tabular-nums">{notas.geral.average.toFixed(1)}</span>{' '}
-          <span className="text-sm text-green-200">em {notas.geral.count} avaliações</span>
-        </p>
+      {/* A API só manda a nota do admin para quem é admin; para os outros o campo nem existe. */}
+      {'skill' in jogador && (
+        <>
+          <h3 className="mt-6 text-lg font-semibold">Nota do admin</h3>
+          <p className="text-xs text-green-300">Só os admins veem. É ela que equilibra o sorteio dos times.</p>
+          <p className="mt-2 text-green-100">
+            {jogador.skill === null ? (
+              <span className="text-green-200">Ainda sem nota (no sorteio conta como 2,5).</span>
+            ) : (
+              <>
+                <span className="text-3xl font-bold tabular-nums">{formatarNota(jogador.skill)}</span>{' '}
+                <span className="text-sm text-green-200">de 5</span>
+              </>
+            )}
+          </p>
+        </>
       )}
 
       <h3 className="mt-6 text-lg font-semibold">Últimas partidas</h3>

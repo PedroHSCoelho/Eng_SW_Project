@@ -27,10 +27,10 @@ async function cenario() {
   ctx.participacaoDe('chefe@x.com').role = 'ORGANIZER'
   const maria = await cadastrar(ctx.app, 'Maria')
   const sortear = (cookie, corpo) => request(ctx.app).post('/api/grupos/1/sorteio').set('Cookie', cookie).send(corpo)
-  // Notas recebidas direto no repositório em memória: `deNotas(5, [5, 5, 5])` = jogador 5 com média 5.
-  const darNotas = (ratedId, scores) =>
-    scores.forEach((score, i) => ctx.ratingsRepo.notas.push({ id: 1000 + ratedId * 10 + i, matchId: 1, raterId: 90 + i, ratedId, score }))
-  return { ...ctx, chefe, maria, sortear, darNotas }
+  // Nota do admin pela própria API: `darNota(5, 4.5)` = jogador 5 com nota 4,5.
+  const darNota = (id, skill) =>
+    request(ctx.app).patch(`/api/grupos/1/players/${id}/nota`).set('Cookie', chefe).send({ skill })
+  return { ...ctx, chefe, maria, sortear, darNota }
 }
 
 const idsDe = (time) => time.players.map((p) => p.id).sort((a, b) => a - b)
@@ -52,29 +52,30 @@ describe('POST /api/grupos/1/sorteio', () => {
     expect(teamA.players).toHaveLength(3)
     expect(teamB.players).toHaveLength(3)
     expect([...idsDe(teamA), ...idsDe(teamB)].sort()).toEqual([1, 2, 3, 4, 5, 6])
-    expect(difference).toBe(0) // todos sem média = 3,0
-    expect(teamA.players[0]).toMatchObject({ nickname: expect.any(String), position: expect.any(String), strength: 3 })
+    expect(difference).toBe(0) // todos sem nota = 2,5
+    expect(teamA.players[0]).toMatchObject({ nickname: expect.any(String), position: expect.any(String), strength: 2.5 })
   })
 
-  it('a força vem das médias de notas reais: os dois melhores ficam em times diferentes', async () => {
-    const { chefe, sortear, darNotas } = await cenario()
-    darNotas(1, [5, 5, 5]) // média 5
-    darNotas(2, [5, 5, 5]) // média 5
+  it('a força vem da nota do admin: os dois melhores ficam em times diferentes', async () => {
+    const { chefe, sortear, darNota } = await cenario()
+    expect((await darNota(1, 5)).status).toBe(200)
+    expect((await darNota(2, 5)).status).toBe(200)
 
     const { teamA, teamB } = (await sortear(chefe, { playerIds: [1, 2, 3, 4, 5, 6] })).body.data
 
     expect(idsDe(teamA).includes(1)).not.toBe(idsDe(teamA).includes(2))
-    expect(teamA.strength).toBe(teamB.strength) // {5,3,3} x {5,3,3}
+    expect(teamA.strength).toBe(teamB.strength) // {5; 2,5; 2,5} x {5; 2,5; 2,5}
   })
 
-  it('com menos de 3 notas o jogador ainda vale 3,0 (média não existe)', async () => {
-    const { chefe, sortear, darNotas } = await cenario()
-    darNotas(1, [5, 5]) // só 2 notas: sem média
+  it('meio ponto conta, e quem não tem nota vale 2,5', async () => {
+    const { chefe, sortear, darNota } = await cenario()
+    await darNota(1, 0.5)
 
     const { teamA, teamB } = (await sortear(chefe, { playerIds: [1, 2, 3, 4, 5, 6] })).body.data
 
     const todos = [...teamA.players, ...teamB.players]
-    expect(todos.find((p) => p.id === 1).strength).toBe(3)
+    expect(todos.find((p) => p.id === 1).strength).toBe(0.5)
+    expect(todos.find((p) => p.id === 2).strength).toBe(2.5)
   })
 
   it('jogador inativo ou inexistente -> 422', async () => {

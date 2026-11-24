@@ -25,17 +25,19 @@ Um termo por conceito, usado igual nas conversas, requisitos, banco, API e códi
 | Grupo | `Group` | A pelada ou campeonato, como um grupo de WhatsApp: tem seus jogadores, partidas, ranking e histórico; qualquer pessoa cria um | time, liga, comunidade |
 | Participação | `Membership` | Uma conta dentro de um grupo, com o papel nesse grupo e (opcional) o jogador dela nesse grupo | inscrição |
 | Organizador | `GroupRole.ORGANIZER` | Participante que gerencia o grupo: cadastra jogadores, cria partidas, escala, lança gols, encerra a súmula, convida e muda papéis. Um grupo pode ter vários, nunca nenhum | admin, dono |
-| Membro | `GroupRole.MEMBER` | Participante comum: vê tudo do grupo e avalia os colegas nas partidas que jogou | jogador comum |
+| Membro | `GroupRole.MEMBER` | Participante comum: vê tudo do grupo, confirma presença, leva convidados e vota no craque das partidas que jogou | jogador comum |
 | Convite | `inviteCode` | Código de 8 caracteres (e o link com ele) que deixa uma conta entrar no grupo; gerar outro invalida o antigo | link, token |
-| Avaliação / Nota | `Rating` / `ratings` | Nota inteira de 1 a 5 dada por um participante a outro após a partida | review, voto |
-| Nota média | `averageRating` | Média das notas recebidas por um jogador | score |
-| Sorteio de times | `draw` / `sorteio` | Sugestão de dois times equilibrados entre os presentes, pela média de notas | divisão, montagem |
-| Força | `strength` | Média de notas do jogador (3,0 se ainda não tem média); a do time é a média dos jogadores | rating, nível |
-| Destaque da partida | `destaque` | Jogador com a maior média de notas na partida (mínimo de 3 notas; empate desfeito por gols) | craque, MVP |
+| Nota do admin | `Player.skill` / `PATCH /players/:id/nota` | Nota de 0 a 5, de meio em meio ponto, que um admin dá a um jogador; só os admins veem. Serve para equilibrar o sorteio | avaliação, rating |
+| Sorteio de times | `draw` / `sorteio` | Sugestão de times equilibrados (2 a 6) entre os presentes, pela nota do admin | divisão, montagem |
+| Força | `strength` | Nota do admin do jogador (2,5 se ainda não tem); a do time é a média dos jogadores | rating, nível |
+| Craque da partida | `MvpVote` / `/matches/:id/craque` | Escolhido por votação de quem jogou, até 48 horas depois de encerrar; ninguém vota em si mesmo; empate dá mais de um craque | MVP, destaque |
+| Talvez | `Attendance.maybe` | Quem ainda não sabe se vai: entra no fim da lista de espera mesmo com vaga sobrando | dúvida |
+| Convidado | `MatchGuest` | Pessoa sem cadastro que um participante leva à partida; ocupa as vagas que sobram depois dos jogadores | agregado, avulso |
+| Nomes dos times | `Match.teamNames` | Nome livre de cada time da partida (até 20 caracteres); sem nome, aparece "Time A" | cor, camisa |
 | Ranking | `rankings` | Classificação geral derivada das estatísticas | tabela |
 | Estatísticas | — | Gols, assistências, partidas disputadas (derivadas das partidas) | stats |
 
 ## Regras do domínio (a confirmar com o grupo)
 - Estatísticas e ranking **derivam** das partidas registradas e se atualizam automaticamente.
-- Nota: inteiro de 1 a 5.
+- Nota do admin: de 0 a 5, de meio em meio ponto, visível só aos admins.
 - Perguntas em aberto (preencher na descoberta): Um jogador pode se autoavaliar? Pode avaliar mais de uma vez na mesma partida? Como o ranking desempata (gols? assistências? nota média? pontos por vitória)? Há times fixos ou só placar? Quem pode registrar/editar a súmula? Existe login?

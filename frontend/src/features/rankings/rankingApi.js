@@ -1,4 +1,4 @@
-// Acesso HTTP ao ranking, às estatísticas e às notas (o formato { data } / { erro } é tratado em api/http.js).
+// Acesso HTTP ao ranking e às estatísticas (o formato { data } / { erro } é tratado em api/http.js).
 // Nenhuma conta aqui: pontos, desempates e médias são calculados no back-end.
 import { pedir } from '../../api/http.js'
 import { apiDoGrupo } from '../../api/grupoAtual.js'
@@ -16,8 +16,4 @@ export function buscarJogador(id) {
 // periodo: 'mes' | 'ano' | 'tudo' (sem o parâmetro = tudo)
 export function buscarEstatisticas(id, periodo = 'tudo') {
   return pedir(`${apiDoGrupo()}/players/${id}/stats${periodo === 'tudo' ? '' : `?periodo=${encodeURIComponent(periodo)}`}`)
-}
-
-export function buscarNotas(id) {
-  return pedir(`${apiDoGrupo()}/players/${id}/ratings`)
 }

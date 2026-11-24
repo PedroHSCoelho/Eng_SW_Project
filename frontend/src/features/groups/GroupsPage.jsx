@@ -5,7 +5,7 @@ import { useGrupo } from './GrupoContext.jsx'
 import { criarGrupo } from './groupsApi.js'
 import { alerta, botaoPrincipal, botaoSecundario, campo, cartao } from './estilos.js'
 
-const PAPEL = { ORGANIZER: 'Organizador', MEMBER: 'Membro' }
+const PAPEL = { ORGANIZER: 'Admin', MEMBER: 'Membro' }
 
 // "Meus grupos": abrir um grupo, criar um novo (vira organizador) ou entrar com um código.
 export default function GroupsPage() {
@@ -87,7 +87,7 @@ export default function GroupsPage() {
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <form onSubmit={criar} className={`${cartao} grid gap-3`} aria-label="Criar grupo">
           <h3 className="font-semibold">Criar um grupo</h3>
-          <p className="text-sm text-green-200">Você vira o organizador e convida a galera pelo código.</p>
+          <p className="text-sm text-green-200">Você vira admin e convida a galera pelo código.</p>
           <label className="text-sm">
             Nome do grupo
             <input

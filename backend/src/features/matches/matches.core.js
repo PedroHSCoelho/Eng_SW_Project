@@ -28,7 +28,35 @@ export function validarDadosDaPartida(dados) {
   ) {
     throw new ValidationError(`Vagas devem ser um número inteiro de ${VAGAS_MINIMAS} a ${VAGAS_MAXIMAS} (ou vazio, sem limite)`)
   }
-  return { date: data, location, maxPlayers, ...lerFormato(dados) }
+  const formato = lerFormato(dados)
+  return { date: data, location, maxPlayers, ...formato, teamNames: lerNomesDosTimes(dados.teamNames, timesDaPartida(formato)) }
+}
+
+export const NOME_DO_TIME_MAXIMO = 20
+
+// Nomes livres dos times (opcional): { A: 'Amarelo', B: 'Azul' }. Nome vazio = usa "Time A".
+// Só valem os times da partida; dois times não podem ter o mesmo nome. Sem nenhum nome = null.
+export function lerNomesDosTimes(valor, times) {
+  if (valor === undefined || valor === null) return null
+  if (typeof valor !== 'object' || Array.isArray(valor)) {
+    throw new ValidationError('Nomes dos times inválidos; use { "A": "Amarelo", "B": "Azul" }')
+  }
+  const nomes = {}
+  for (const [time, nome] of Object.entries(valor)) {
+    if (!TIMES.includes(time)) throw new ValidationError(`Time inválido nos nomes: ${time}`)
+    if (nome !== null && nome !== undefined && typeof nome !== 'string') {
+      throw new ValidationError(`O nome do Time ${time} deve ser um texto`)
+    }
+    const texto = (nome ?? '').trim()
+    if (texto === '' || !times.includes(time)) continue // vazio ou time que a partida não tem: ignora
+    if (texto.length > NOME_DO_TIME_MAXIMO) {
+      throw new ValidationError(`O nome do Time ${time} deve ter até ${NOME_DO_TIME_MAXIMO} caracteres`)
+    }
+    nomes[time] = texto
+  }
+  const usados = Object.values(nomes).map((n) => n.toLowerCase())
+  if (new Set(usados).size !== usados.length) throw new BusinessRuleError('Dois times não podem ter o mesmo nome')
+  return Object.keys(nomes).length > 0 ? nomes : null
 }
 
 // Lista de ids de um time, vinda do corpo da requisição: precisa ser uma lista

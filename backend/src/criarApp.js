@@ -13,7 +13,7 @@ import { criarPlayersRouter } from './features/players/players.routes.js'
 import { criarAuthRouter } from './features/auth/auth.routes.js'
 import { criarMatchesRouter } from './features/matches/matches.routes.js'
 import { criarStatsRouter } from './features/stats/stats.routes.js'
-import { criarRatingsRouter } from './features/ratings/ratings.routes.js'
+import { criarCraqueRouter } from './features/craque/craque.routes.js'
 import { criarDrawRouter } from './features/draw/draw.routes.js'
 import { criarAttendanceRouter } from './features/attendance/attendance.routes.js'
 import { criarConvitesRouter, criarGroupRouter, criarGroupsRouter } from './features/groups/groups.routes.js'
@@ -23,7 +23,7 @@ export function criarApp({
   authService,
   matchesService,
   statsService,
-  ratingsService,
+  craqueService,
   drawService,
   groupsService,
   attendanceService,
@@ -51,9 +51,9 @@ export function criarApp({
   const dentroDoGrupo = Router({ mergeParams: true })
   // O grupo em si: ver, renomear, convite, membros.
   dentroDoGrupo.use('/', criarGroupRouter(groupsService, { exigirOrganizadorDoGrupo }))
-  // Avaliações: qualquer participante avalia (se jogou a partida). Vem ANTES de /matches, que bloqueia
-  // escrita de quem não é organizador; este router só responde pelos próprios caminhos.
-  dentroDoGrupo.use('/', criarRatingsRouter(ratingsService))
+  // Votação do craque: quem jogou vota. Vem ANTES de /matches, que bloqueia escrita de quem não é
+  // admin; este router só responde pelos próprios caminhos.
+  dentroDoGrupo.use('/', criarCraqueRouter(craqueService))
   // Lista de presença: cada membro confirma o próprio nome; o organizador mexe em qualquer um.
   // Também ANTES de /matches, pelo mesmo motivo.
   dentroDoGrupo.use('/', criarAttendanceRouter(attendanceService))

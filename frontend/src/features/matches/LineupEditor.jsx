@@ -17,7 +17,7 @@ const iguais = (a, b) => {
 // as regras (mínimo de 3 por time, jogador só em um time) são do back-end, que responde 422.
 // `confirmados` (ids da lista de presença) aparecem primeiro e podem ser sorteados nos times.
 // `times`: ['A', 'B'] no jogo único; na pelada, de 3 a 6 times.
-export default function LineupEditor({ jogadores, times = ['A', 'B'], confirmados = [], escalacao, enviando, aoSalvar, aoIniciar }) {
+export default function LineupEditor({ jogadores, times = ['A', 'B'], nomeDoTime = (t) => `Time ${t}`, confirmados = [], escalacao, enviando, aoSalvar, aoIniciar }) {
   const salva = deEscalacao(escalacao)
   const [selecao, setSelecao] = useState(salva)
   const [sorteando, setSorteando] = useState(false)
@@ -62,7 +62,7 @@ export default function LineupEditor({ jogadores, times = ['A', 'B'], confirmado
     <div className="mt-4 rounded-xl bg-green-900 p-5 ring-1 ring-green-700">
       <h3 className="font-semibold">Escalação</h3>
       <p className="mt-1 text-sm text-green-200">
-        {times.map((t) => `Time ${t}: ${idsDoTime(t).length}`).join(' · ')} (mínimo de 3 por time para começar)
+        {times.map((t) => `${nomeDoTime(t)}: ${idsDoTime(t).length}`).join(' · ')} (mínimo de 3 por time para começar)
       </p>
       {jogadores.length === 0 ? (
         <p className="mt-3 text-green-200">Cadastre jogadores ativos para montar os times.</p>
@@ -83,7 +83,7 @@ export default function LineupEditor({ jogadores, times = ['A', 'B'], confirmado
                 <option value="">Fora</option>
                 {times.map((t) => (
                   <option key={t} value={t}>
-                    Time {t}
+                    {nomeDoTime(t)}
                   </option>
                 ))}
               </select>
