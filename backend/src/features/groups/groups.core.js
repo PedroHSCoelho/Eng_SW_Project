@@ -42,7 +42,7 @@ export function validarPapelNoGrupo(papel) {
 // Vale para rebaixar, remover e sair: em todos, um organizador deixa de ser organizador.
 export function verificarSobraOrganizador({ alvo, totalOrganizadores }) {
   if (alvo.role === 'ORGANIZER' && totalOrganizadores <= 1) {
-    throw new BusinessRuleError('O grupo precisa ter ao menos um organizador')
+    throw new BusinessRuleError('O grupo precisa ter ao menos um admin')
   }
 }
 
@@ -50,7 +50,7 @@ export function verificarSobraOrganizador({ alvo, totalOrganizadores }) {
 export function verificarPodeRemover({ quemPede, alvo }) {
   const ehOProprio = quemPede.userId === alvo.userId
   if (!ehOProprio && quemPede.role !== 'ORGANIZER') {
-    throw new BusinessRuleError('Só um organizador pode remover outra pessoa do grupo')
+    throw new BusinessRuleError('Só um admin pode remover outra pessoa do grupo')
   }
 }
 

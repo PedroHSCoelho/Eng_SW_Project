@@ -140,6 +140,37 @@ describe('MatchesPage: formato, vagas e lista de presença', () => {
     expect(JSON.parse(opcoes.body)).toMatchObject({ format: 'PELADA', teamCount: 4, maxPlayers: 20, location: 'Society' })
   })
 
+  it('dá nomes livres aos times (um campo por time; vazio fica "Time X")', async () => {
+    fetch.mockImplementation(async (url, opcoes = {}) =>
+      opcoes.method === 'POST' ? resposta(201, { data: { id: 9 } }) : resposta(200, { data: [] }),
+    )
+    renderizar()
+    await screen.findByText('Nenhuma partida registrada ainda.')
+    expect(screen.getByLabelText('Nome do Time A')).toHaveAttribute('placeholder', 'Time A')
+    expect(screen.queryByLabelText('Nome do Time C')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('radio', { name: /Pelada/ }))
+    fireEvent.change(screen.getByLabelText('Nome do Time A'), { target: { value: ' Amarelo ' } })
+    fireEvent.change(screen.getByLabelText('Nome do Time C'), { target: { value: 'Verde' } })
+    fireEvent.change(screen.getByLabelText('Data e hora'), { target: { value: '2026-11-20T19:00' } })
+    fireEvent.change(screen.getByLabelText('Local'), { target: { value: 'Society' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Criar partida' }))
+
+    await screen.findByText('Súmula aberta')
+    const [, opcoes] = fetch.mock.calls.find(([, o]) => o?.method === 'POST')
+    expect(JSON.parse(opcoes.body).teamNames).toEqual({ A: 'Amarelo', C: 'Verde' })
+  })
+
+  it('a lista mostra os nomes dos times no placar', async () => {
+    fetch.mockResolvedValue(
+      resposta(200, {
+        data: [{ id: 1, date: '2026-11-20T22:00:00.000Z', location: 'Quadra', status: 'FINISHED', result: 'A_WINS', score: { A: 2, B: 1 }, teamNames: { A: 'Amarelo' } }],
+      }),
+    )
+    renderizar()
+    expect(await screen.findByText('Amarelo 2 x 1 Time B')).toBeInTheDocument()
+  })
+
   it('agendada mostra quantos estão na lista; pelada mostra times e jogos no lugar do placar', async () => {
     fetch.mockImplementation(async () =>
       resposta(200, {

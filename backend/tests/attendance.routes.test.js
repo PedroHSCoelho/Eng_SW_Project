@@ -120,3 +120,80 @@ describe('lista de presença', () => {
     expect((await request(app).get(URL)).status).toBe(401)
   })
 })
+
+describe('lista de presença: talvez e convidados', () => {
+  it('"talvez" vai para a espera mesmo com vaga, e não sobe sozinho', async () => {
+    const { ana, bia } = await cenario({ maxPlayers: 2 })
+
+    const res = await ana.post(URL, { maybe: true })
+    await bia.post(URL)
+
+    expect(res.status).toBe(201)
+    const lista = (await ana.get(URL)).body.data
+    expect(lista.me).toBe('MAYBE')
+    expect(lista.confirmed.map((l) => l.playerId)).toEqual([2])
+    expect(lista.waitlist.map((l) => [l.playerId, l.maybe])).toEqual([[1, true]])
+    expect(lista.openSpots).toBe(1)
+  })
+
+  it('quem está como talvez confirma depois (e quem confirmou pode mudar para talvez)', async () => {
+    const { ana, bia, caio } = await cenario({ maxPlayers: 2 })
+    await ana.post(URL, { maybe: true })
+    await bia.post(URL)
+
+    const confirmou = (await ana.post(URL, { maybe: false })).body.data
+    expect(confirmou.me).toBe('CONFIRMED')
+    expect(confirmou.confirmed.map((l) => l.playerId)).toEqual([2, 1])
+
+    await caio.post(URL) // lista cheia: Caio na espera
+    const mudou = (await bia.post(URL, { maybe: true })).body.data
+    // Bia virou talvez: a vaga dela vai para o Caio, que estava esperando.
+    expect(mudou.confirmed.map((l) => l.playerId)).toEqual([1, 3])
+    expect(mudou.waitlist.map((l) => [l.playerId, l.maybe])).toEqual([[2, true]])
+  })
+
+  it('talvez inválido -> 400', async () => {
+    const { ana } = await cenario()
+    expect((await ana.post(URL, { maybe: 'sim' })).status).toBe(400)
+  })
+
+  it('convidados ocupam só as vagas que sobram depois do grupo', async () => {
+    const { ana, bia, caio } = await cenario({ maxPlayers: 3 })
+    const CONVIDADOS = '/api/grupos/1/matches/1/convidados'
+
+    await ana.post(URL)
+    const comPrimo = await ana.post(CONVIDADOS, { name: '  Primo   do Zé ' })
+    expect(comPrimo.status).toBe(201)
+    expect(comPrimo.body.data.guests).toEqual([
+      { id: 1, name: 'Primo do Zé', invitedBy: { playerId: 1, nickname: 'J1' }, status: 'CONFIRMED' },
+    ])
+    expect(comPrimo.body.data.openSpots).toBe(1)
+
+    await bia.post(URL)
+    await caio.post(URL) // o 3º do grupo passa na frente do convidado
+    const lista = (await ana.get(URL)).body.data
+    expect(lista.confirmed.map((l) => l.playerId)).toEqual([1, 2, 3])
+    expect(lista.guests[0].status).toBe('WAITLIST')
+    expect(lista.openSpots).toBe(0)
+  })
+
+  it('quem levou ou um admin tira o convidado; outro membro não (403)', async () => {
+    const { ana, bia, chefe } = await cenario()
+    const CONVIDADOS = '/api/grupos/1/matches/1/convidados'
+    await ana.post(CONVIDADOS, { name: 'Primo' })
+    await ana.post(CONVIDADOS, { name: 'Vizinho' })
+
+    expect((await bia.delete(`${CONVIDADOS}/1`)).status).toBe(403)
+    expect((await ana.delete(`${CONVIDADOS}/1`)).body.data.guests.map((g) => g.name)).toEqual(['Vizinho'])
+    expect((await chefe.delete(`${CONVIDADOS}/2`)).body.data.guests).toEqual([])
+    expect((await chefe.delete(`${CONVIDADOS}/2`)).status).toBe(404)
+  })
+
+  it('admin sem jogador põe convidado; membro sem jogador não; nome curto -> 400', async () => {
+    const { chefe, semjogador } = await cenario()
+    const CONVIDADOS = '/api/grupos/1/matches/1/convidados'
+    expect((await chefe.post(CONVIDADOS, { name: 'Amigo' })).body.data.guests[0].invitedBy).toBeNull()
+    expect((await semjogador.post(CONVIDADOS, { name: 'Amigo' })).status).toBe(422)
+    expect((await chefe.post(CONVIDADOS, { name: 'A' })).status).toBe(400)
+  })
+})

@@ -75,8 +75,7 @@ describe('um grupo não enxerga o outro', () => {
     expect((await ana.get(`${quinta.base}/matches/${firma.partidaId}`)).status).toBe(404)
     expect((await ana.get(`${quinta.base}/players/${firma.ids[0]}`)).status).toBe(404)
     expect((await ana.get(`${quinta.base}/players/${firma.ids[0]}/stats`)).status).toBe(404)
-    expect((await ana.get(`${quinta.base}/players/${firma.ids[0]}/ratings`)).status).toBe(404)
-    expect((await ana.get(`${quinta.base}/matches/${firma.partidaId}/destaque`)).status).toBe(404)
+    expect((await ana.get(`${quinta.base}/matches/${firma.partidaId}/craque`)).status).toBe(404)
   })
 
   it('não escala nem sorteia jogador de outro grupo (vira "não existe")', async () => {

@@ -1,3 +1,4 @@
+import { doTime } from './textos.js'
 // Funções puras da pelada na tela (sem React). As regras de verdade são do back-end.
 import { timesDaPartida } from './textos.js'
 
@@ -26,8 +27,8 @@ export function sugerirProximoJogo(partida) {
   return { homeTeam: fila[0], awayTeam: ultimo.homeTeam } // pelada de 3: entra o de fora contra um deles
 }
 
-export function textoDoResultado(jogo) {
+export function textoDoResultado(jogo, partida) {
   if (!jogo.result) return 'em andamento'
   if (jogo.result === 'DRAW') return 'empate'
-  return `vitória do Time ${vencedor(jogo)}`
+  return `vitória ${doTime(partida, vencedor(jogo))}`
 }

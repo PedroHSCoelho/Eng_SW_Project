@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import SeletorDeFormato from './SeletorDeFormato.jsx'
+import NomesDosTimes, { nomesParaEnviar } from './NomesDosTimes.jsx'
 
 const campo =
   'w-full rounded-lg bg-green-950 px-3 py-2 text-white ring-1 ring-green-700 focus:outline-none focus:ring-2 focus:ring-green-400'
@@ -20,7 +21,10 @@ export default function MatchEditForm({ partida, enviando, aoSalvar }) {
   const [vagas, setVagas] = useState(inicial.vagas)
   const formatoInicial = { format: partida.format ?? 'SINGLE_GAME', teamCount: partida.teamCount ?? 2 }
   const [formato, setFormato] = useState(formatoInicial)
+  const nomesIniciais = partida.teamNames ?? {}
+  const [nomes, setNomes] = useState(nomesIniciais)
   const alterado =
+    JSON.stringify(nomesParaEnviar(formato, nomes)) !== JSON.stringify(nomesParaEnviar(formatoInicial, nomesIniciais)) ||
     data !== inicial.data ||
     local !== inicial.local ||
     vagas !== inicial.vagas ||
@@ -36,12 +40,14 @@ export default function MatchEditForm({ partida, enviando, aoSalvar }) {
           location: local,
           maxPlayers: vagas === '' ? null : Number(vagas),
           ...formato,
+          teamNames: nomesParaEnviar(formato, nomes),
         })
       }}
       className="mt-4 grid gap-3 rounded-xl bg-green-900 p-5 ring-1 ring-green-700 sm:grid-cols-4"
     >
-      <h3 className="font-semibold sm:col-span-4">Data, local e vagas</h3>
+      <h3 className="font-semibold sm:col-span-4">Data, local, vagas e times</h3>
       <SeletorDeFormato valor={formato} aoMudar={setFormato} className="sm:col-span-4" />
+      <NomesDosTimes formato={formato} valor={nomes} aoMudar={setNomes} className="sm:col-span-4" />
       <label className="text-sm">
         Data e hora
         <input

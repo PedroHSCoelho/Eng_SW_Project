@@ -37,7 +37,11 @@ import { lerFiltrosDoHistorico, montarHistorico } from './history.core.js'
 // Na pelada, cada jogo sai com o seu placar e a partida traz a classificação da noite (`standings`).
 function comPlacar(partida) {
   const gols = partida.goals ?? []
-  const comTudo = { ...partida, score: calcularPlacar(gols, timesDaPartida(partida)) }
+  const comTudo = {
+    ...partida,
+    teamNames: partida.teamNames ?? null,
+    score: calcularPlacar(gols, timesDaPartida(partida)),
+  }
   if (!ehPelada(partida)) return comTudo
   return {
     ...comTudo,
@@ -65,8 +69,8 @@ export function criarMatchesService({ matchesRepo, playersRepo, agora = () => ne
     async listar(groupId) {
       // `attendance`: quantos estão na lista de presença (confirmados + espera) e as vagas.
       return (await matchesRepo.listar(groupId)).map(
-        ({ id, date, location, status, result, goals, maxPlayers = null, format = 'SINGLE_GAME', teamCount = 2, _count }) => ({
-          id, date, location, status, result, format, teamCount,
+        ({ id, date, location, status, result, goals, maxPlayers = null, format = 'SINGLE_GAME', teamCount = 2, teamNames = null, _count }) => ({
+          id, date, location, status, result, format, teamCount, teamNames,
           score: calcularPlacar(goals ?? [], timesDaPartida({ teamCount })),
           attendance: { total: _count?.attendances ?? 0, maxPlayers },
           gamesCount: _count?.games ?? 0,

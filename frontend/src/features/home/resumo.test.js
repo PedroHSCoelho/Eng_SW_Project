@@ -45,12 +45,15 @@ describe('montarPodio', () => {
 })
 
 describe('escolherCobra', () => {
-  it('prefere o destaque da última partida', () => {
-    const destaque = { playerId: 2, nickname: 'Tico', average: 8.5, count: 4, goals: 1 }
-    expect(escolherCobra(destaque, null)).toEqual({ tipo: 'destaque', id: 2, nome: 'Tico', media: 8.5, gols: 1 })
+  it('prefere o craque votado na última partida; empate junta os nomes', () => {
+    const um = { craques: [{ playerId: 2, nickname: 'Tico', votes: 4 }] }
+    expect(escolherCobra(um, null)).toEqual({ tipo: 'craque', id: 2, nome: 'Tico', votos: 4, empate: false })
+    const dois = { craques: [{ playerId: 2, nickname: 'Tico', votes: 3 }, { playerId: 5, nickname: 'Bia', votes: 3 }] }
+    expect(escolherCobra(dois, null)).toMatchObject({ nome: 'Tico e Bia', votos: 3, empate: true })
   })
 
-  it('sem destaque usa o artilheiro geral; sem nada, null', () => {
+  it('sem votos usa o artilheiro geral; sem nada, null', () => {
+    expect(escolherCobra({ craques: [] }, { artilharia: [{ playerId: 3, nickname: 'Bia', goals: 9 }] })).toMatchObject({ tipo: 'artilheiro' })
     const ranking = { artilharia: [{ playerId: 3, nickname: 'Bia', goals: 9 }] }
     expect(escolherCobra(null, ranking)).toEqual({ tipo: 'artilheiro', id: 3, nome: 'Bia', gols: 9 })
     expect(escolherCobra(null, null)).toBeNull()

@@ -152,7 +152,7 @@ function Layout() {
               <>
                 <span className="hidden max-w-40 truncate text-sm text-texto-suave lg:inline">
                   {usuario.name}
-                  {grupo && ` (${ehOrganizador ? 'Organizador' : 'Membro'})`}
+                  {grupo && ` (${ehOrganizador ? 'Admin' : 'Membro'})`}
                 </span>
                 <button
                   type="button"

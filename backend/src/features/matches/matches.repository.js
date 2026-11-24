@@ -35,7 +35,7 @@ export const matchesRepository = {
     prisma.match.findMany({
       where: { groupId, status: 'FINISHED' },
       select: {
-        id: true, status: true, result: true, date: true, location: true, format: true, teamCount: true,
+        id: true, status: true, result: true, date: true, location: true, format: true, teamCount: true, teamNames: true,
         players: { select: { playerId: true, team: true } },
         goals: { select: { scorerId: true, assistId: true, team: true, ownGoal: true, gameId: true } },
         games: { select: { id: true, number: true, homeTeam: true, awayTeam: true, result: true } },

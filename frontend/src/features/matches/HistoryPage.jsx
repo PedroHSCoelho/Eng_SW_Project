@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listarJogadores } from '../players/playersApi.js'
 import { buscarHistorico } from './historyApi.js'
-import { RESULTADO, formatarData } from './textos.js'
+import { formatarData, nomeDoTime, textoDoResultadoDaPartida } from './textos.js'
 import AbasDePartidas from './AbasDePartidas.jsx'
 
 const campo =
@@ -103,15 +103,15 @@ export default function HistoryPage() {
                         <>
                           <span className="block text-xl font-bold">Pelada · {p.gamesCount} jogo(s)</span>
                           <span className="text-sm text-green-200">
-                            {p.leader ? `Time ${p.leader} terminou na frente` : 'Sem jogos encerrados'}
+                            {p.leader ? `${nomeDoTime(p, p.leader)} terminou na frente` : 'Sem jogos encerrados'}
                           </span>
                         </>
                       ) : (
                         <>
                           <span className="block text-xl font-bold tabular-nums">
-                            Time A {p.score.A} x {p.score.B} Time B
+                            {nomeDoTime(p, 'A')} {p.score.A} x {p.score.B} {nomeDoTime(p, 'B')}
                           </span>
-                          <span className="text-sm text-green-200">{RESULTADO[p.result]}</span>
+                          <span className="text-sm text-green-200">{textoDoResultadoDaPartida(p)}</span>
                         </>
                       )}
                     </span>

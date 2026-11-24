@@ -14,8 +14,10 @@ function traduzirErroDeUnicidade(erro) {
 }
 
 export const playersRepository = {
-  listar({ groupId, busca, apenasAtivos }) {
+  // `comNota`: só para admin; a nota do admin vem escondida por padrão (ver db.js).
+  listar({ groupId, busca, apenasAtivos, comNota = false }) {
     return prisma.player.findMany({
+      omit: { skill: !comNota },
       where: {
         groupId,
         ...(apenasAtivos && { active: true }),
@@ -30,13 +32,14 @@ export const playersRepository = {
     })
   },
 
-  buscarPorId(id) {
-    return prisma.player.findUnique({ where: { id } })
+  buscarPorId(id, { comNota = false } = {}) {
+    return prisma.player.findUnique({ where: { id }, omit: { skill: !comNota } })
   },
 
   // Usado pela escalação (módulo matches) para conferir vários jogadores de uma vez.
-  buscarPorIds(ids) {
-    return prisma.player.findMany({ where: { id: { in: ids } } })
+  // O sorteio pede `comNota` (é a nota que equilibra os times).
+  buscarPorIds(ids, { comNota = false } = {}) {
+    return prisma.player.findMany({ where: { id: { in: ids } }, omit: { skill: !comNota } })
   },
 
   // O apelido é único dentro do grupo (@@unique([groupId, nicknameKey]) no schema).
@@ -52,9 +55,9 @@ export const playersRepository = {
     }
   },
 
-  async atualizar(id, dados) {
+  async atualizar(id, dados, { comNota = false } = {}) {
     try {
-      return await prisma.player.update({ where: { id }, data: dados })
+      return await prisma.player.update({ where: { id }, data: dados, omit: { skill: !comNota } })
     } catch (erro) {
       traduzirErroDeUnicidade(erro)
     }

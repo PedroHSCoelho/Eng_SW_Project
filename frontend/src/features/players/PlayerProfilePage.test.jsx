@@ -17,21 +17,16 @@ const stats = {
     { matchId: 2, date: '2026-11-05T22:00:00Z', resultado: 'E', golsPro: 1, golsContra: 1 },
   ],
 }
-const notasSuficientes = { geral: { average: 4.3, count: 3 }, porPartida: [], mensagem: null }
-const notasInsuficientes = {
-  geral: { average: null, count: 1 }, porPartida: [], mensagem: 'sem avaliações suficientes',
-}
 
 function resposta(status, corpo) {
   return { ok: status >= 200 && status < 300, status, json: async () => corpo }
 }
 
 // Simula a API por URL; o que não for configurado devolve 404.
-function simularApi({ jogadorResp = resposta(200, { data: jogador }), statsResp = stats, notas = notasSuficientes } = {}) {
+function simularApi({ jogadorResp = resposta(200, { data: jogador }), statsResp = stats } = {}) {
   fetch.mockImplementation(async (url) => {
     if (url === '/api/grupos/1/players/1') return jogadorResp
     if (url === '/api/grupos/1/players/1/stats') return resposta(200, { data: statsResp })
-    if (url === '/api/grupos/1/players/1/ratings') return resposta(200, { data: notas })
     return resposta(404, { erro: 'Rota não encontrada' })
   })
 }
@@ -67,21 +62,25 @@ describe('PlayerProfilePage', () => {
     expect(screen.getByText('Saldo de gols').previousSibling).toHaveTextContent('2')
   })
 
-  it('mostra a média de notas com 1 casa decimal quando existe', async () => {
-    simularApi()
+  it('admin vê a nota do admin com vírgula (a API só manda o campo para admin)', async () => {
+    simularApi({ jogadorResp: resposta(200, { data: { ...jogador, skill: 3.5 } }) })
 
     renderizar()
 
-    expect(await screen.findByText('4.3')).toBeInTheDocument()
-    expect(screen.getByText('em 3 avaliações')).toBeInTheDocument()
+    expect(await screen.findByText('3,5')).toBeInTheDocument()
+    expect(screen.getByText(/Só os admins veem/)).toBeInTheDocument()
   })
 
-  it('sem avaliações suficientes mostra o aviso em vez de uma média', async () => {
-    simularApi({ notas: notasInsuficientes })
-
+  it('admin vê "ainda sem nota" quando a nota é vazia; membro (sem o campo) não vê a seção', async () => {
+    simularApi({ jogadorResp: resposta(200, { data: { ...jogador, skill: null } }) })
     renderizar()
+    expect(await screen.findByText(/Ainda sem nota/)).toBeInTheDocument()
+    cleanup()
 
-    expect(await screen.findByText('sem avaliações suficientes')).toBeInTheDocument()
+    simularApi()
+    renderizar()
+    await screen.findByRole('heading', { name: 'Zé' })
+    expect(screen.queryByText('Nota do admin')).not.toBeInTheDocument()
   })
 
   it('mostra as últimas partidas como V, E ou D, mais recente primeiro', async () => {
@@ -121,7 +120,6 @@ describe('PlayerProfilePage: estatísticas por período', () => {
       if (url === '/api/grupos/1/players/1/stats') return resposta(200, { data: stats })
       if (url === '/api/grupos/1/players/1/stats?periodo=mes') return resposta(200, { data: doMes })
       if (url === '/api/grupos/1/players/1/stats?periodo=ano') return extra.ano ?? resposta(200, { data: stats })
-      if (url === '/api/grupos/1/players/1/ratings') return resposta(200, { data: notasSuficientes })
       return resposta(404, { erro: 'Rota não encontrada' })
     })
   }
@@ -136,10 +134,9 @@ describe('PlayerProfilePage: estatísticas por período', () => {
 
     await waitFor(() => expect(screen.getByText('Partidas').previousSibling).toHaveTextContent('1'))
     expect(screen.getByText('Gols').previousSibling).toHaveTextContent('2')
-    // O jogador e as notas não são buscados de novo: só as estatísticas.
+    // O jogador não é buscado de novo: só as estatísticas.
     const urls = fetch.mock.calls.map(([u]) => u)
     expect(urls.filter((u) => u === '/api/grupos/1/players/1')).toHaveLength(1)
-    expect(urls.filter((u) => u === '/api/grupos/1/players/1/ratings')).toHaveLength(1)
     expect(urls).toContain('/api/grupos/1/players/1/stats?periodo=mes')
   })
 
@@ -162,11 +159,5 @@ describe('PlayerProfilePage: estatísticas por período', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Período inválido')
     expect(screen.getByText('Partidas').previousSibling).toHaveTextContent('4')
-  })
-
-  it('avisa que a média de notas não depende do período', async () => {
-    simularPorPeriodo()
-    renderizar()
-    expect(await screen.findByText(/o período vale só para as estatísticas/)).toBeInTheDocument()
   })
 })

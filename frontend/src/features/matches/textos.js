@@ -21,3 +21,16 @@ export const timesDaPartida = (partida) => TIMES.slice(0, partida.teamCount ?? 2
 export const ehPelada = (partida) => partida?.format === 'PELADA'
 
 export const FORMATOS = { SINGLE_GAME: 'Jogo único', PELADA: 'Pelada (vários times)' }
+
+// Nome que a tela mostra para um time: o nome livre que o admin deu ("Amarelo") ou "Time A".
+export const nomeDoTime = (partida, time) => partida?.teamNames?.[time] || `Time ${time}`
+
+// "do Time A" ou, com nome livre, "de Amarelo" (o nome pode ser "Com camisa", que não leva artigo).
+export const doTime = (partida, time) => (partida?.teamNames?.[time] ? `de ${partida.teamNames[time]}` : `do Time ${time}`)
+
+// "Vitória do Time A" / "Vitória de Amarelo" / "Empate".
+export function textoDoResultadoDaPartida(partida) {
+  if (partida.result === 'A_WINS') return `Vitória ${doTime(partida, 'A')}`
+  if (partida.result === 'B_WINS') return `Vitória ${doTime(partida, 'B')}`
+  return RESULTADO[partida.result] ?? ''
+}
