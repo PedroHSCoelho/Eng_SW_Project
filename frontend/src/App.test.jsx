@@ -144,3 +144,32 @@ describe('App: gestão de usuários', () => {
     await waitFor(() => expect(screen.getByLabelText('Papel de Chefe')).toHaveValue('ORGANIZER'))
   })
 })
+
+describe('App: atalhos da página inicial', () => {
+  it('os cartões levam às telas (Ranking -> /ranking)', async () => {
+    simularApi()
+
+    renderizar('/')
+
+    expect((await screen.findByText('Ranking')).closest('a')).toHaveAttribute('href', '/ranking')
+    expect(screen.getByText('Histórico').closest('a')).toHaveAttribute('href', '/historico')
+  })
+
+  it('só o organizador vê o atalho do sorteio', async () => {
+    simularApi(organizador)
+    renderizar('/')
+    expect(await screen.findByText('Sorteio de times')).toBeInTheDocument()
+    cleanup()
+
+    simularApi(jogador)
+    renderizar('/')
+    await screen.findByText('Ranking')
+    expect(screen.queryByText('Sorteio de times')).not.toBeInTheDocument()
+  })
+
+  it('o sorteio é protegido: jogador comum que digita a URL é barrado', async () => {
+    simularApi(jogador)
+    renderizar('/sorteio')
+    expect(await screen.findByRole('alert')).toHaveTextContent('permissão')
+  })
+})

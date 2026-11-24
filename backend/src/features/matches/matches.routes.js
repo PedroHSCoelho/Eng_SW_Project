@@ -19,6 +19,11 @@ export function criarMatchesRouter(service) {
     res.json({ data: await service.listar() })
   })
 
+  // Antes de '/:id', senão "historico" seria lido como um id. Query: page, pageSize, playerId, de, ate.
+  router.get('/historico', async (req, res) => {
+    res.json({ data: await service.historico(req.query) })
+  })
+
   router.get('/:id', async (req, res) => {
     res.json({ data: await service.buscar(lerId(req)) })
   })

@@ -92,6 +92,7 @@ Código em `backend/src/features/matches/`: `matches.core.js` (regras puras), `m
 | Método e rota | O que faz | Erros |
 |---|---|---|
 | `GET /api/matches` | Lista as partidas, mais recentes primeiro | — |
+| `GET /api/matches/historico` | Partidas finalizadas, mais recentes primeiro: `{ items, page, pageSize, total, totalPages }`; filtros `?playerId=&de=&ate=&page=&pageSize=` (`ate` exclusivo; pageSize 1–50, padrão 10) | 400 filtro inválido |
 | `GET /api/matches/:id` | Uma partida com a escalação | 400 id inválido, 404 |
 | `POST /api/matches` | Cria (`date` em ISO, `location`) → 201, sempre `SCHEDULED` | 400 dados inválidos |
 | `PUT /api/matches/:id/escalacao` | Substitui os dois times: `{ "teamA": [1,2,3], "teamB": [4,5,6] }` | 400, 404, 422 |
@@ -99,6 +100,14 @@ Código em `backend/src/features/matches/`: `matches.core.js` (regras puras), `m
 | `PATCH /api/matches/:id/encerrar` | `IN_PROGRESS` → `FINISHED`; grava `result` e `finishedAt` | 404, 422 |
 | `POST /api/matches/:id/gols` | Lança um gol: `{ scorerId, assistId?, minute?, ownGoal? }` → 201 com a partida | 400, 404, 422 |
 | `DELETE /api/matches/:id/gols/:goalId` | Remove um gol lançado errado → 200 com a partida | 400, 404, 422 |
+| `GET /api/players/:id/stats` | Estatísticas do jogador (partidas, V/E/D, gols, assistências, gols por partida, saldo) e `recentes` (últimas 5 partidas como V/E/D com placar); filtro opcional `?de=AAAA-MM-DD&ate=AAAA-MM-DD` (`ate` exclusive) | 400, 404 |
+| `PUT /api/matches/:id/avaliacoes` | Minha nota (qualquer logado ligado a um jogador da partida): `{ ratedId, score 1–5, comment? }`; cria ou edita; só partida finalizada e até 48h depois | 400, 404, 422 |
+| `GET /api/matches/:id/avaliacoes/pendentes` | Quem eu ainda não avaliei e o prazo: `{ open, deadline, pending }` | 404 |
+| `GET /api/matches/:id/avaliacoes/minhas` | As notas que EU dei na partida (`ratedId`, `nickname`, `score`, `comment`); nunca as de outros | 404 |
+| `GET /api/matches/:id/destaque` | Jogador com a maior média da partida (ou `null`) | 404 |
+| `GET /api/players/:id/ratings` | Média geral e por partida (1 casa; só com 3+ notas; nunca mostra quem avaliou) | 404 |
+| `POST /api/sorteio` | Só organizador. `{ playerIds: [6 a 22 ids] }` → `{ teamA, teamB, difference }` (times equilibrados pela média de notas; não grava nada) | 400 entrada inválida, 403, 422 jogador inexistente ou inativo |
+| `GET /api/rankings` | `{ geral, artilharia, assistencias }`; filtro `?periodo=mes`, `ano` ou `tudo` (padrão `tudo`) | 400 período inválido |
 
 Regras (em `matches.core.js`): local de 2 a 100 caracteres; um jogador não aparece duas vezes nem nos dois times; jogador inexistente ou inativo não é escalado; a escalação só muda com a partida agendada; para começar, cada time precisa de pelo menos 3 jogadores. Ver `docs/adr/0007-partida-e-escalacao.md`.
 

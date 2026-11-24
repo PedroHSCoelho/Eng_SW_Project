@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import '@testing-library/jest-dom/vitest'
 import PlayersPage from './PlayersPage.jsx'
 import { AuthContext } from '../auth/AuthContext.jsx'
@@ -38,7 +39,9 @@ function preencher({ nome, apelido, posicao }) {
 function renderizarPagina(papel = 'ORGANIZER') {
   return render(
     <AuthContext.Provider value={{ usuario: { id: 1, role: papel }, carregando: false }}>
-      <PlayersPage />
+      <MemoryRouter>
+        <PlayersPage />
+      </MemoryRouter>
     </AuthContext.Provider>,
   )
 }
@@ -258,5 +261,16 @@ describe('PlayersPage para quem não é organizador', () => {
     expect(await screen.findByText('Zé')).toBeInTheDocument()
     expect(screen.queryByLabelText('Nome')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Editar|Inativar|Excluir/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('PlayersPage: perfil', () => {
+  it('o apelido de cada jogador é um link para o perfil dele', async () => {
+    simularApi(listaCom(ze, beto))
+
+    renderizarPagina('PLAYER')
+
+    expect(await screen.findByRole('link', { name: 'Zé' })).toHaveAttribute('href', '/jogadores/1')
+    expect(screen.getByRole('link', { name: 'Beto' })).toHaveAttribute('href', '/jogadores/2')
   })
 })
