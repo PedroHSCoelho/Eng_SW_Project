@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ehOrganizadorDo, useGrupo } from '../groups/GrupoContext.jsx'
-import RatingsPanel from '../ratings/RatingsPanel.jsx'
 import { listarJogadores } from '../players/playersApi.js'
 import {
   atualizarPartida,
@@ -17,13 +16,14 @@ import {
   removerGol,
   removerLance,
 } from './matchesApi.js'
+import CraquePanel from './CraquePanel.jsx'
 import LineupEditor from './LineupEditor.jsx'
 import MatchEditForm from './MatchEditForm.jsx'
 import PeladaPainel from './PeladaPainel.jsx'
 import PresencaPanel from './PresencaPanel.jsx'
 import SumulaAoVivo from './SumulaAoVivo.jsx'
 import { NOME_DO_LANCE } from './lances.js'
-import { RESULTADO, STATUS, ehPelada, formatarData, timesDaPartida } from './textos.js'
+import { STATUS, doTime, ehPelada, formatarData, nomeDoTime, textoDoResultadoDaPartida, timesDaPartida } from './textos.js'
 
 const botao = 'rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50'
 
@@ -136,11 +136,11 @@ export default function MatchPage() {
       {!pelada && !['SCHEDULED', 'CANCELED'].includes(partida.status) && (
         <div className="mt-4 rounded-xl bg-green-900 p-5 text-center ring-1 ring-green-700">
           <p className="text-4xl font-bold tabular-nums" aria-label="Placar">
-            Time A {partida.score.A} x {partida.score.B} Time B
+            {nomeDoTime(partida, 'A')} {partida.score.A} x {partida.score.B} {nomeDoTime(partida, 'B')}
           </p>
           {partida.status === 'FINISHED' && (
             <p className="mt-1 text-green-200">
-              {RESULTADO[partida.result]} · súmula encerrada, não pode mais ser alterada
+              {textoDoResultadoDaPartida(partida)} · súmula encerrada, não pode mais ser alterada
             </p>
           )}
         </div>
@@ -149,7 +149,7 @@ export default function MatchPage() {
       {ehOrganizador && partida.status === 'SCHEDULED' && (
         <MatchEditForm
           // A chave faz o formulário recomeçar com os valores novos depois de salvar.
-          key={`${partida.date}-${partida.location}-${partida.maxPlayers}`}
+          key={`${partida.date}-${partida.location}-${partida.maxPlayers}-${JSON.stringify(partida.teamNames ?? {})}`}
           partida={partida}
           enviando={enviando}
           aoSalvar={(dados) => executar(() => atualizarPartida(partida.id, dados))}
@@ -171,6 +171,7 @@ export default function MatchPage() {
         <LineupEditor
           jogadores={jogadores}
           times={timesDaPartida(partida)}
+          nomeDoTime={(t) => nomeDoTime(partida, t)}
           confirmados={confirmados}
           escalacao={partida.players}
           enviando={enviando}
@@ -210,7 +211,7 @@ export default function MatchPage() {
                     {g.assist && <span className="text-green-200"> · assistência de {g.assist.nickname}</span>}
                     <span className="text-green-300">
                       {' '}
-                      · ponto do Time {g.team}
+                      · ponto {doTime(partida, g.team)}
                       {pelada && g.gameId && ` · jogo ${numeroDoJogo(g.gameId)}`}
                     </span>
                   </span>
@@ -262,14 +263,8 @@ export default function MatchPage() {
         </div>
       )}
 
-      {/* Depois do encerramento: destaque para todos; avaliar só para quem jogou, com o MEU jogador
-          neste grupo (a API confere de novo). */}
-      {partida.status === 'FINISHED' && (
-        <RatingsPanel
-          matchId={partida.id}
-          podeAvaliar={partida.players.some((p) => p.playerId === grupo?.myPlayerId)}
-        />
-      )}
+      {/* Depois do encerramento: votação do craque. Todos veem; quem jogou vota (a API confere de novo). */}
+      {partida.status === 'FINISHED' && <CraquePanel partida={partida} meuJogadorId={grupo?.myPlayerId ?? null} />}
 
       {ehOrganizador && partida.status === 'IN_PROGRESS' && (
         <div className="mt-6 flex flex-wrap items-center gap-3">

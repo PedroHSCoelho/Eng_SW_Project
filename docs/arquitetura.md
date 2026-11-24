@@ -115,7 +115,7 @@ Código em `backend/src/features/matches/`: `matches.core.js` (regras puras), `m
 | `GET /api/grupos/:grupoId/matches` | Lista as partidas, mais recentes primeiro, cada uma com `status`, `result` e o placar `score` (sem a lista de gols) | — |
 | `GET /api/grupos/:grupoId/matches/historico` | Partidas finalizadas, mais recentes primeiro: `{ items, page, pageSize, total, totalPages }`; filtros `?playerId=&de=&ate=&page=&pageSize=` (`ate` exclusivo; pageSize 1–50, padrão 10) | 400 filtro inválido |
 | `GET /api/grupos/:grupoId/matches/:id` | Uma partida com a escalação | 400 id inválido, 404 |
-| `POST /api/grupos/:grupoId/matches` | Cria (`date` em ISO, `location`) → 201, sempre `SCHEDULED` | 400 dados inválidos |
+| `POST /api/grupos/:grupoId/matches` | Cria (`date` em ISO, `location`, opcionais `maxPlayers`, `format`, `teamCount` e `teamNames`, ex. `{ "A": "Amarelo" }`) → 201, sempre `SCHEDULED` | 400 dados inválidos, 422 nomes repetidos |
 | `PUT /api/grupos/:grupoId/matches/:id` | Edita data e local (`{ date, location }`); só partida agendada; `status`, `result` e `id` do corpo são ignorados | 400, 404, 422 se não estiver agendada |
 | `PATCH /api/grupos/:grupoId/matches/:id/cancelar` | Agendada ou em andamento → `CANCELED` (estado final; sai de histórico, estatísticas e ranking) | 404, 422 se finalizada ou já cancelada |
 | `PUT /api/grupos/:grupoId/matches/:id/escalacao` | Substitui os dois times: `{ "teamA": [1,2,3], "teamB": [4,5,6] }` | 400, 404, 422 |
@@ -124,12 +124,13 @@ Código em `backend/src/features/matches/`: `matches.core.js` (regras puras), `m
 | `POST /api/grupos/:grupoId/matches/:id/gols` | Lança um gol: `{ scorerId, assistId?, minute?, ownGoal? }` → 201 com a partida | 400, 404, 422 |
 | `DELETE /api/grupos/:grupoId/matches/:id/gols/:goalId` | Remove um gol lançado errado → 200 com a partida | 400, 404, 422 |
 | `GET /api/grupos/:grupoId/players/:id/stats` | Estatísticas do jogador (partidas, V/E/D, gols, assistências, gols por partida, saldo) e `recentes` (últimas 5 partidas como V/E/D com placar); filtro opcional `?periodo=mes`, `ano` ou `tudo` **ou** `?de=AAAA-MM-DD&ate=AAAA-MM-DD` (`ate` exclusive; os dois juntos dão 400) | 400, 404 |
-| `PUT /api/grupos/:grupoId/matches/:id/avaliacoes` | Minha nota (qualquer participante cujo jogador no grupo jogou a partida): `{ ratedId, score 1–5, comment? }`; cria ou edita; só partida finalizada e até 48h depois | 400, 404, 422 |
-| `GET /api/grupos/:grupoId/matches/:id/avaliacoes/pendentes` | Quem eu ainda não avaliei e o prazo: `{ open, deadline, pending }` | 404 |
-| `GET /api/grupos/:grupoId/matches/:id/avaliacoes/minhas` | As notas que EU dei na partida (`ratedId`, `nickname`, `score`, `comment`); nunca as de outros | 404 |
-| `GET /api/grupos/:grupoId/matches/:id/destaque` | Jogador com a maior média da partida (ou `null`) | 404 |
-| `GET /api/grupos/:grupoId/players/:id/ratings` | Média geral e por partida (1 casa; só com 3+ notas; nunca mostra quem avaliou) | 404 |
-| `POST /api/grupos/:grupoId/sorteio` | Só organizador do grupo. `{ playerIds: [6 a 22 ids] }` → `{ teamA, teamB, difference }` (times equilibrados pela média de notas; não grava nada) | 400 entrada inválida, 403, 422 jogador inexistente ou inativo |
+| `PATCH /api/grupos/:grupoId/players/:id/nota` | Só admin. Nota de 0 a 5, de 0,5 em 0,5: `{ "skill": 3.5 }` (ou `null` para apagar). Só admins veem a nota (`skill`) nas respostas de jogadores | 400, 403, 404 |
+| `GET /api/grupos/:grupoId/matches/:id/craque` | Votação do craque: `{ open, deadline, canVote, myVote, totalVotes, totalVoters, candidates, craques }` (empate = mais de um craque) | 404 |
+| `POST /api/grupos/:grupoId/matches/:id/craque` | Meu voto: `{ playerId }`; só quem jogou, em outro jogador da partida, até 48h depois de encerrar; votar de novo troca | 400, 404, 422 |
+| `POST /api/grupos/:grupoId/matches/:id/presencas` | Entro na lista (`{}`), fico como talvez (`{ "maybe": true }`) ou o admin põe outro (`{ playerId }`) | 400, 403, 404, 422 |
+| `POST /api/grupos/:grupoId/matches/:id/convidados` | Levo um convidado de fora do grupo: `{ name }`; ocupa só as vagas que sobram | 400, 404, 422 |
+| `DELETE /api/grupos/:grupoId/matches/:id/convidados/:guestId` | Tira o convidado (quem levou ou admin) | 403, 404, 422 |
+| `POST /api/grupos/:grupoId/sorteio` | Só organizador do grupo. `{ playerIds: [6 a 22 ids] }` → `{ teamA, teamB, difference }` (times equilibrados pela nota do admin, 2,5 para quem não tem; não grava nada) | 400 entrada inválida, 403, 422 jogador inexistente ou inativo |
 | `GET /api/grupos/:grupoId/rankings` | `{ geral, artilharia, assistencias }`; filtros `?periodo=mes`, `ano` ou `tudo` (padrão `tudo`) e `?posicao=GOALKEEPER`, `DEFENDER`, `MIDFIELDER` ou `FORWARD` (opcional; vale para o geral, a artilharia e as assistências) | 400 período ou posição inválidos |
 
 Regras (em `matches.core.js`): local de 2 a 100 caracteres; um jogador não aparece duas vezes nem nos dois times; jogador inexistente ou inativo não é escalado; a escalação só muda com a partida agendada; para começar, cada time precisa de pelo menos 3 jogadores. Ver `docs/adr/0007-partida-e-escalacao.md`.

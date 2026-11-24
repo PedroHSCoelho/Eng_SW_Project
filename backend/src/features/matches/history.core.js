@@ -45,6 +45,7 @@ export function montarHistorico(partidas, { de, ate, playerId, page, pageSize })
       location: p.location,
       result: p.result,
       format: p.format ?? 'SINGLE_GAME',
+      teamNames: p.teamNames ?? null,
       score: calcularPlacar(p.goals, timesDaPartida(p)),
       // Pelada: quantos jogos teve e quem terminou a noite na frente.
       ...(p.format === 'PELADA' && {

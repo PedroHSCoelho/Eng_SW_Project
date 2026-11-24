@@ -12,16 +12,16 @@ import {
 import { sortearEmVariosTimes } from '../src/features/draw/draw.core.js'
 
 // Atalho: jogador com média (null = sem média) e posição (padrão meio-campo).
-const j = (id, average, position = 'MIDFIELDER') => ({ id, nickname: `J${id}`, position, average })
+const j = (id, average, position = 'MIDFIELDER') => ({ id, nickname: `J${id}`, position, skill: average })
 const ids = (time) => time.players.map((p) => p.id).sort((a, b) => a - b)
 const sempreOPrimeiro = () => 0.999 // só substitui quando for a 1ª divisão ótima (probabilidade 1/1)
 const sempreOUltimo = () => 0
 
 describe('forcaDoJogador', () => {
-  it('usa a média; sem média entra com 3,0', () => {
-    expect(forcaDoJogador({ average: 4.2 })).toBe(4.2)
-    expect(forcaDoJogador({ average: null })).toBe(FORCA_PADRAO)
-    expect(FORCA_PADRAO).toBe(3)
+  it('usa a nota do admin; sem nota entra com 2,5', () => {
+    expect(forcaDoJogador({ skill: 4.2 })).toBe(4.2)
+    expect(forcaDoJogador({ skill: null })).toBe(FORCA_PADRAO)
+    expect(FORCA_PADRAO).toBe(2.5)
   })
 })
 
@@ -81,13 +81,13 @@ describe('sortearTimes: equilíbrio', () => {
     expect(r.difference).toBe(0)
   })
 
-  it('jogador sem média entra com 3,0 no cálculo', () => {
-    // Sem média = 3: força {5, 3, 3} = 3,67 x {3, 3, 1}... o ótimo ainda é achado com os valores padrão.
-    const jogadores = [j(1, 5), j(2, null), j(3, null), j(4, null), j(5, 1), j(6, 3)]
+  it('jogador sem nota entra com 2,5 no cálculo (e meio ponto conta)', () => {
+    // Sem nota = 2,5: o ótimo é {5; 0; 2,5} = 7,5 x {2,5; 2,5; 2,5} = 7,5.
+    const jogadores = [j(1, 5), j(2, null), j(3, null), j(4, null), j(5, 0), j(6, 2.5)]
     const r = sortearTimes({ jogadores, aleatorio: sempreOUltimo })
     const todas = [...r.teamA.players, ...r.teamB.players]
-    expect(todas.find((p) => p.id === 2).strength).toBe(3)
-    expect(r.difference).toBeCloseTo(0, 9) // 5+1+3 = 9 x 3+3+3 = 9
+    expect(todas.find((p) => p.id === 2).strength).toBe(2.5)
+    expect(r.difference).toBeCloseTo(0, 9)
   })
 
   it('com quantidade ímpar compara médias (e não somas)', () => {
@@ -155,7 +155,7 @@ describe('sortearTimes: sorteio entre divisões igualmente boas', () => {
 })
 
 describe('sortearEmVariosTimes (pelada)', () => {
-  const jogador = (id, average, position = 'MIDFIELDER') => ({ id, nickname: `J${id}`, position, average })
+  const jogador = (id, average, position = 'MIDFIELDER') => ({ id, nickname: `J${id}`, position, skill: average })
 
   it('divide em N times do mesmo tamanho (±1), com os fortes espalhados', () => {
     const lista = [5, 5, 5, 4, 4, 4, 2, 2, 2].map((m, i) => jogador(i + 1, m))

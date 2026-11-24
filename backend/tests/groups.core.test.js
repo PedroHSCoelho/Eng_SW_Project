@@ -59,7 +59,7 @@ describe('validarPapelNoGrupo', () => {
 describe('verificarSobraOrganizador (o grupo nunca fica sem organizador)', () => {
   it('barra o último organizador (422)', () => {
     expect(() => verificarSobraOrganizador({ alvo: { role: 'ORGANIZER' }, totalOrganizadores: 1 })).toThrow(
-      'O grupo precisa ter ao menos um organizador',
+      'O grupo precisa ter ao menos um admin',
     )
   })
 
@@ -85,7 +85,7 @@ describe('verificarPodeRemover', () => {
   })
 
   it('membro não remove outra pessoa', () => {
-    expect(() => verificarPodeRemover({ quemPede: membro, alvo: organizador })).toThrow(/Só um organizador/)
+    expect(() => verificarPodeRemover({ quemPede: membro, alvo: organizador })).toThrow(/Só um admin/)
   })
 })
 

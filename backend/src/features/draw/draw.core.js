@@ -3,7 +3,7 @@
 // (testa todas as divisões possíveis: com no máximo 22 jogadores são poucas centenas de milhares).
 import { ValidationError } from '../../errors/AppError.js'
 
-export const FORCA_PADRAO = 3 // quem ainda não tem média entra com 3,0
+export const FORCA_PADRAO = 2.5 // quem ainda não tem nota do admin entra com 2,5 (o meio da escala de 0 a 5)
 export const MIN_JOGADORES = 6 // 3 por time, o mínimo para uma partida começar
 export const MAX_JOGADORES = 22 // limite da busca por força bruta (C(22,11) divisões)
 // Pelada: de 3 a 6 times, com pelo menos 3 por time; sem força bruta (seria lento demais).
@@ -13,9 +13,9 @@ const NOMES_DOS_TIMES = ['A', 'B', 'C', 'D', 'E', 'F']
 
 const arredondar2 = (n) => Math.round(n * 100) / 100
 
-// Força de um jogador = média das notas recebidas; sem média (menos de 3 notas) = 3,0.
-export function forcaDoJogador({ average }) {
-  return average === null || average === undefined ? FORCA_PADRAO : average
+// Força de um jogador = nota que o admin deu (0 a 5); sem nota = 2,5.
+export function forcaDoJogador({ skill }) {
+  return skill === null || skill === undefined ? FORCA_PADRAO : skill
 }
 
 // Quantos times sortear (opcional, padrão 2): de 2 a 6.
@@ -59,7 +59,7 @@ const contarBits = (n) => {
   return c
 }
 
-// `jogadores`: [{ id, nickname, position, average }] (average = média de notas ou null).
+// `jogadores`: [{ id, nickname, position, skill }] (skill = nota do admin, de 0 a 5, ou null).
 // `aleatorio`: função que devolve um número em [0, 1) (padrão Math.random); entra por parâmetro
 // para o teste controlar o sorteio. Entre as divisões igualmente boas, uma é escolhida ao acaso
 // (amostragem de reservatório: cada divisão ótima tem a mesma chance).

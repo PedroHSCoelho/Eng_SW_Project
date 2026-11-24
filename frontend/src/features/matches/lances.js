@@ -27,18 +27,28 @@ export const NOME_DO_LANCE = {
 }
 
 // Texto da lista para colar no grupo do WhatsApp (o "copiar e colar" da lista do fut).
+// Nome do convidado como aparece na lista: "Primo (convidado do Zé)".
+export const nomeDoConvidado = (g) => (g.invitedBy ? `${g.name} (convidado do ${g.invitedBy.nickname})` : `${g.name} (convidado)`)
+
 export function textoDaLista({ partida, lista, formatarData }) {
+  const convidados = lista.guests ?? []
+  const dentro = [
+    ...lista.confirmed.map((l) => l.nickname),
+    ...convidados.filter((g) => g.status === 'CONFIRMED').map(nomeDoConvidado),
+  ]
+  const espera = [
+    ...lista.waitlist.map((l) => (l.maybe ? `${l.nickname} (talvez)` : l.nickname)),
+    ...convidados.filter((g) => g.status === 'WAITLIST').map(nomeDoConvidado),
+  ]
   const linhas = [`⚽ ${formatarData(partida.date)} · ${partida.location}`]
-  linhas.push(
-    lista.maxPlayers ? `Confirmados (${lista.confirmed.length}/${lista.maxPlayers}):` : `Confirmados (${lista.confirmed.length}):`,
-  )
-  lista.confirmed.forEach((l, i) => linhas.push(`${i + 1}. ${l.nickname}`))
+  linhas.push(lista.maxPlayers ? `Confirmados (${dentro.length}/${lista.maxPlayers}):` : `Confirmados (${dentro.length}):`)
+  dentro.forEach((nome, i) => linhas.push(`${i + 1}. ${nome}`))
   if (lista.maxPlayers) {
-    for (let i = lista.confirmed.length; i < lista.maxPlayers; i += 1) linhas.push(`${i + 1}.`)
+    for (let i = dentro.length; i < lista.maxPlayers; i += 1) linhas.push(`${i + 1}.`)
   }
-  if (lista.waitlist.length > 0) {
+  if (espera.length > 0) {
     linhas.push('', 'Lista de espera:')
-    lista.waitlist.forEach((l, i) => linhas.push(`${i + 1}. ${l.nickname}`))
+    espera.forEach((nome, i) => linhas.push(`${i + 1}. ${nome}`))
   }
   return linhas.join('\n')
 }

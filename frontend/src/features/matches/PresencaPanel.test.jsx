@@ -109,4 +109,55 @@ describe('PresencaPanel', () => {
     expect(await screen.findByRole('button', { name: 'Lista copiada!' })).toBeInTheDocument()
     expect(writeText.mock.calls[0][0]).toMatch(/Confirmados \(1\/2\):\n1\. J2\n2\./)
   })
+
+  it('"talvez": entra na espera mesmo com vaga, e depois confirma', async () => {
+    const corpos = []
+    simularApi({
+      [`GET ${URL}`]: () => resposta(200, { data: lista() }),
+      [`POST ${URL}`]: (corpo) => {
+        corpos.push(corpo)
+        return corpo.maybe
+          ? resposta(201, { data: lista({ waitlist: [{ ...linha(1, 1), maybe: true }], me: 'MAYBE' }) })
+          : resposta(201, { data: lista({ confirmed: [linha(1, 1)], openSpots: 1, me: 'CONFIRMED' }) })
+      },
+    })
+    render(<PresencaPanel partida={partida} ehOrganizador={false} meuJogadorId={1} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Talvez (fico na espera)' }))
+    expect(await screen.findByText(/Você está como talvez \(1º da espera\)/)).toBeInTheDocument()
+    expect(within(screen.getByRole('list', { name: 'Lista de espera' })).getByText('(talvez)')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Vou! Confirmar presença' }))
+    expect(await screen.findByText('✓ Você está confirmado')).toBeInTheDocument()
+    expect(corpos).toEqual([{ maybe: true }, { maybe: false }])
+    expect(screen.getByRole('button', { name: 'Mudar para talvez' })).toBeInTheDocument()
+  })
+
+  it('leva um convidado, que aparece com quem convidou; só quem levou (ou admin) tira', async () => {
+    const primo = { id: 5, name: 'Primo', invitedBy: { playerId: 1, nickname: 'J1' }, status: 'CONFIRMED' }
+    const vizinho = { id: 6, name: 'Vizinho', invitedBy: { playerId: 2, nickname: 'J2' }, status: 'WAITLIST' }
+    let corpo
+    simularApi({
+      [`GET ${URL}`]: () => resposta(200, { data: lista({ guests: [vizinho] }) }),
+      ['POST /api/grupos/1/matches/7/convidados']: (c) => {
+        corpo = c
+        return resposta(201, { data: lista({ guests: [primo, vizinho], openSpots: 1 }) })
+      },
+      ['DELETE /api/grupos/1/matches/7/convidados/5']: () => resposta(200, { data: lista({ guests: [vizinho] }) }),
+    })
+    render(<PresencaPanel partida={partida} ehOrganizador={false} meuJogadorId={1} />)
+
+    fireEvent.change(await screen.findByLabelText('Levar um convidado'), { target: { value: 'Primo' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar convidado' }))
+
+    const convidados = await screen.findByRole('list', { name: 'Convidados' })
+    expect(await within(convidados).findByText(/Primo \(convidado do J1\)/)).toBeInTheDocument()
+    expect(within(convidados).getByText(/· na espera/)).toBeInTheDocument()
+    expect(corpo).toEqual({ name: 'Primo' })
+    expect(screen.getByText(/1\/2 confirmados/)).toBeInTheDocument() // o convidado ocupa vaga
+    expect(screen.queryByRole('button', { name: 'Tirar o convidado Vizinho' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tirar o convidado Primo' }))
+    expect(await screen.findByText(/0\/2 confirmados/)).toBeInTheDocument()
+  })
 })

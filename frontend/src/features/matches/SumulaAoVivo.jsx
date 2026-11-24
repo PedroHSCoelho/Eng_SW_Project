@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Icone from '../../ui/Icones.jsx'
 import { numerosDosJogadores } from './lances.js'
 import { jogoAberto } from './pelada.js'
-import { ehPelada, timesDaPartida } from './textos.js'
+import { ehPelada, nomeDoTime, timesDaPartida } from './textos.js'
 
 // Súmula ao vivo: um "box" por jogador escalado, separado por time, com o que ele já fez na
 // partida. Com `editavel` (organizador, partida em andamento), clicar no box abre o drill-down
@@ -36,7 +36,7 @@ export default function SumulaAoVivo({ partida, editavel = false, enviando = fal
             className={`rounded-xl bg-green-900 p-4 ring-1 ${pelada && jogo && emCampo(time) ? 'ring-gramado' : 'ring-green-700'}`}
           >
             <h3 className="font-semibold">
-              Time {time}
+              {nomeDoTime(partida, time)}
               {pelada && jogo && (
                 <span className="ml-2 text-xs font-normal text-texto-suave">{emCampo(time) ? 'em campo' : 'esperando'}</span>
               )}
@@ -64,6 +64,7 @@ export default function SumulaAoVivo({ partida, editavel = false, enviando = fal
       {editavel && escalado && (
         <DrillDown
           escalado={escalado}
+          nomeDoTimeDele={nomeDoTime(partida, escalado.team)}
           numeros={numeros[escalado.playerId]}
           colegas={partida.players.filter((p) => p.team === escalado.team && p.playerId !== escalado.playerId)}
           enviando={enviando}
@@ -146,7 +147,7 @@ const secundaria = 'rounded-lg px-3 py-1.5 text-sm text-texto-suave ring-1 ring-
 
 // Painel do jogador (bottom sheet no celular, janela no meio no computador).
 // Passos: escolher o lance -> (gol) quem deu a assistência / (assistência) quem fez o gol.
-function DrillDown({ escalado, numeros, colegas, enviando, aoFechar, aoLancarGol, aoLancarLance }) {
+function DrillDown({ escalado, nomeDoTimeDele, numeros, colegas, enviando, aoFechar, aoLancarGol, aoLancarLance }) {
   const [passo, setPasso] = useState('lances') // 'lances' | 'assistDoGol' | 'autorDoGol'
   const [minuto, setMinuto] = useState('')
   const primeiro = useRef(null)
@@ -215,7 +216,7 @@ function DrillDown({ escalado, numeros, colegas, enviando, aoFechar, aoLancarGol
               {nome}
             </h3>
             <p className="text-sm text-texto-suave">
-              Time {escalado.team}
+              {nomeDoTimeDele}
               {goleiro ? ' · goleiro' : ''}
             </p>
           </div>

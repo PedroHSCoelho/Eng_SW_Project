@@ -196,6 +196,26 @@ describe('papéis no grupo (vários organizadores, nunca nenhum)', () => {
     expect((await beto.post(`${url}/convite`)).status).toBe(200)
   })
 
+  it('quem vira admin cria partida, cadastra jogador e dá admin para outro; ao perder, não pode mais', async () => {
+    const { ana, beto, caio, grupo, url } = await grupoComDois()
+    const partida = { date: '2026-12-03T20:00:00-03:00', location: 'Quadra' }
+    await caio.post(`/api/convites/${grupo.inviteCode}/entrar`, { nickname: 'Caião', position: 'DEFENDER' })
+
+    expect((await beto.post(`${url}/matches`, partida)).status).toBe(403)
+    expect((await beto.post(`${url}/players`, { name: 'Davi Souza', nickname: 'Davi', position: 'FORWARD' })).status).toBe(403)
+
+    await ana.patch(`${url}/membros/${beto.id}`, { role: 'ORGANIZER' })
+
+    expect((await beto.post(`${url}/matches`, partida)).status).toBe(201)
+    expect((await beto.post(`${url}/players`, { name: 'Davi Souza', nickname: 'Davi', position: 'FORWARD' })).status).toBe(201)
+    expect((await beto.patch(`${url}/membros/${caio.id}`, { role: 'ORGANIZER' })).status).toBe(200)
+    expect((await caio.post(`${url}/matches`, partida)).status).toBe(201)
+
+    // Um admin também tira o admin de outro.
+    expect((await caio.patch(`${url}/membros/${beto.id}`, { role: 'MEMBER' })).status).toBe(200)
+    expect((await beto.post(`${url}/matches`, partida)).status).toBe(403)
+  })
+
   it('membro não muda papel de ninguém (403)', async () => {
     const { ana, beto, url } = await grupoComDois()
     expect((await beto.patch(`${url}/membros/${ana.id}`, { role: 'MEMBER' })).status).toBe(403)
@@ -206,7 +226,7 @@ describe('papéis no grupo (vários organizadores, nunca nenhum)', () => {
 
     const sozinha = await ana.patch(`${url}/membros/${ana.id}`, { role: 'MEMBER' })
     expect(sozinha.status).toBe(422)
-    expect(sozinha.body.erro).toBe('O grupo precisa ter ao menos um organizador')
+    expect(sozinha.body.erro).toBe('O grupo precisa ter ao menos um admin')
 
     await ana.patch(`${url}/membros/${beto.id}`, { role: 'ORGANIZER' })
     expect((await ana.patch(`${url}/membros/${ana.id}`, { role: 'MEMBER' })).status).toBe(200)
@@ -262,6 +282,6 @@ describe('remover e sair', () => {
     const { ana, url } = await grupoComDois()
     const res = await ana.delete(`${url}/membros/${ana.id}`)
     expect(res.status).toBe(422)
-    expect(res.body.erro).toBe('O grupo precisa ter ao menos um organizador')
+    expect(res.body.erro).toBe('O grupo precisa ter ao menos um admin')
   })
 })
