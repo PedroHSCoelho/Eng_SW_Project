@@ -24,19 +24,11 @@ npx prisma migrate deploy       # aplica as migrações no banco (não apaga dad
 npm run dev                     # http://localhost:3001/api/health
 ```
 
-O servidor não sobe sem `JWT_SECRET` (mínimo 32 caracteres). A migração `auth-user-role` adiciona senha, papel e vínculo com jogador à tabela `User`.
+O servidor não sobe sem `JWT_SECRET` (mínimo 32 caracteres).
 
-### Primeiro organizador
+### Grupos e organizadores
 
-Todo cadastro nasce **jogador**. Para o primeiro organizador (e para recuperar o acesso se o sistema ficar sem nenhum):
-
-1. Crie a conta no front (**Entrar > Não tenho conta**).
-2. Promova-a direto no banco, pelo terminal:
-   ```powershell
-   cd backend
-   npm run organizador:promover -- seu@email.com
-   ```
-3. Depois disso, tudo é pela interface: em **Usuários** o organizador vincula contas a jogadores, muda papéis e **aprova ou recusa pedidos de organizador**. Um jogador vinculado pede em **Ser organizador** (um pedido por vez; depois de recusado, espera 7 dias).
+Não existe mais organizador do sistema todo: o papel é **por grupo**. Qualquer pessoa cria a conta, cria um grupo (vira organizadora dele) e convida os outros pelo código de convite. Um grupo pode ter vários organizadores e nunca fica sem nenhum (ver `docs/adr/0013-grupos-e-papel-por-grupo.md`).
 
 `/api/health/db` deve responder OK. Se der 503, confira a senha e as duas URLs.
 Erro `@prisma/client did not initialize`: rode `npx prisma generate` dentro de `backend`.
@@ -68,7 +60,24 @@ Um projeto só na Vercel, ligado à raiz do repositório (ver `docs/adr/0006-dep
    - `NODE_ENV` não precisa: a Vercel já usa `production`.
 3. **Deploy**. Teste `https://<seu-projeto>.vercel.app/api/health` e `/api/health/db`.
 4. Migrações não rodam no deploy: depois de criar uma migração, rode `npx prisma migrate deploy` na sua máquina (usa a `DIRECT_URL` do `.env`).
-5. Primeiro organizador em produção: `npm run organizador:promover` na sua máquina (aponta para o mesmo banco).
+5. **Migração que apaga colunas ou tabelas** (como `remove-papel-global`): faça antes um backup do banco no Supabase (**Database → Backups**, ou `pg_dump` com a `DIRECT_URL`). Ela não tem volta sem backup.
+
+### Aplicação publicada
+
+- **Endereço:** https://eng-sw-project-frontend.vercel.app (projeto `eng-sw-project-frontend`, time `eng-sw` na Vercel).
+- Cada merge na `main` gera um deploy de produção; cada PR gera um deploy de prévia.
+- **Como saber se está tudo certo:**
+  - `/api/health` responde `{"status":"ok"}` (o servidor está de pé);
+  - `/api/health/db` responde `{"status":"ok","banco":"conectado"}` (o banco responde);
+  - `/api/rankings` sem login responde **401** (a API está protegida e o código novo está no ar).
+
+### Problemas comuns na Vercel
+
+| Sintoma | Causa | O que fazer |
+|---|---|---|
+| `/api/health/db` dá 503 e o login dá 500; no log da função aparece `Environment variable not found: DATABASE_URL` | A variável não existe para o ambiente **Production**, ou foi criada mas não houve novo deploy | Crie/confira a variável em **Settings → Environment Variables** e faça **Redeploy** (variável nova só vale em deploy novo) |
+| O cadastro ou o login dá 500 só depois de o banco conectar | Falta `JWT_SECRET` (mínimo de 32 caracteres) | Crie a variável e faça **Redeploy** |
+| Qualquer erro estranho na API | A mensagem real fica no log da função | **Deployments → o deploy → Logs** (ou **Runtime Logs**) |
 
 ## Cuidados com o banco compartilhado
 

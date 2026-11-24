@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import '@testing-library/jest-dom/vitest'
 import PlayersPage from './PlayersPage.jsx'
 import { AuthContext } from '../auth/AuthContext.jsx'
+import { GrupoFixo } from '../groups/GrupoContext.jsx'
 
 const ze = { id: 1, name: 'José da Silva', nickname: 'Zé', position: 'FORWARD', active: true }
 const beto = { id: 2, name: 'Roberto Lima', nickname: 'Beto', position: 'GOALKEEPER', active: false }
@@ -20,7 +21,7 @@ function simularApi(rotas = {}) {
   })
 }
 
-const listaCom = (...jogadores) => ({ 'GET /api/players': () => resposta(200, { data: jogadores }) })
+const listaCom = (...jogadores) => ({ 'GET /api/grupos/1/players': () => resposta(200, { data: jogadores }) })
 
 // Todas as chamadas feitas ao fetch, no formato "MÉTODO url".
 const chamadas = () => fetch.mock.calls.map(([url, opcoes]) => `${opcoes?.method ?? 'GET'} ${url}`)
@@ -38,10 +39,12 @@ function preencher({ nome, apelido, posicao }) {
 // A página lê quem está logado pelo contexto; aqui entregamos um usuário pronto, sem rede.
 function renderizarPagina(papel = 'ORGANIZER') {
   return render(
-    <AuthContext.Provider value={{ usuario: { id: 1, role: papel }, carregando: false }}>
-      <MemoryRouter>
-        <PlayersPage />
-      </MemoryRouter>
+    <AuthContext.Provider value={{ usuario: { id: 1 }, carregando: false }}>
+      <GrupoFixo grupo={{ id: 1, name: 'Grupo de teste', myRole: papel, myPlayerId: null }}>
+        <MemoryRouter>
+          <PlayersPage />
+        </MemoryRouter>
+      </GrupoFixo>
     </AuthContext.Provider>,
   )
 }
@@ -85,7 +88,7 @@ describe('PlayersPage', () => {
         target: { value: ' ze ' },
       })
 
-      await waitFor(() => expect(chamadas()).toContain('GET /api/players?busca=ze'))
+      await waitFor(() => expect(chamadas()).toContain('GET /api/grupos/1/players?busca=ze'))
     })
 
     it('pede só jogadores ativos quando o filtro é marcado', async () => {
@@ -95,7 +98,7 @@ describe('PlayersPage', () => {
 
       fireEvent.click(screen.getByLabelText('Mostrar só ativos'))
 
-      await waitFor(() => expect(chamadas()).toContain('GET /api/players?ativos=true'))
+      await waitFor(() => expect(chamadas()).toContain('GET /api/grupos/1/players?ativos=true'))
     })
 
     it('mostra erro quando não consegue falar com o servidor', async () => {
@@ -111,7 +114,7 @@ describe('PlayersPage', () => {
 
   describe('cadastro', () => {
     it('envia os dados, limpa o formulário e recarrega a lista', async () => {
-      simularApi({ 'POST /api/players': () => resposta(201, { data: ze }) })
+      simularApi({ 'POST /api/grupos/1/players': () => resposta(201, { data: ze }) })
       renderizarPagina()
       await screen.findByText('Nenhum jogador encontrado.')
 
@@ -119,9 +122,9 @@ describe('PlayersPage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Cadastrar' }))
 
       await waitFor(() =>
-        expect(chamadas().filter((c) => c === 'GET /api/players')).toHaveLength(2),
+        expect(chamadas().filter((c) => c === 'GET /api/grupos/1/players')).toHaveLength(2),
       )
-      expect(corpoDaChamada('POST /api/players')).toEqual({
+      expect(corpoDaChamada('POST /api/grupos/1/players')).toEqual({
         name: 'José da Silva',
         nickname: 'Zé',
         position: 'FORWARD',
@@ -131,7 +134,7 @@ describe('PlayersPage', () => {
 
     it('mostra o erro do back-end e mantém o que foi digitado', async () => {
       simularApi({
-        'POST /api/players': () => resposta(422, { erro: 'Apelido já está em uso' }),
+        'POST /api/grupos/1/players': () => resposta(422, { erro: 'Apelido já está em uso' }),
       })
       renderizarPagina()
       await screen.findByText('Nenhum jogador encontrado.')
@@ -148,7 +151,7 @@ describe('PlayersPage', () => {
     it('carrega o jogador no formulário e envia a alteração com PUT', async () => {
       simularApi({
         ...listaCom(ze),
-        'PUT /api/players/1': () => resposta(200, { data: ze }),
+        'PUT /api/grupos/1/players/1': () => resposta(200, { data: ze }),
       })
       renderizarPagina()
       await screen.findByText('Zé')
@@ -160,8 +163,8 @@ describe('PlayersPage', () => {
       fireEvent.change(screen.getByLabelText('Apelido'), { target: { value: 'Zezinho' } })
       fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
 
-      await waitFor(() => expect(chamadas()).toContain('PUT /api/players/1'))
-      expect(corpoDaChamada('PUT /api/players/1')).toEqual({
+      await waitFor(() => expect(chamadas()).toContain('PUT /api/grupos/1/players/1'))
+      expect(corpoDaChamada('PUT /api/grupos/1/players/1')).toEqual({
         name: 'José da Silva',
         nickname: 'Zezinho',
         position: 'FORWARD',
@@ -186,16 +189,16 @@ describe('PlayersPage', () => {
     it('só inativa depois de confirmar', async () => {
       simularApi({
         ...listaCom(ze),
-        'PATCH /api/players/1/inativar': () => resposta(200, { data: { ...ze, active: false } }),
+        'PATCH /api/grupos/1/players/1/inativar': () => resposta(200, { data: { ...ze, active: false } }),
       })
       renderizarPagina()
       await screen.findByText('Zé')
 
       fireEvent.click(screen.getByRole('button', { name: 'Inativar Zé' }))
-      expect(chamadas()).not.toContain('PATCH /api/players/1/inativar')
+      expect(chamadas()).not.toContain('PATCH /api/grupos/1/players/1/inativar')
 
       fireEvent.click(screen.getByRole('button', { name: 'Confirmar inativação de Zé' }))
-      await waitFor(() => expect(chamadas()).toContain('PATCH /api/players/1/inativar'))
+      await waitFor(() => expect(chamadas()).toContain('PATCH /api/grupos/1/players/1/inativar'))
     })
 
     it('permite desistir da inativação', async () => {
@@ -207,7 +210,7 @@ describe('PlayersPage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Cancelar inativação de Zé' }))
 
       expect(screen.getByRole('button', { name: 'Inativar Zé' })).toBeInTheDocument()
-      expect(chamadas()).not.toContain('PATCH /api/players/1/inativar')
+      expect(chamadas()).not.toContain('PATCH /api/grupos/1/players/1/inativar')
     })
 
     it('não oferece inativar para quem já está inativo', async () => {
@@ -223,22 +226,22 @@ describe('PlayersPage', () => {
     it('só exclui depois de confirmar', async () => {
       simularApi({
         ...listaCom(ze),
-        'DELETE /api/players/1': () => resposta(204),
+        'DELETE /api/grupos/1/players/1': () => resposta(204),
       })
       renderizarPagina()
       await screen.findByText('Zé')
 
       fireEvent.click(screen.getByRole('button', { name: 'Excluir Zé' }))
-      expect(chamadas()).not.toContain('DELETE /api/players/1')
+      expect(chamadas()).not.toContain('DELETE /api/grupos/1/players/1')
 
       fireEvent.click(screen.getByRole('button', { name: 'Confirmar exclusão de Zé' }))
-      await waitFor(() => expect(chamadas()).toContain('DELETE /api/players/1'))
+      await waitFor(() => expect(chamadas()).toContain('DELETE /api/grupos/1/players/1'))
     })
 
     it('mostra o motivo quando o back-end recusa a exclusão', async () => {
       simularApi({
         ...listaCom(ze),
-        'DELETE /api/players/1': () =>
+        'DELETE /api/grupos/1/players/1': () =>
           resposta(422, { erro: 'Jogador com partidas não pode ser excluído; inative-o' }),
       })
       renderizarPagina()

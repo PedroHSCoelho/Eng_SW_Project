@@ -9,6 +9,7 @@ import {
   lerIdsDoSorteio,
   sortearTimes,
 } from '../src/features/draw/draw.core.js'
+import { sortearEmVariosTimes } from '../src/features/draw/draw.core.js'
 
 // Atalho: jogador com média (null = sem média) e posição (padrão meio-campo).
 const j = (id, average, position = 'MIDFIELDER') => ({ id, nickname: `J${id}`, position, average })
@@ -150,5 +151,32 @@ describe('sortearTimes: sorteio entre divisões igualmente boas', () => {
     const r = sortearTimes({ jogadores: muitos, aleatorio: sempreOUltimo })
     expect(Date.now() - inicio).toBeLessThan(3000)
     expect(r.teamA.players).toHaveLength(11)
+  })
+})
+
+describe('sortearEmVariosTimes (pelada)', () => {
+  const jogador = (id, average, position = 'MIDFIELDER') => ({ id, nickname: `J${id}`, position, average })
+
+  it('divide em N times do mesmo tamanho (±1), com os fortes espalhados', () => {
+    const lista = [5, 5, 5, 4, 4, 4, 2, 2, 2].map((m, i) => jogador(i + 1, m))
+    const { teams } = sortearEmVariosTimes({ jogadores: lista, quantidade: 3, aleatorio: () => 0.5 })
+    expect(teams.map((t) => t.name)).toEqual(['A', 'B', 'C'])
+    expect(teams.map((t) => t.players.length)).toEqual([3, 3, 3])
+    // cada time ficou com um 5, um 4 e um 2: força média igual
+    expect(new Set(teams.map((t) => t.strength))).toEqual(new Set([3.67]))
+    expect(teams.flatMap((t) => t.players).every((p) => !('sorte' in p))).toBe(true)
+  })
+
+  it('goleiros vão um para cada time antes dos outros', () => {
+    const lista = [jogador(1, 5, 'GOALKEEPER'), jogador(2, 5, 'GOALKEEPER'), jogador(3, 3, 'GOALKEEPER'), ...[4, 5, 6, 7, 8, 9].map((id) => jogador(id, 3))]
+    const { teams } = sortearEmVariosTimes({ jogadores: lista, quantidade: 3, aleatorio: () => 0.5 })
+    expect(teams.map((t) => t.players.filter((p) => p.position === 'GOALKEEPER').length)).toEqual([1, 1, 1])
+  })
+
+  it('lerIdsDoSorteio: com vários times, exige 3 por time; teamCount de 2 a 6', () => {
+    const ids = (n) => Array.from({ length: n }, (_, i) => i + 1)
+    expect(() => lerIdsDoSorteio({ playerIds: ids(8), teamCount: 3 })).toThrow('pelo menos 9')
+    expect(lerIdsDoSorteio({ playerIds: ids(30), teamCount: 4 })).toHaveLength(30)
+    expect(() => lerIdsDoSorteio({ playerIds: ids(9), teamCount: 7 })).toThrow('teamCount')
   })
 })

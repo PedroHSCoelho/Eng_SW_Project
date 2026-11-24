@@ -1,5 +1,6 @@
 // Regras de negócio dos jogadores. Recebe o repositório por parâmetro
-// para poder ser testado sem banco.
+// para poder ser testado sem banco. Todo caso de uso recebe o grupo (groupId) de quem pede:
+// jogador de outro grupo é tratado como inexistente (404).
 import { BusinessRuleError, NotFoundError, ValidationError } from '../../errors/AppError.js'
 
 // Mesmos valores do enum Position do schema.prisma
@@ -18,7 +19,8 @@ function textoComTamanho(valor, min, max, mensagem) {
 // Núcleo puro: valida a entrada externa e devolve SÓ os campos que o serviço
 // controla (lista explícita). nicknameKey, id e active enviados pelo cliente
 // são descartados; nicknameKey é sempre calculado aqui.
-function validarDadosDoJogador(dados) {
+// Exportada porque os grupos também criam jogador (quem cria ou entra no grupo).
+export function validarDadosDoJogador(dados) {
   const name = textoComTamanho(dados.name, 2, 50, 'Nome deve ter de 2 a 50 caracteres')
   const nickname = textoComTamanho(dados.nickname, 2, 30, 'Apelido deve ter de 2 a 30 caracteres')
   if (!POSICOES_VALIDAS.includes(dados.position)) {
@@ -28,38 +30,39 @@ function validarDadosDoJogador(dados) {
 }
 
 export function criarPlayersService(repo) {
-  async function buscarOuFalhar(id) {
+  async function buscarOuFalhar(groupId, id) {
     const jogador = await repo.buscarPorId(id)
-    if (!jogador) throw new NotFoundError('Jogador não encontrado')
+    if (!jogador || jogador.groupId !== groupId) throw new NotFoundError('Jogador não encontrado')
     return jogador
   }
 
   return {
-    async listar({ busca, apenasAtivos } = {}) {
+    async listar(groupId, { busca, apenasAtivos } = {}) {
       return repo.listar({
+        groupId,
         busca: typeof busca === 'string' ? busca.trim() : '',
         apenasAtivos: apenasAtivos === true,
       })
     },
 
-    buscar(id) {
-      return buscarOuFalhar(id)
+    buscar(groupId, id) {
+      return buscarOuFalhar(groupId, id)
     },
 
-    async criar(dados) {
+    async criar(groupId, dados) {
       const jogador = validarDadosDoJogador(dados)
-      if (await repo.buscarPorNicknameKey(jogador.nicknameKey)) {
+      if (await repo.buscarPorNicknameKey(groupId, jogador.nicknameKey)) {
         throw new BusinessRuleError('Apelido já está em uso')
       }
-      return repo.criar(jogador)
+      return repo.criar({ ...jogador, groupId })
     },
 
     // PUT: substitui nome, apelido e posição. O apelido pode continuar o mesmo
     // (é o próprio jogador), mas não pode ser o de outro. `active` só muda em inativar.
-    async atualizar(id, dados) {
-      await buscarOuFalhar(id)
+    async atualizar(groupId, id, dados) {
+      await buscarOuFalhar(groupId, id)
       const jogador = validarDadosDoJogador(dados)
-      const dono = await repo.buscarPorNicknameKey(jogador.nicknameKey)
+      const dono = await repo.buscarPorNicknameKey(groupId, jogador.nicknameKey)
       if (dono && dono.id !== id) {
         throw new BusinessRuleError('Apelido já está em uso')
       }
@@ -67,16 +70,16 @@ export function criarPlayersService(repo) {
     },
 
     // Quem já jogou não pode sumir do histórico: só inativar.
-    async excluir(id) {
-      await buscarOuFalhar(id)
+    async excluir(groupId, id) {
+      await buscarOuFalhar(groupId, id)
       if (await repo.possuiPartidas(id)) {
         throw new BusinessRuleError('Jogador com partidas não pode ser excluído; inative-o')
       }
       await repo.excluir(id)
     },
 
-    async inativar(id) {
-      await buscarOuFalhar(id)
+    async inativar(groupId, id) {
+      await buscarOuFalhar(groupId, id)
       return repo.atualizar(id, { active: false })
     },
   }

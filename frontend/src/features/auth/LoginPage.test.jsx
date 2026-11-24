@@ -43,14 +43,14 @@ describe('LoginPage', () => {
   it('entra com e-mail e senha, vai para o início e mostra o nome no cabeçalho', async () => {
     abrirLogin({
       'POST /api/auth/login': () =>
-        resposta(200, { data: { id: 1, name: 'Maria', role: 'PLAYER', email: 'm@x.com' } }),
+        resposta(200, { data: { id: 1, name: 'Maria', email: 'm@x.com' } }),
     })
 
     fireEvent.change(await screen.findByLabelText('E-mail'), { target: { value: 'm@x.com' } })
     fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'senha-forte-1' } })
     fireEvent.click(screen.getByRole('button', { name: 'Entrar' }))
 
-    expect(await screen.findByText('Maria (Jogador)')).toBeInTheDocument()
+    expect(await screen.findByText('Maria')).toBeInTheDocument()
     expect(corpoEnviado('POST /api/auth/login')).toEqual({
       email: 'm@x.com',
       password: 'senha-forte-1',
@@ -73,7 +73,7 @@ describe('LoginPage', () => {
   it('alterna para "Criar conta", pede o nome e envia o cadastro', async () => {
     abrirLogin({
       'POST /api/auth/register': () =>
-        resposta(201, { data: { id: 3, name: 'Ana Lima', role: 'PLAYER', email: 'ana@x.com' } }),
+        resposta(201, { data: { id: 3, name: 'Ana Lima', email: 'ana@x.com' } }),
     })
 
     fireEvent.click(await screen.findByRole('button', { name: 'Não tenho conta' }))
@@ -82,7 +82,7 @@ describe('LoginPage', () => {
     fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'senha-forte-1' } })
     fireEvent.click(screen.getByRole('button', { name: 'Cadastrar' }))
 
-    expect(await screen.findByText('Ana Lima (Jogador)')).toBeInTheDocument()
+    expect(await screen.findByText('Ana Lima')).toBeInTheDocument()
     expect(corpoEnviado('POST /api/auth/register')).toEqual({
       name: 'Ana Lima',
       email: 'ana@x.com',

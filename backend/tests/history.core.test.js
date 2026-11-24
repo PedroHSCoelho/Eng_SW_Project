@@ -78,7 +78,7 @@ describe('montarHistorico', () => {
   it('cada item traz data, local, resultado e placar calculado dos gols', () => {
     const comGols = [partida(1, '2026-11-01T20:00:00Z', { result: 'A_WINS', goals: [gol(1, 'A'), gol(1, 'A'), gol(2, 'B')] })]
     expect(montarHistorico(comGols, semFiltro).items[0]).toEqual({
-      id: 1, date: '2026-11-01T20:00:00Z', location: 'Quadra 1', result: 'A_WINS', score: { A: 2, B: 1 },
+      id: 1, date: '2026-11-01T20:00:00Z', location: 'Quadra 1', result: 'A_WINS', format: 'SINGLE_GAME', score: { A: 2, B: 1 },
     })
   })
 

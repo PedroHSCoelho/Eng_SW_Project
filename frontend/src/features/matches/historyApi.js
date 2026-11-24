@@ -1,6 +1,7 @@
 // Acesso HTTP ao histórico de partidas (o formato { data } / { erro } é tratado em api/http.js).
 // Filtros e paginação são decididos no back-end; aqui só montamos a query.
 import { pedir } from '../../api/http.js'
+import { apiDoGrupo } from '../../api/grupoAtual.js'
 
 // A API trata `ate` como EXCLUSIVO (dia seguinte ao último dia que a pessoa quer ver).
 // Quem escolhe "até 30/11" espera ver o dia 30, então mandamos 01/12.
@@ -16,5 +17,5 @@ export function buscarHistorico({ page = 1, pageSize = 10, playerId = '', de = '
   if (playerId) params.set('playerId', String(playerId))
   if (de) params.set('de', de)
   if (ate) params.set('ate', diaSeguinte(ate))
-  return pedir(`/api/matches/historico?${params}`)
+  return pedir(`${apiDoGrupo()}/matches/historico?${params}`)
 }

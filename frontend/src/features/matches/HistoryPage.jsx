@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { listarJogadores } from '../players/playersApi.js'
 import { buscarHistorico } from './historyApi.js'
 import { RESULTADO, formatarData } from './textos.js'
+import AbasDePartidas from './AbasDePartidas.jsx'
 
 const campo =
   'w-full rounded-lg bg-green-950 px-3 py-2 text-white ring-1 ring-green-700 focus:outline-none focus:ring-2 focus:ring-green-400'
@@ -46,6 +47,7 @@ export default function HistoryPage() {
 
   return (
     <section className="mx-auto max-w-5xl px-4 pb-16" aria-labelledby="titulo-historico">
+      <AbasDePartidas />
       <h2 id="titulo-historico" className="text-2xl font-bold">
         🗂️ Histórico de partidas
       </h2>
@@ -97,10 +99,21 @@ export default function HistoryPage() {
                       <span className="text-sm text-green-200">{p.location}</span>
                     </span>
                     <span className="text-right">
-                      <span className="block text-xl font-bold tabular-nums">
-                        Time A {p.score.A} x {p.score.B} Time B
-                      </span>
-                      <span className="text-sm text-green-200">{RESULTADO[p.result]}</span>
+                      {p.format === 'PELADA' ? (
+                        <>
+                          <span className="block text-xl font-bold">Pelada · {p.gamesCount} jogo(s)</span>
+                          <span className="text-sm text-green-200">
+                            {p.leader ? `Time ${p.leader} terminou na frente` : 'Sem jogos encerrados'}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="block text-xl font-bold tabular-nums">
+                            Time A {p.score.A} x {p.score.B} Time B
+                          </span>
+                          <span className="text-sm text-green-200">{RESULTADO[p.result]}</span>
+                        </>
+                      )}
                     </span>
                   </Link>
                 </li>

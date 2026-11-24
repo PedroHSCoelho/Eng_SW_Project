@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Route, Routes } from 'react-router-dom'
+import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import HomePage from './HomePage.jsx'
 import PlayersPage from './features/players/PlayersPage.jsx'
 import PlayerProfilePage from './features/players/PlayerProfilePage.jsx'
@@ -11,28 +11,73 @@ import DrawPage from './features/draw/DrawPage.jsx'
 import LoginPage from './features/auth/LoginPage.jsx'
 import RotaProtegida from './features/auth/RotaProtegida.jsx'
 import { AuthProvider, useAuth } from './features/auth/AuthContext.jsx'
-import UsersPage from './features/users/UsersPage.jsx'
-import OrganizerRequestPage from './features/organizerRequests/OrganizerRequestPage.jsx'
+import { GrupoProvider, ehOrganizadorDo, useGrupo } from './features/groups/GrupoContext.jsx'
+import GroupsPage from './features/groups/GroupsPage.jsx'
+import InvitePage from './features/groups/InvitePage.jsx'
+import MembersPage from './features/groups/MembersPage.jsx'
+import Logo from './ui/Logo.jsx'
+import Icone from './ui/Icones.jsx'
 
-// NavLink = <a> que sabe se aponta para a página atual (destaca o item do menu).
-const itemMenu = ({ isActive }) =>
-  `rounded-lg px-3 py-1.5 text-sm font-medium ${
-    isActive ? 'bg-green-500 text-green-950' : 'bg-green-800 hover:bg-green-700'
+// Navegação principal. No celular vira a barra inferior (polegar alcança na beira do campo);
+// do tablet para cima fica no header. É o MESMO <nav>: só o CSS muda de lugar.
+const itemPrincipal = ({ isActive }) =>
+  `flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-2 text-[11px] font-medium transition-colors duration-150 md:min-h-9 md:flex-none md:flex-row md:gap-1.5 md:px-3 md:text-sm ${
+    isActive ? 'text-gramado md:bg-gramado md:text-gramado-tinta' : 'text-texto-suave hover:text-texto md:hover:bg-superficie-2'
   }`
 
-// O AuthProvider deixa "quem está logado" disponível para todas as telas.
+
+// O AuthProvider deixa "quem está logado" disponível para todas as telas, e o GrupoProvider,
+// "em que grupo estou" (os dados de jogadores, partidas e ranking são de cada grupo).
 // O BrowserRouter fica em main.jsx (nos testes entra o MemoryRouter).
 export default function App() {
   return (
     <AuthProvider>
-      <Layout />
+      <GrupoProvider>
+        <Layout />
+      </GrupoProvider>
     </AuthProvider>
   )
 }
 
-// Layout fixo (cabeçalho + menu); o <Routes> troca só o conteúdo conforme a URL.
+// Grupo atual no header: um "chip" com o nome que leva a Meus grupos (trocar, criar ou entrar).
+function SeletorDeGrupo() {
+  const { grupo } = useGrupo()
+  return (
+    <NavLink
+      to="/grupos"
+      aria-label={grupo ? `Grupo atual: ${grupo.name}. Trocar de grupo` : 'Meus grupos'}
+      className={({ isActive }) =>
+        `flex min-h-10 max-w-44 items-center gap-1.5 rounded-xl px-2.5 text-sm font-semibold ring-1 transition-colors duration-150 lg:max-w-56 ${
+          isActive ? 'bg-superficie-2 ring-gramado' : 'ring-borda hover:bg-superficie-2'
+        }`
+      }
+    >
+      <Icone nome="escudo" tamanho={18} className="text-gramado" />
+      <span className="truncate" aria-hidden="true">{grupo ? grupo.name : 'Grupos'}</span>
+      <span aria-hidden="true" className="text-texto-suave">▾</span>
+    </NavLink>
+  )
+}
+
+// Ponto discreto do status da API: verde = online, vermelho = offline, amarelo = testando.
+// O texto completo fica para leitores de tela e no tooltip (title).
+function StatusDaApi({ api }) {
+  const cor = { carregando: 'bg-ouro', online: 'bg-gramado', offline: 'bg-perigo' }[api]
+  return (
+    <span role="status" title={`API: ${api}`} className="flex size-6 items-center justify-center">
+      <span className={`size-2.5 rounded-full ${cor} ${api === 'online' ? 'shadow-[0_0_0_3px_rgb(34_197_94/0.25)]' : ''}`} />
+      <span className="sr-only">API: {api}</span>
+    </span>
+  )
+}
+
+// Layout fixo (cabeçalho + navegação); o <Routes> troca só o conteúdo conforme a URL.
 function Layout() {
   const { usuario, sair } = useAuth()
+  const { grupo } = useGrupo()
+  const ehOrganizador = ehOrganizadorDo(grupo)
+  const { pathname } = useLocation()
+  const naAreaDePartidas = ['/historico', '/sorteio'].some((p) => pathname.startsWith(p))
   // Estado do teste de conexão com o back-end: 'carregando' | 'online' | 'offline'
   const [api, setApi] = useState('carregando')
 
@@ -42,87 +87,101 @@ function Layout() {
       .catch(() => setApi('offline'))
   }, [])
 
-  const statusClasses = {
-    carregando: 'bg-yellow-100 text-yellow-800',
-    online: 'bg-green-100 text-green-800',
-    offline: 'bg-red-100 text-red-800',
-  }
-
   return (
-    <div className="min-h-screen bg-green-950 text-white">
-      <header className="mx-auto max-w-5xl px-4 py-10 text-center">
-        <h1 className="text-4xl font-bold md:text-5xl">⚽ Eng_SW_Project</h1>
-        <p className="mt-3 text-green-200">
-          Registre partidas, acompanhe estatísticas, veja o ranking e avalie os jogadores da pelada.
-        </p>
-        <span
-          className={`mt-5 inline-block rounded-full px-4 py-1 text-sm font-medium ${statusClasses[api]}`}
-        >
-          API: {api}
-        </span>
-        <nav aria-label="Principal" className="mt-6 flex justify-center gap-2">
-          <NavLink to="/" end className={itemMenu}>
-            Início
-          </NavLink>
-          {usuario && (
-            <NavLink to="/jogadores" className={itemMenu}>
-              Jogadores
+    <div className="min-h-screen bg-fundo text-texto">
+      <a
+        href="#conteudo"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-ouro focus:px-3 focus:py-2 focus:text-fundo"
+      >
+        Pular para o conteúdo
+      </a>
+
+      <header className="sticky top-0 z-40 border-b border-borda bg-fundo/95">
+        <div className="mx-auto flex h-[var(--altura-header)] max-w-[var(--largura-conteudo)] items-center gap-3 px-4">
+          <Link to="/" aria-label="Cobra da Bola, página inicial" className="rounded-lg">
+            <Logo tamanho={34} />
+          </Link>
+          <StatusDaApi api={api} />
+
+          {/* Deslogado só existe "Início": no celular a barra inferior some (o logo já leva ao início). */}
+          <nav
+            aria-label="Principal"
+            className={`fixed inset-x-0 bottom-0 z-40 h-[var(--altura-barra-inferior)] items-stretch gap-1 border-t border-borda bg-superficie px-2 pb-[env(safe-area-inset-bottom)] md:static md:ml-4 md:flex md:h-auto md:items-center md:border-0 md:bg-transparent md:p-0 ${
+              usuario ? 'flex' : 'hidden'
+            }`}
+          >
+            <NavLink to="/" end className={itemPrincipal}>
+              <Icone nome="inicio" />
+              Início
             </NavLink>
-          )}
-          {usuario && (
-            <NavLink to="/partidas" className={itemMenu}>
-              Partidas
-            </NavLink>
-          )}
-          {usuario && (
-            <NavLink to="/historico" className={itemMenu}>
-              Histórico
-            </NavLink>
-          )}
-          {usuario && (
-            <NavLink to="/ranking" className={itemMenu}>
-              Ranking
-            </NavLink>
-          )}
-          {usuario?.role === 'ORGANIZER' && (
-            <NavLink to="/sorteio" className={itemMenu}>
-              Sorteio
-            </NavLink>
-          )}
-          {usuario?.role === 'PLAYER' && (
-            <NavLink to="/ser-organizador" className={itemMenu}>
-              Ser organizador
-            </NavLink>
-          )}
-          {usuario?.role === 'ORGANIZER' && (
-            <NavLink to="/usuarios" className={itemMenu}>
-              Usuários
-            </NavLink>
-          )}
-          {!usuario && (
-            <NavLink to="/login" className={itemMenu}>
-              Entrar
-            </NavLink>
-          )}
-        </nav>
-        {usuario && (
-          <p className="mt-4 text-sm text-green-200">
-            {usuario.name} ({usuario.role === 'ORGANIZER' ? 'Organizador' : 'Jogador'}){' '}
-            <button type="button" onClick={sair} className="ml-2 underline">
-              Sair
-            </button>
-          </p>
-        )}
+            {usuario && (
+              <>
+                {/* "Partidas" fica acesa também no histórico e no sorteio (são abas da mesma área). */}
+                <NavLink to="/partidas" className={(estado) => itemPrincipal({ isActive: estado.isActive || naAreaDePartidas })}>
+                  <Icone nome="sumula" />
+                  Partidas
+                </NavLink>
+                <NavLink to="/ranking" className={itemPrincipal}>
+                  <Icone nome="trofeu" />
+                  Ranking
+                </NavLink>
+                <NavLink to="/jogadores" className={itemPrincipal}>
+                  <Icone nome="jogadores" />
+                  Jogadores
+                </NavLink>
+                <NavLink to={grupo ? '/membros' : '/grupos'} className={itemPrincipal}>
+                  <Icone nome="escudo" />
+                  Grupo
+                </NavLink>
+              </>
+            )}
+          </nav>
+
+          <div className="ml-auto flex items-center gap-1">
+            {usuario && <SeletorDeGrupo />}
+            {!usuario && (
+              <NavLink
+                to="/login"
+                className="flex min-h-10 items-center gap-1.5 rounded-xl bg-gramado px-4 text-sm font-semibold text-gramado-tinta transition-colors duration-150 hover:bg-gramado-claro"
+              >
+                <Icone nome="entrar" tamanho={18} />
+                Entrar
+              </NavLink>
+            )}
+            {usuario && (
+              <>
+                <span className="hidden max-w-40 truncate text-sm text-texto-suave lg:inline">
+                  {usuario.name}
+                  {grupo && ` (${ehOrganizador ? 'Organizador' : 'Membro'})`}
+                </span>
+                <button
+                  type="button"
+                  onClick={sair}
+                  aria-label="Sair"
+                  className="flex min-h-10 items-center gap-1.5 rounded-xl px-2.5 text-sm font-medium text-texto-suave transition-colors duration-150 hover:bg-superficie-2 hover:text-texto"
+                >
+                  <Icone nome="sair" tamanho={18} />
+                  <span className="hidden md:inline" aria-hidden="true">Sair</span>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
       </header>
 
-      <main>
-        <Routes>
+      {/* pb: espaço para a barra inferior não cobrir o fim da página no celular */}
+      <main
+        id="conteudo"
+        className={`pt-6 md:pb-12 ${usuario ? 'pb-[calc(var(--altura-barra-inferior)+1.5rem)]' : 'pb-12'}`}
+      >
+        {/* key: ao trocar de grupo, as telas montam de novo e buscam os dados do novo grupo. */}
+        <Routes key={grupo?.id ?? 'sem-grupo'}>
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route
             path="/jogadores"
             element={
-              <RotaProtegida>
+              <RotaProtegida doGrupo>
                 <PlayersPage />
               </RotaProtegida>
             }
@@ -130,7 +189,7 @@ function Layout() {
           <Route
             path="/jogadores/:id"
             element={
-              <RotaProtegida>
+              <RotaProtegida doGrupo>
                 <PlayerProfilePage />
               </RotaProtegida>
             }
@@ -138,7 +197,7 @@ function Layout() {
           <Route
             path="/partidas"
             element={
-              <RotaProtegida>
+              <RotaProtegida doGrupo>
                 <MatchesPage />
               </RotaProtegida>
             }
@@ -146,7 +205,7 @@ function Layout() {
           <Route
             path="/historico"
             element={
-              <RotaProtegida>
+              <RotaProtegida doGrupo>
                 <HistoryPage />
               </RotaProtegida>
             }
@@ -154,7 +213,7 @@ function Layout() {
           <Route
             path="/partidas/:id"
             element={
-              <RotaProtegida>
+              <RotaProtegida doGrupo>
                 <MatchPage />
               </RotaProtegida>
             }
@@ -162,7 +221,7 @@ function Layout() {
           <Route
             path="/sorteio"
             element={
-              <RotaProtegida papel="ORGANIZER">
+              <RotaProtegida doGrupo papel="ORGANIZER">
                 <DrawPage />
               </RotaProtegida>
             }
@@ -170,24 +229,32 @@ function Layout() {
           <Route
             path="/ranking"
             element={
-              <RotaProtegida>
+              <RotaProtegida doGrupo>
                 <RankingPage />
               </RotaProtegida>
             }
           />
           <Route
-            path="/ser-organizador"
+            path="/grupos"
             element={
               <RotaProtegida>
-                <OrganizerRequestPage />
+                <GroupsPage />
               </RotaProtegida>
             }
           />
           <Route
-            path="/usuarios"
+            path="/convite/:codigo"
             element={
-              <RotaProtegida papel="ORGANIZER">
-                <UsersPage />
+              <RotaProtegida>
+                <InvitePage />
+              </RotaProtegida>
+            }
+          />
+          <Route
+            path="/membros"
+            element={
+              <RotaProtegida doGrupo>
+                <MembersPage />
               </RotaProtegida>
             }
           />

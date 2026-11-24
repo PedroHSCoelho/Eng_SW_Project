@@ -19,7 +19,8 @@ function criarRepoEmMemoria() {
             j.name.toLowerCase().includes(busca.toLowerCase())),
       ),
     buscarPorId: async (id) => jogadores.find((j) => j.id === id) ?? null,
-    buscarPorNicknameKey: async (key) => jogadores.find((j) => j.nicknameKey === key) ?? null,
+    buscarPorNicknameKey: async (groupId, key) =>
+      jogadores.find((j) => j.groupId === groupId && j.nicknameKey === key) ?? null,
     criar: async (dados) => {
       const jogador = { id: proximoId++, active: true, ...dados }
       jogadores.push(jogador)
@@ -37,6 +38,12 @@ let app
 beforeEach(() => {
   app = express()
   app.use(express.json())
+  // No app real, o middleware de participação põe o grupo de quem pede em req.participacao.
+  // Aqui fixamos o grupo 1 para testar só a casca HTTP dos jogadores.
+  app.use('/api/players', (req, res, next) => {
+    req.participacao = { groupId: 1, role: 'ORGANIZER' }
+    next()
+  })
   app.use('/api/players', criarPlayersRouter(criarPlayersService(criarRepoEmMemoria())))
   app.use(notFound)
   app.use(errorHandler)
