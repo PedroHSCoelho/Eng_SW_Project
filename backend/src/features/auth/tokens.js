@@ -1,6 +1,6 @@
 // Casca fina sobre a biblioteca jsonwebtoken: emite e verifica o token de login (JWT).
-// O token carrega SÓ o id do usuário (campo "sub"). O papel NÃO vai dentro: quando o
-// organizador muda o papel de alguém, vale na próxima requisição, sem esperar o token vencer.
+// O token carrega SÓ o id do usuário (campo "sub"). O papel NÃO vai dentro (ele é por grupo e
+// é lido do banco a cada requisição): quando o organizador muda o papel de alguém, vale na hora.
 import jwt from 'jsonwebtoken'
 import { UnauthorizedError } from '../../errors/AppError.js'
 

@@ -3,6 +3,7 @@
 import { ValidationError } from '../../errors/AppError.js'
 import { filtrarPorPeriodo, lerIntervaloExplicito } from '../stats/stats.core.js'
 import { calcularPlacar } from './matches.core.js'
+import { classificacaoDaPelada, timesDaPartida } from './pelada.core.js'
 
 export const TAMANHO_PADRAO = 10
 export const TAMANHO_MAXIMO = 50
@@ -43,7 +44,13 @@ export function montarHistorico(partidas, { de, ate, playerId, page, pageSize })
       date: p.date,
       location: p.location,
       result: p.result,
-      score: calcularPlacar(p.goals),
+      format: p.format ?? 'SINGLE_GAME',
+      score: calcularPlacar(p.goals, timesDaPartida(p)),
+      // Pelada: quantos jogos teve e quem terminou a noite na frente.
+      ...(p.format === 'PELADA' && {
+        gamesCount: (p.games ?? []).length,
+        leader: classificacaoDaPelada(p)[0]?.team ?? null,
+      }),
     })),
     page,
     pageSize,

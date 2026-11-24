@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import '@testing-library/jest-dom/vitest'
 import MatchesPage from './MatchesPage.jsx'
 import { AuthContext } from '../auth/AuthContext.jsx'
+import { GrupoFixo } from '../groups/GrupoContext.jsx'
 
 const p1 = { id: 1, date: '2026-11-20T22:00:00.000Z', location: 'Quadra A', status: 'FINISHED', score: { A: 2, B: 1 } }
 const p2 = { id: 2, date: '2026-11-27T22:00:00.000Z', location: 'Quadra B', status: 'SCHEDULED', score: { A: 0, B: 0 } }
@@ -14,13 +15,15 @@ function resposta(status, corpo) {
 
 function renderizar(papel = 'ORGANIZER') {
   return render(
-    <AuthContext.Provider value={{ usuario: { id: 1, role: papel }, carregando: false }}>
-      <MemoryRouter initialEntries={['/partidas']}>
-        <Routes>
-          <Route path="/partidas" element={<MatchesPage />} />
-          <Route path="/partidas/:id" element={<p>Súmula aberta</p>} />
-        </Routes>
-      </MemoryRouter>
+    <AuthContext.Provider value={{ usuario: { id: 1 }, carregando: false }}>
+      <GrupoFixo grupo={{ id: 1, name: 'Grupo de teste', myRole: papel, myPlayerId: null }}>
+        <MemoryRouter initialEntries={['/partidas']}>
+          <Routes>
+            <Route path="/partidas" element={<MatchesPage />} />
+            <Route path="/partidas/:id" element={<p>Súmula aberta</p>} />
+          </Routes>
+        </MemoryRouter>
+      </GrupoFixo>
     </AuthContext.Provider>,
   )
 }
@@ -112,5 +115,42 @@ describe('MatchesPage: placar e estado na lista', () => {
 
     expect(await screen.findByText('Cancelada')).toBeInTheDocument()
     expect(screen.queryByText(/Time A \d x \d Time B/)).not.toBeInTheDocument()
+  })
+})
+
+describe('MatchesPage: formato, vagas e lista de presença', () => {
+  it('cria uma pelada de 4 times com vagas; jogo único é o padrão', async () => {
+    fetch.mockImplementation(async (url, opcoes = {}) =>
+      opcoes.method === 'POST' ? resposta(201, { data: { id: 9 } }) : resposta(200, { data: [] }),
+    )
+    renderizar()
+    await screen.findByText('Nenhuma partida registrada ainda.')
+    expect(screen.getByRole('radio', { name: /Jogo único/ })).toBeChecked()
+    expect(screen.queryByLabelText('Times')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('radio', { name: /Pelada/ }))
+    fireEvent.change(screen.getByLabelText('Times'), { target: { value: '4' } })
+    fireEvent.change(screen.getByLabelText('Data e hora'), { target: { value: '2026-11-20T19:00' } })
+    fireEvent.change(screen.getByLabelText('Local'), { target: { value: 'Society' } })
+    fireEvent.change(screen.getByLabelText(/Vagas/), { target: { value: '20' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Criar partida' }))
+
+    await screen.findByText('Súmula aberta')
+    const [, opcoes] = fetch.mock.calls.find(([, o]) => o?.method === 'POST')
+    expect(JSON.parse(opcoes.body)).toMatchObject({ format: 'PELADA', teamCount: 4, maxPlayers: 20, location: 'Society' })
+  })
+
+  it('agendada mostra quantos estão na lista; pelada mostra times e jogos no lugar do placar', async () => {
+    fetch.mockImplementation(async () =>
+      resposta(200, {
+        data: [
+          { ...p2, attendance: { total: 14, maxPlayers: 12 } },
+          { ...p1, id: 3, location: 'Society', format: 'PELADA', teamCount: 3, gamesCount: 5, score: { A: 4, B: 2, C: 1 } },
+        ],
+      }),
+    )
+    renderizar()
+    expect(await screen.findByText('12/12 na lista · 2 na espera')).toBeInTheDocument()
+    expect(screen.getByText('Pelada · 3 times · 5 jogo(s)')).toBeInTheDocument()
   })
 })

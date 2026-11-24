@@ -31,6 +31,11 @@ const ABAS = {
     vazio: 'Ainda não há assistências no período.',
     colunas: [['Ast', 'assists'], ['J', 'matches']],
   },
+  defesas: {
+    nome: 'Defesas',
+    vazio: 'Ainda não há defesas difíceis no período.',
+    colunas: [['Def', 'difficultSaves'], ['J', 'matches']],
+  },
 }
 
 const campo =

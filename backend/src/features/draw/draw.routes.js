@@ -6,7 +6,7 @@ export function criarDrawRouter(service) {
 
   // Corpo: { "playerIds": [1, 2, 3, 4, 5, 6] } -> { teamA, teamB, difference }
   router.post('/', async (req, res) => {
-    res.json({ data: await service.sortear(req.body ?? {}) })
+    res.json({ data: await service.sortear(req.participacao.groupId, req.body ?? {}) })
   })
 
   return router

@@ -14,9 +14,10 @@ function traduzirErroDeUnicidade(erro) {
 }
 
 export const playersRepository = {
-  listar({ busca, apenasAtivos }) {
+  listar({ groupId, busca, apenasAtivos }) {
     return prisma.player.findMany({
       where: {
+        groupId,
         ...(apenasAtivos && { active: true }),
         ...(busca && {
           OR: [
@@ -38,8 +39,9 @@ export const playersRepository = {
     return prisma.player.findMany({ where: { id: { in: ids } } })
   },
 
-  buscarPorNicknameKey(nicknameKey) {
-    return prisma.player.findUnique({ where: { nicknameKey } })
+  // O apelido é único dentro do grupo (@@unique([groupId, nicknameKey]) no schema).
+  buscarPorNicknameKey(groupId, nicknameKey) {
+    return prisma.player.findUnique({ where: { groupId_nicknameKey: { groupId, nicknameKey } } })
   },
 
   async criar(dados) {

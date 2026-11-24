@@ -2,9 +2,6 @@
 // É a parte mais fácil de testar e de explicar ("core decides, shell executes").
 import { ValidationError } from '../../errors/AppError.js'
 
-// Mesmos valores do enum Role do schema.prisma
-export const PAPEIS = ['ORGANIZER', 'PLAYER']
-
 // Formato simples (algo@dominio.tld). Não prova que o e-mail existe, só barra lixo óbvio.
 const FORMATO_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -39,26 +36,11 @@ export function validarLogin(dados) {
   return { email, password }
 }
 
-// Todo cadastro nasce PLAYER (o papel é fixado no serviço, nunca vem do cliente).
-// Virar organizador só por pedido aprovado ou pelo comando de bootstrap no banco.
-
-export function validarPapel(papel) {
-  if (!PAPEIS.includes(papel)) throw new ValidationError('Papel inválido')
-  return papel
-}
-
 // O que pode sair pela API: nunca o hash da senha.
 export function usuarioPublico(usuario) {
   const publico = { ...usuario }
   delete publico.passwordHash
   return publico
-}
-
-// Regra de gestão: o sistema nunca pode ficar sem organizador (ninguém mais conseguiria
-// promover ou rebaixar ninguém).
-export function podeAlterarPapel({ papelAtual, novoPapel, totalOrganizadores }) {
-  const estaRebaixando = papelAtual === 'ORGANIZER' && novoPapel !== 'ORGANIZER'
-  return !(estaRebaixando && totalOrganizadores <= 1)
 }
 
 // Lê um cookie do cabeçalho "Cookie: a=1; token=xyz". Evita a dependência cookie-parser.

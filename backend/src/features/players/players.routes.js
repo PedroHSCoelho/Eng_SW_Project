@@ -1,6 +1,7 @@
 // Casca HTTP dos jogadores: traduz requisição -> serviço -> resposta.
 // Sem regra de negócio aqui; erros lançados pelo serviço vão para o errorHandler
 // (o Express 5 já encaminha erros de funções async).
+// O grupo vem da participação de quem pede (req.participacao), carregada antes pelo middleware.
 import { Router } from 'express'
 import { ValidationError } from '../../errors/AppError.js'
 
@@ -18,7 +19,7 @@ export function criarPlayersRouter(service) {
   const router = Router()
 
   router.get('/', async (req, res) => {
-    const data = await service.listar({
+    const data = await service.listar(req.participacao.groupId, {
       busca: req.query.busca,
       apenasAtivos: req.query.ativos === 'true',
     })
@@ -26,24 +27,24 @@ export function criarPlayersRouter(service) {
   })
 
   router.get('/:id', async (req, res) => {
-    res.json({ data: await service.buscar(lerId(req)) })
+    res.json({ data: await service.buscar(req.participacao.groupId, lerId(req)) })
   })
 
   router.post('/', async (req, res) => {
-    const data = await service.criar(req.body ?? {})
+    const data = await service.criar(req.participacao.groupId, req.body ?? {})
     res.status(201).json({ data })
   })
 
   router.put('/:id', async (req, res) => {
-    res.json({ data: await service.atualizar(lerId(req), req.body ?? {}) })
+    res.json({ data: await service.atualizar(req.participacao.groupId, lerId(req), req.body ?? {}) })
   })
 
   router.patch('/:id/inativar', async (req, res) => {
-    res.json({ data: await service.inativar(lerId(req)) })
+    res.json({ data: await service.inativar(req.participacao.groupId, lerId(req)) })
   })
 
   router.delete('/:id', async (req, res) => {
-    await service.excluir(lerId(req))
+    await service.excluir(req.participacao.groupId, lerId(req))
     res.status(204).end()
   })
 

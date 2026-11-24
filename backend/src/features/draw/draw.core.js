@@ -6,6 +6,10 @@ import { ValidationError } from '../../errors/AppError.js'
 export const FORCA_PADRAO = 3 // quem ainda não tem média entra com 3,0
 export const MIN_JOGADORES = 6 // 3 por time, o mínimo para uma partida começar
 export const MAX_JOGADORES = 22 // limite da busca por força bruta (C(22,11) divisões)
+// Pelada: de 3 a 6 times, com pelo menos 3 por time; sem força bruta (seria lento demais).
+export const MAX_TIMES = 6
+export const MAX_JOGADORES_VARIOS_TIMES = 60
+const NOMES_DOS_TIMES = ['A', 'B', 'C', 'D', 'E', 'F']
 
 const arredondar2 = (n) => Math.round(n * 100) / 100
 
@@ -14,17 +18,30 @@ export function forcaDoJogador({ average }) {
   return average === null || average === undefined ? FORCA_PADRAO : average
 }
 
-// Valida a entrada externa: lista de ids únicos, de 6 a 22 jogadores.
+// Quantos times sortear (opcional, padrão 2): de 2 a 6.
+export function lerQuantidadeDeTimes(corpo) {
+  const quantidade = corpo?.teamCount ?? 2
+  if (!Number.isInteger(quantidade) || quantidade < 2 || quantidade > MAX_TIMES) {
+    throw new ValidationError(`teamCount deve ser de 2 a ${MAX_TIMES}`)
+  }
+  return quantidade
+}
+
+// Valida a entrada externa: lista de ids únicos, de 6 a 22 jogadores (2 times)
+// ou de 3 por time a 60 (vários times).
 export function lerIdsDoSorteio(corpo) {
   const ids = corpo?.playerIds
+  const times = lerQuantidadeDeTimes(corpo)
   if (!Array.isArray(ids) || !ids.every((id) => Number.isInteger(id) && id > 0)) {
     throw new ValidationError('playerIds deve ser uma lista de ids de jogadores')
   }
-  if (ids.length < MIN_JOGADORES) {
-    throw new ValidationError(`Escolha pelo menos ${MIN_JOGADORES} jogadores para sortear`)
+  const minimo = times === 2 ? MIN_JOGADORES : 3 * times
+  const maximo = times === 2 ? MAX_JOGADORES : MAX_JOGADORES_VARIOS_TIMES
+  if (ids.length < minimo) {
+    throw new ValidationError(`Escolha pelo menos ${minimo} jogadores para sortear`)
   }
-  if (ids.length > MAX_JOGADORES) {
-    throw new ValidationError(`Escolha no máximo ${MAX_JOGADORES} jogadores para sortear`)
+  if (ids.length > maximo) {
+    throw new ValidationError(`Escolha no máximo ${maximo} jogadores para sortear`)
   }
   if (new Set(ids).size !== ids.length) {
     throw new ValidationError('Jogador repetido na lista')
@@ -93,4 +110,40 @@ export function sortearTimes({ jogadores, aleatorio = Math.random }) {
     return { players: jogadoresDoTime, strength: arredondar2(forca) }
   }
   return { teamA: doTime(true), teamB: doTime(false), difference: arredondar2(melhorDiferenca) }
+}
+
+// Vários times (pelada): divisão gulosa. Goleiros primeiro, um por time; depois, do mais forte
+// para o mais fraco, cada jogador vai para o time com MENOS jogadores (empate: o mais fraco).
+// Não garante a divisão ótima como a força bruta de 2 times, mas fica equilibrada e é instantânea.
+// Empates de força são embaralhados com `aleatorio`, para "sortear de novo" dar outra divisão.
+export function sortearEmVariosTimes({ jogadores, quantidade, aleatorio = Math.random }) {
+  const lista = jogadores
+    .map((p) => ({ id: p.id, nickname: p.nickname, position: p.position, strength: forcaDoJogador(p), sorte: aleatorio() }))
+    .sort((a, b) => b.strength - a.strength || a.sorte - b.sorte)
+  const times = Array.from({ length: quantidade }, (_, i) => ({ name: NOMES_DOS_TIMES[i], players: [], soma: 0 }))
+  const goleiros = lista.filter((p) => p.position === 'GOALKEEPER')
+  const linha = lista.filter((p) => p.position !== 'GOALKEEPER')
+  const escolherTime = (candidatos) =>
+    candidatos.reduce((melhor, t) =>
+      t.players.length < melhor.players.length || (t.players.length === melhor.players.length && t.soma < melhor.soma) ? t : melhor,
+    )
+  for (const goleiro of goleiros) {
+    // Enquanto houver time sem goleiro, o goleiro vai para um deles.
+    const semGoleiro = times.filter((t) => !t.players.some((p) => p.position === 'GOALKEEPER'))
+    const time = escolherTime(semGoleiro.length > 0 ? semGoleiro : times)
+    time.players.push(goleiro)
+    time.soma += goleiro.strength
+  }
+  for (const jogador of linha) {
+    const time = escolherTime(times)
+    time.players.push(jogador)
+    time.soma += jogador.strength
+  }
+  const prontos = times.map((t) => ({
+    name: t.name,
+    players: t.players.map(({ sorte: _sorte, ...p }) => p), // tira o campo interno do sorteio
+    strength: arredondar2(t.soma / t.players.length),
+  }))
+  const forcas = prontos.map((t) => t.strength)
+  return { teams: prontos, difference: arredondar2(Math.max(...forcas) - Math.min(...forcas)) }
 }

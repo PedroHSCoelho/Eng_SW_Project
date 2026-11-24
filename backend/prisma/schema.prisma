@@ -22,65 +22,73 @@ enum Position {
   FORWARD
 }
 
+// Grupo (a "pelada" ou campeonato), como um grupo de WhatsApp: qualquer pessoa cria e vira
+// organizadora; os outros entram pelo código de convite. Jogadores e partidas pertencem a um grupo.
+model Group {
+  id          Int          @id @default(autoincrement())
+  name        String       @db.VarChar(60)
+  inviteCode  String       @unique @db.VarChar(12) // código do link de convite; gerar outro invalida o antigo
+  createdAt   DateTime     @default(now())
+  memberships Membership[] // quem participa e com qual papel
+  players     Player[]
+  matches     Match[]
+}
+
+// Papel da pessoa DENTRO de um grupo (a mesma pessoa pode ser organizadora em um e membro em outro).
+enum GroupRole {
+  ORGANIZER
+  MEMBER
+}
+
+// Participação de uma conta em um grupo. `playerId` é o jogador dessa pessoa NESTE grupo
+// (opcional: um organizador pode não jogar). Um jogador tem no máximo uma conta.
+model Membership {
+  groupId  Int
+  userId   Int
+  role     GroupRole @default(MEMBER)
+  playerId Int?      @unique
+  joinedAt DateTime  @default(now())
+  group    Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  player   Player?   @relation(fields: [playerId], references: [id], onDelete: SetNull)
+
+  @@id([groupId, userId])
+  @@index([userId])
+}
+
 // Jogador cadastrado. Estatísticas (gols, assistências, partidas) NÃO ficam aqui:
 // são calculadas a partir das súmulas, para não duplicar dado derivado.
 model Player {
   id              Int           @id @default(autoincrement())
+  groupId         Int // grupo dono do jogador (o "Zé" da quinta não é o mesmo da firma)
   name            String        @db.VarChar(50)
   nickname        String        @db.VarChar(30) // como o jogador quer ser exibido ("Zé")
-  nicknameKey     String        @unique @db.VarChar(30) // apelido em minúsculas: garante unicidade sem diferenciar maiúsculas
+  nicknameKey     String        @db.VarChar(30) // apelido em minúsculas: único DENTRO do grupo, sem diferenciar maiúsculas
   position        Position
   active          Boolean       @default(true) // inativar em vez de excluir quem já tem partida
   createdAt       DateTime      @default(now())
-  user            User? // conta de login ligada a este jogador (no máximo uma)
+  group           Group         @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  membership      Membership? // conta ligada a este jogador no grupo (no máximo uma)
   matches         MatchPlayer[] // partidas em que foi escalado
   goals           Goal[]        @relation("GoalScorer") // gols que marcou (inclusive contra)
   assists         Goal[]        @relation("GoalAssist") // gols em que deu a assistência
   ratingsGiven    Rating[]      @relation("RatingGiven") // notas que deu
   ratingsReceived Rating[]      @relation("RatingReceived") // notas que recebeu
-}
+  events          MatchEvent[] // cartões e defesas difíceis lançados na súmula
+  attendances     Attendance[] // presenças confirmadas nas partidas
 
-// Papel do usuário no sistema. Muda pela gestão de usuários (só organizador).
-enum Role {
-  ORGANIZER
-  PLAYER
+  @@unique([groupId, nicknameKey])
 }
 
 // Conta de login. Senha NUNCA em texto: só o hash do bcrypt.
+// O papel (organizador/membro) e o jogador da pessoa ficam na participação de cada grupo (Membership).
 model User {
-  id                Int                @id @default(autoincrement())
-  name              String
-  email             String             @unique // sempre em minúsculas (normalizado pelo serviço)
-  passwordHash      String
-  role              Role               @default(PLAYER)
-  playerId          Int?               @unique // um jogador tem no máximo um usuário
-  player            Player?            @relation(fields: [playerId], references: [id])
-  createdAt         DateTime           @default(now())
-  organizerRequests OrganizerRequest[] @relation("RequestOwner") // pedidos que a pessoa fez
-  decidedRequests   OrganizerRequest[] @relation("RequestDecider") // pedidos que a pessoa decidiu
-}
-
-enum RequestStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-// Pedido de um jogador para virar organizador. Um organizador aprova ou recusa;
-// guardamos quem decidiu e quando (trilha de auditoria).
-model OrganizerRequest {
-  id          Int           @id @default(autoincrement())
-  userId      Int
-  user        User          @relation("RequestOwner", fields: [userId], references: [id], onDelete: Cascade)
-  message     String        @db.VarChar(200) // motivo informado por quem pede
-  status      RequestStatus @default(PENDING)
-  createdAt   DateTime      @default(now())
-  decidedAt   DateTime?
-  decidedById Int?
-  decidedBy   User?         @relation("RequestDecider", fields: [decidedById], references: [id], onDelete: SetNull)
-
-  @@index([userId])
-  @@index([status])
+  id           Int          @id @default(autoincrement())
+  name         String
+  email        String       @unique // sempre em minúsculas (normalizado pelo serviço)
+  passwordHash String
+  createdAt    DateTime     @default(now())
+  memberships  Membership[] // grupos de que participa
 }
 
 // Estados da partida: agendada -> em andamento -> finalizada (só nessa ordem).
@@ -93,10 +101,29 @@ enum MatchStatus {
   CANCELED
 }
 
-// Lado do campo. Não há times fixos: cada partida monta os seus dois times.
+// Lado do campo. Não há times fixos: cada partida monta os seus times.
+// Jogo único usa só A e B; a pelada usa de 3 a 6 (A a F).
 enum Team {
   A
   B
+  C
+  D
+  E
+  F
+}
+
+// Formato da partida: um jogo só entre dois times, ou a pelada (vários times e vários jogos
+// na mesma noite, escolhendo os dois times de cada jogo: "quem ganha fica").
+enum MatchFormat {
+  SINGLE_GAME
+  PELADA
+}
+
+// Resultado de um jogo da pelada (mandante = homeTeam, visitante = awayTeam).
+enum GameResult {
+  HOME_WINS
+  AWAY_WINS
+  DRAW
 }
 
 // Resultado gravado ao encerrar a partida.
@@ -109,16 +136,26 @@ enum MatchResult {
 // Partida (a "pelada"). O placar NÃO é guardado: é sempre calculado a partir dos gols.
 // O resultado é gravado ao encerrar (depois disso a súmula não muda mais).
 model Match {
-  id         Int           @id @default(autoincrement())
-  date       DateTime // dia e hora da partida
-  location   String        @db.VarChar(100)
-  status     MatchStatus   @default(SCHEDULED)
-  result     MatchResult? // vazio até a partida ser encerrada
-  finishedAt DateTime? // quando foi encerrada
-  createdAt  DateTime      @default(now())
-  players    MatchPlayer[] // escalação dos dois times
-  goals      Goal[] // gols lançados na súmula
-  ratings    Rating[] // notas dadas depois da partida
+  id          Int           @id @default(autoincrement())
+  groupId     Int // grupo dono da partida (escalação, gols e notas vêm junto pela partida)
+  date        DateTime // dia e hora da partida
+  location    String        @db.VarChar(100)
+  status      MatchStatus   @default(SCHEDULED)
+  result      MatchResult? // vazio até a partida ser encerrada
+  finishedAt  DateTime? // quando foi encerrada
+  maxPlayers  Int? // vagas da lista de presença (vazio = sem limite); quem passa disso vai para a espera
+  format      MatchFormat   @default(SINGLE_GAME)
+  teamCount   Int           @default(2) // quantos times: 2 no jogo único, de 3 a 6 na pelada
+  createdAt   DateTime      @default(now())
+  players     MatchPlayer[] // escalação dos times
+  goals       Goal[] // gols lançados na súmula
+  events      MatchEvent[] // cartões e defesas difíceis
+  attendances Attendance[] // lista de presença (confirmados + espera)
+  games       MatchGame[] // jogos da pelada (vazio no jogo único)
+  ratings     Rating[] // notas dadas depois da partida
+  group       Group         @relation(fields: [groupId], references: [id], onDelete: Restrict)
+
+  @@index([groupId])
 }
 
 // Escalação: um jogador em um time de uma partida.
@@ -138,19 +175,22 @@ model MatchPlayer {
 // Gol lançado na súmula. `team` é o time que GANHA o gol (o servidor calcula):
 // no gol contra, é o adversário de quem chutou, e o gol não conta para o autor.
 model Goal {
-  id        Int      @id @default(autoincrement())
+  id        Int        @id @default(autoincrement())
   matchId   Int
   scorerId  Int // quem fez o gol
   assistId  Int? // quem deu a assistência (opcional)
   team      Team
-  ownGoal   Boolean  @default(false)
+  ownGoal   Boolean    @default(false)
   minute    Int? // minuto do jogo (opcional)
-  createdAt DateTime @default(now())
-  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  scorer    Player   @relation("GoalScorer", fields: [scorerId], references: [id], onDelete: Restrict)
-  assist    Player?  @relation("GoalAssist", fields: [assistId], references: [id], onDelete: Restrict)
+  gameId    Int? // jogo da pelada em que saiu (vazio no jogo único)
+  createdAt DateTime   @default(now())
+  match     Match      @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  game      MatchGame? @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  scorer    Player     @relation("GoalScorer", fields: [scorerId], references: [id], onDelete: Restrict)
+  assist    Player?    @relation("GoalAssist", fields: [assistId], references: [id], onDelete: Restrict)
 
   @@index([matchId])
+  @@index([gameId])
   @@index([scorerId])
   @@index([assistId])
 }
@@ -174,4 +214,62 @@ model Rating {
   @@unique([matchId, raterId, ratedId])
   @@index([ratedId])
   @@index([matchId])
+}
+
+// Lances da súmula que não são gol. Gol e assistência continuam no Goal (o placar sai dele).
+enum EventType {
+  YELLOW_CARD
+  RED_CARD
+  DIFFICULT_SAVE
+}
+
+// Cartão ou defesa difícil lançado durante a partida (só com ela em andamento).
+model MatchEvent {
+  id        Int        @id @default(autoincrement())
+  matchId   Int
+  playerId  Int
+  type      EventType
+  minute    Int? // minuto do jogo (opcional)
+  gameId    Int? // jogo da pelada em que aconteceu (vazio no jogo único)
+  createdAt DateTime   @default(now())
+  match     Match      @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  game      MatchGame? @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  player    Player     @relation(fields: [playerId], references: [id], onDelete: Restrict)
+
+  @@index([matchId])
+  @@index([gameId])
+  @@index([playerId])
+}
+
+// Presença confirmada numa partida agendada: substitui a "lista do fut" do WhatsApp.
+// Confirmado ou espera NÃO é gravado: sai da ordem de chegada (createdAt) e das vagas da partida.
+// Assim, quando alguém sai, o primeiro da espera sobe sozinho.
+model Attendance {
+  matchId   Int
+  playerId  Int
+  createdAt DateTime @default(now())
+  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@id([matchId, playerId])
+  @@index([playerId])
+}
+
+// Um jogo dentro da pelada: dois dos times da partida se enfrentam. O placar não é gravado
+// (sai dos gols do jogo); o resultado é gravado ao encerrar o jogo. Só um jogo aberto por vez
+// (índice único parcial na migração: finishedAt IS NULL).
+model MatchGame {
+  id         Int          @id @default(autoincrement())
+  matchId    Int
+  number     Int // 1, 2, 3... na ordem da noite
+  homeTeam   Team
+  awayTeam   Team
+  result     GameResult? // vazio enquanto o jogo está rolando
+  startedAt  DateTime     @default(now())
+  finishedAt DateTime?
+  match      Match        @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  goals      Goal[]
+  events     MatchEvent[]
+
+  @@unique([matchId, number])
 }

@@ -1,11 +1,17 @@
 // Núcleo puro das partidas: só regras, sem banco nem Express.
 // Recebe os dados já lidos (partida, jogadores) e decide; quem grava é o serviço.
 import { BusinessRuleError, ValidationError } from '../../errors/AppError.js'
+import { TIMES, ehPelada, lerFormato, timesDaPartida } from './pelada.core.js'
 
 export const MINIMO_POR_TIME = 3
+// Vagas da lista de presença: vazio = sem limite; senão de 2 a 100.
+export const VAGAS_MINIMAS = 2
+export const VAGAS_MAXIMAS = 100
 
-// Data e local da partida. Devolve SÓ os campos que o cliente pode definir
+// Data, local e vagas da partida. Devolve SÓ os campos que o cliente pode definir
 // (lista explícita): status e id enviados no corpo são descartados.
+// `maxPlayers` é opcional: ausente ou null = lista de presença sem limite.
+// `format` e `teamCount`: jogo único (padrão, 2 times) ou pelada (3 a 6 times).
 export function validarDadosDaPartida(dados) {
   const data = typeof dados.date === 'string' ? new Date(dados.date) : null
   if (!data || Number.isNaN(data.getTime())) {
@@ -15,7 +21,14 @@ export function validarDadosDaPartida(dados) {
   if (location.length < 2 || location.length > 100) {
     throw new ValidationError('Local deve ter de 2 a 100 caracteres')
   }
-  return { date: data, location }
+  const maxPlayers = dados.maxPlayers ?? null
+  if (
+    maxPlayers !== null &&
+    !(Number.isInteger(maxPlayers) && maxPlayers >= VAGAS_MINIMAS && maxPlayers <= VAGAS_MAXIMAS)
+  ) {
+    throw new ValidationError(`Vagas devem ser um número inteiro de ${VAGAS_MINIMAS} a ${VAGAS_MAXIMAS} (ou vazio, sem limite)`)
+  }
+  return { date: data, location, maxPlayers, ...lerFormato(dados) }
 }
 
 // Lista de ids de um time, vinda do corpo da requisição: precisa ser uma lista
@@ -27,22 +40,44 @@ export function lerIdsDoTime(valor, time) {
   return valor
 }
 
+// Lê a escalação do corpo: { teamA: [...], teamB: [...], teamC: [...], ... }.
+// teamA e teamB são obrigatórios; os outros só existem na pelada (até a quantidade de times dela).
+// Devolve { A: [...], B: [...], ... } só com os times da partida.
+export function lerEscalacao(dados, partida) {
+  const times = timesDaPartida(partida)
+  const escalacao = {}
+  for (const time of TIMES) {
+    const valor = dados[`team${time}`]
+    if (!times.includes(time)) {
+      if (valor !== undefined && !(Array.isArray(valor) && valor.length === 0)) {
+        throw new BusinessRuleError(`Esta partida tem os times ${times.join(', ')} (não há Time ${time})`)
+      }
+      continue
+    }
+    escalacao[time] = time === 'A' || time === 'B' ? lerIdsDoTime(valor, time) : lerIdsDoTime(valor ?? [], time)
+  }
+  return escalacao
+}
+
 // Regras da escalação:
 //  1. um jogador não aparece duas vezes no mesmo time;
-//  2. um jogador não está nos dois times;
+//  2. um jogador não está em dois times;
 //  3. todo jogador existe e está ativo.
+// Os times vêm como teamA, teamB (e teamC... na pelada).
 // `jogadores` são os cadastros encontrados no banco para os ids pedidos.
 // Devolve a escalação no formato gravado: [{ playerId, team }].
-export function validarEscalacao({ teamA, teamB, jogadores }) {
-  for (const [time, ids] of [['A', teamA], ['B', teamB]]) {
+export function validarEscalacao({ jogadores, ...porChave }) {
+  const times = TIMES.filter((t) => porChave[`team${t}`] !== undefined).map((t) => [t, porChave[`team${t}`]])
+  for (const [time, ids] of times) {
     if (new Set(ids).size !== ids.length) {
       throw new BusinessRuleError(`Jogador repetido no time ${time}`)
     }
   }
-  if (teamA.some((id) => teamB.includes(id))) {
-    throw new BusinessRuleError('Um jogador não pode estar nos dois times')
+  const todos = times.flatMap(([, ids]) => ids)
+  if (new Set(todos).size !== todos.length) {
+    throw new BusinessRuleError(times.length > 2 ? 'Um jogador não pode estar em dois times' : 'Um jogador não pode estar nos dois times')
   }
-  for (const id of [...teamA, ...teamB]) {
+  for (const id of todos) {
     const jogador = jogadores.find((j) => j.id === id)
     if (!jogador) {
       throw new BusinessRuleError(`Jogador ${id} não existe`)
@@ -51,10 +86,7 @@ export function validarEscalacao({ teamA, teamB, jogadores }) {
       throw new BusinessRuleError(`Jogador inativo não pode ser escalado: ${jogador.nickname}`)
     }
   }
-  return [
-    ...teamA.map((playerId) => ({ playerId, team: 'A' })),
-    ...teamB.map((playerId) => ({ playerId, team: 'B' })),
-  ]
+  return times.flatMap(([team, ids]) => ids.map((playerId) => ({ playerId, team })))
 }
 
 // A escalação só muda antes de a partida começar.
@@ -64,12 +96,13 @@ export function verificarEscalacaoEditavel(partida) {
   }
 }
 
-// Agendada -> em andamento: cada time precisa de pelo menos 3 jogadores.
+// Agendada -> em andamento: cada time da partida precisa de pelo menos 3 jogadores
+// (no jogo único, A e B; na pelada, todos os times dela).
 export function verificarPodeIniciar(partida) {
   if (partida.status !== 'SCHEDULED') {
     throw new BusinessRuleError('Só uma partida agendada pode começar')
   }
-  for (const time of ['A', 'B']) {
+  for (const time of timesDaPartida(partida)) {
     const quantos = partida.players.filter((p) => p.team === time).length
     if (quantos < MINIMO_POR_TIME) {
       throw new BusinessRuleError(
@@ -81,10 +114,19 @@ export function verificarPodeIniciar(partida) {
 
 // Placar sempre calculado a partir dos gols (nunca digitado).
 // Cada gol já sabe qual time ganhou o ponto (`team`), inclusive o gol contra.
-export function calcularPlacar(gols) {
-  return {
-    A: gols.filter((g) => g.team === 'A').length,
-    B: gols.filter((g) => g.team === 'B').length,
+// Na pelada, `times` traz todos os times dela (gols somados na noite inteira).
+export function calcularPlacar(gols, times = ['A', 'B']) {
+  return Object.fromEntries(times.map((t) => [t, gols.filter((g) => g.team === t).length]))
+}
+
+// Ao mudar a quantidade de times (pelada agendada), ninguém pode ficar num time que deixou de existir.
+export function verificarTimesDaEscalacao(partida, novosDados) {
+  const times = timesDaPartida(novosDados)
+  const fora = partida.players.find((p) => !times.includes(p.team))
+  if (fora) {
+    throw new BusinessRuleError(
+      `Há jogador escalado no Time ${fora.team}; tire-o da escalação antes de ${ehPelada(novosDados) ? 'diminuir os times' : 'mudar para jogo único'}`,
+    )
   }
 }
 

@@ -1,5 +1,6 @@
 // Núcleo puro dos gols da súmula: só regras, sem banco nem Express.
 import { BusinessRuleError, ValidationError } from '../../errors/AppError.js'
+import { ehPelada, verificarLanceNoJogo } from './pelada.core.js'
 
 export const MINUTO_MAXIMO = 120
 
@@ -44,6 +45,8 @@ export function verificarSumulaAberta(partida) {
 //  2. o autor está escalado na partida;
 //  3. a assistência (opcional) é de OUTRO jogador do MESMO time do autor;
 //  4. gol contra não tem assistência e conta para o time adversário.
+// Na pelada, ainda: há um jogo aberto e o autor está num dos dois times dele; o gol contra
+// conta para o OUTRO time do jogo, e o gol é gravado com o gameId.
 // Devolve o gol pronto para gravar, com o `team` que ganha o gol.
 export function montarGol({ partida, gol }) {
   verificarSumulaAberta(partida)
@@ -51,6 +54,7 @@ export function montarGol({ partida, gol }) {
   if (!timeDoAutor) {
     throw new BusinessRuleError('O autor do gol precisa estar escalado na partida')
   }
+  const jogo = ehPelada(partida) ? verificarLanceNoJogo(partida, gol.scorerId) : null
   if (gol.assistId !== null) {
     if (gol.ownGoal) {
       throw new BusinessRuleError('Gol contra não tem assistência')
@@ -61,6 +65,10 @@ export function montarGol({ partida, gol }) {
     if (timeDoJogador(partida, gol.assistId) !== timeDoAutor) {
       throw new BusinessRuleError('A assistência precisa ser de um jogador do mesmo time do autor')
     }
+  }
+  if (jogo) {
+    const outro = jogo.homeTeam === timeDoAutor ? jogo.awayTeam : jogo.homeTeam
+    return { ...gol, team: gol.ownGoal ? outro : timeDoAutor, gameId: jogo.id }
   }
   return {
     ...gol,

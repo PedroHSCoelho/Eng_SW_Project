@@ -70,46 +70,67 @@ Testes de rota usam o Supertest e substituem o banco com `vi.mock('../src/db.js'
 
 Testes de rota também podem usar o **serviço real com um repositório em memória** (sem `vi.mock`), como em `tests/players.routes.test.js`: prova status e corpo da resposta sem precisar do banco.
 
+## Grupos (como grupos de WhatsApp)
+
+Qualquer pessoa logada cria um grupo (uma pelada ou campeonato) e vira **organizadora** dele; os outros entram pelo **código de convite**. Jogadores, partidas, gols, avaliações, estatísticas, ranking, histórico e sorteio pertencem a um grupo, e todas as rotas deles ficam em `/api/grupos/:grupoId/...`. Ver `docs/adr/0013-grupos-e-papel-por-grupo.md`.
+
+Código em `backend/src/features/groups/`: `groups.core.js` (regras puras), `groups.service.js`, `groups.repository.js` e `groups.routes.js`. O middleware `carregarParticipacao` (em `middlewares/auth.js`) lê o `:grupoId` da URL e põe a participação de quem pede em `req.participacao` (`{ groupId, userId, role, playerId }`); quem não participa recebe **404**, igual a um grupo que não existe. `exigirOrganizadorDoGrupo` dá 403 a quem é só membro.
+
+| Método e rota | O que faz | Erros |
+|---|---|---|
+| `POST /api/grupos` | Cria o grupo (`name`; `nickname` e `position` opcionais, se quem cria também joga) → 201; quem cria é `ORGANIZER` | 400, 422 |
+| `GET /api/grupos` | Meus grupos, com `myRole` e `myPlayerId` em cada um | — |
+| `GET /api/convites/:codigo` | Nome do grupo, `totalMembers` e `alreadyMember` (para a tela do convite) | 404 convite inválido |
+| `POST /api/convites/:codigo/entrar` | Entra como `MEMBER` e cria o jogador da pessoa no grupo (`nickname`, `position`; o nome vem da conta) → 201 | 400, 404, 422 já participa ou apelido em uso |
+| `GET /api/grupos/:grupoId` | O grupo com o meu papel; `inviteCode` só para organizador | 400, 404 |
+| `PATCH /api/grupos/:grupoId` | Renomeia (organizador) | 400, 403, 404 |
+| `POST /api/grupos/:grupoId/convite` | Gera outro código; o antigo deixa de valer (organizador) | 403, 404 |
+| `GET /api/grupos/:grupoId/membros` | Membros com papel, nome e jogador (sem e-mail) | 404 |
+| `PATCH /api/grupos/:grupoId/membros/:userId` | Muda `role` e/ou o jogador vinculado (`playerId`, `null` desvincula) (organizador) | 400, 403, 404, 422 último organizador ou jogador de outra pessoa |
+| `DELETE /api/grupos/:grupoId/membros/:userId` | Remove alguém (organizador) ou sai do grupo (o próprio) → 204; o jogador continua no grupo | 404, 422 último organizador ou membro tentando remover outra pessoa |
+
+Regras (em `groups.core.js`): o grupo **nunca fica sem organizador** (vale para rebaixar, remover e sair); só organizador remove outra pessoa, mas qualquer um sai sozinho; o código tem 8 caracteres de um alfabeto sem 0/O e 1/I e é gerado com `crypto.randomBytes`. Nos outros módulos, todo id que chega (partida, jogador da escalação, autor do gol, ids do sorteio) precisa ser do **mesmo grupo**; o de outro grupo é tratado como inexistente.
+
 ## API de jogadores (F02)
 
 Código em `backend/src/features/players/`: `players.routes.js` (HTTP), `players.service.js` (regras) e `players.repository.js` (Prisma). O `app.js` liga as três camadas.
 
 | Método e rota | O que faz | Erros |
 |---|---|---|
-| `GET /api/players?busca=&ativos=true` | Lista; `busca` procura em nome e apelido; `ativos=true` esconde inativos | — |
-| `GET /api/players/:id` | Um jogador | 400 id inválido, 404 |
-| `POST /api/players` | Cria (`name`, `nickname`, `position`) → 201 | 400 dados inválidos, 422 apelido já em uso |
-| `PUT /api/players/:id` | Substitui nome, apelido e posição | 400, 404, 422 |
-| `PATCH /api/players/:id/inativar` | Marca `active: false` | 400, 404 |
-| `DELETE /api/players/:id` | Exclui → 204 | 404, 422 se o jogador já tem partida (inativar) |
+| `GET /api/grupos/:grupoId/players?busca=&ativos=true` | Lista; `busca` procura em nome e apelido; `ativos=true` esconde inativos | — |
+| `GET /api/grupos/:grupoId/players/:id` | Um jogador | 400 id inválido, 404 |
+| `POST /api/grupos/:grupoId/players` | Cria (`name`, `nickname`, `position`) → 201 | 400 dados inválidos, 422 apelido já em uso |
+| `PUT /api/grupos/:grupoId/players/:id` | Substitui nome, apelido e posição | 400, 404, 422 |
+| `PATCH /api/grupos/:grupoId/players/:id/inativar` | Marca `active: false` | 400, 404 |
+| `DELETE /api/grupos/:grupoId/players/:id` | Exclui → 204 | 404, 422 se o jogador já tem partida (inativar) |
 
-Regras: nome de 2 a 50 e apelido de 2 a 30 caracteres (sem contar espaços nas pontas); posição em `GOALKEEPER`, `DEFENDER`, `MIDFIELDER`, `FORWARD`; apelido único sem diferenciar maiúsculas (coluna `nicknameKey`, calculada pelo servidor, ver `docs/adr/0002-modelagem-do-player.md`).
+Regras: nome de 2 a 50 e apelido de 2 a 30 caracteres (sem contar espaços nas pontas); posição em `GOALKEEPER`, `DEFENDER`, `MIDFIELDER`, `FORWARD`; apelido único **dentro do grupo** sem diferenciar maiúsculas (coluna `nicknameKey`, `@@unique([groupId, nicknameKey])`, calculada pelo servidor, ver `docs/adr/0002-modelagem-do-player.md`).
 
 ## API de partidas (F05)
 
-Código em `backend/src/features/matches/`: `matches.core.js` (regras puras), `matches.service.js` (casos de uso), `matches.repository.js` (Prisma) e `matches.routes.js` (HTTP). Qualquer usuário logado lê; só o organizador escreve (403 para os outros).
+Código em `backend/src/features/matches/`: `matches.core.js` (regras puras), `matches.service.js` (casos de uso), `matches.repository.js` (Prisma) e `matches.routes.js` (HTTP). Qualquer participante do grupo lê; só o organizador do grupo escreve (403 para os outros).
 
 | Método e rota | O que faz | Erros |
 |---|---|---|
-| `GET /api/matches` | Lista as partidas, mais recentes primeiro, cada uma com `status`, `result` e o placar `score` (sem a lista de gols) | — |
-| `GET /api/matches/historico` | Partidas finalizadas, mais recentes primeiro: `{ items, page, pageSize, total, totalPages }`; filtros `?playerId=&de=&ate=&page=&pageSize=` (`ate` exclusivo; pageSize 1–50, padrão 10) | 400 filtro inválido |
-| `GET /api/matches/:id` | Uma partida com a escalação | 400 id inválido, 404 |
-| `POST /api/matches` | Cria (`date` em ISO, `location`) → 201, sempre `SCHEDULED` | 400 dados inválidos |
-| `PUT /api/matches/:id` | Edita data e local (`{ date, location }`); só partida agendada; `status`, `result` e `id` do corpo são ignorados | 400, 404, 422 se não estiver agendada |
-| `PATCH /api/matches/:id/cancelar` | Agendada ou em andamento → `CANCELED` (estado final; sai de histórico, estatísticas e ranking) | 404, 422 se finalizada ou já cancelada |
-| `PUT /api/matches/:id/escalacao` | Substitui os dois times: `{ "teamA": [1,2,3], "teamB": [4,5,6] }` | 400, 404, 422 |
-| `PATCH /api/matches/:id/iniciar` | `SCHEDULED` → `IN_PROGRESS` | 404, 422 |
-| `PATCH /api/matches/:id/encerrar` | `IN_PROGRESS` → `FINISHED`; grava `result` e `finishedAt` | 404, 422 |
-| `POST /api/matches/:id/gols` | Lança um gol: `{ scorerId, assistId?, minute?, ownGoal? }` → 201 com a partida | 400, 404, 422 |
-| `DELETE /api/matches/:id/gols/:goalId` | Remove um gol lançado errado → 200 com a partida | 400, 404, 422 |
-| `GET /api/players/:id/stats` | Estatísticas do jogador (partidas, V/E/D, gols, assistências, gols por partida, saldo) e `recentes` (últimas 5 partidas como V/E/D com placar); filtro opcional `?periodo=mes`, `ano` ou `tudo` **ou** `?de=AAAA-MM-DD&ate=AAAA-MM-DD` (`ate` exclusive; os dois juntos dão 400) | 400, 404 |
-| `PUT /api/matches/:id/avaliacoes` | Minha nota (qualquer logado ligado a um jogador da partida): `{ ratedId, score 1–5, comment? }`; cria ou edita; só partida finalizada e até 48h depois | 400, 404, 422 |
-| `GET /api/matches/:id/avaliacoes/pendentes` | Quem eu ainda não avaliei e o prazo: `{ open, deadline, pending }` | 404 |
-| `GET /api/matches/:id/avaliacoes/minhas` | As notas que EU dei na partida (`ratedId`, `nickname`, `score`, `comment`); nunca as de outros | 404 |
-| `GET /api/matches/:id/destaque` | Jogador com a maior média da partida (ou `null`) | 404 |
-| `GET /api/players/:id/ratings` | Média geral e por partida (1 casa; só com 3+ notas; nunca mostra quem avaliou) | 404 |
-| `POST /api/sorteio` | Só organizador. `{ playerIds: [6 a 22 ids] }` → `{ teamA, teamB, difference }` (times equilibrados pela média de notas; não grava nada) | 400 entrada inválida, 403, 422 jogador inexistente ou inativo |
-| `GET /api/rankings` | `{ geral, artilharia, assistencias }`; filtros `?periodo=mes`, `ano` ou `tudo` (padrão `tudo`) e `?posicao=GOALKEEPER`, `DEFENDER`, `MIDFIELDER` ou `FORWARD` (opcional; vale para o geral, a artilharia e as assistências) | 400 período ou posição inválidos |
+| `GET /api/grupos/:grupoId/matches` | Lista as partidas, mais recentes primeiro, cada uma com `status`, `result` e o placar `score` (sem a lista de gols) | — |
+| `GET /api/grupos/:grupoId/matches/historico` | Partidas finalizadas, mais recentes primeiro: `{ items, page, pageSize, total, totalPages }`; filtros `?playerId=&de=&ate=&page=&pageSize=` (`ate` exclusivo; pageSize 1–50, padrão 10) | 400 filtro inválido |
+| `GET /api/grupos/:grupoId/matches/:id` | Uma partida com a escalação | 400 id inválido, 404 |
+| `POST /api/grupos/:grupoId/matches` | Cria (`date` em ISO, `location`) → 201, sempre `SCHEDULED` | 400 dados inválidos |
+| `PUT /api/grupos/:grupoId/matches/:id` | Edita data e local (`{ date, location }`); só partida agendada; `status`, `result` e `id` do corpo são ignorados | 400, 404, 422 se não estiver agendada |
+| `PATCH /api/grupos/:grupoId/matches/:id/cancelar` | Agendada ou em andamento → `CANCELED` (estado final; sai de histórico, estatísticas e ranking) | 404, 422 se finalizada ou já cancelada |
+| `PUT /api/grupos/:grupoId/matches/:id/escalacao` | Substitui os dois times: `{ "teamA": [1,2,3], "teamB": [4,5,6] }` | 400, 404, 422 |
+| `PATCH /api/grupos/:grupoId/matches/:id/iniciar` | `SCHEDULED` → `IN_PROGRESS` | 404, 422 |
+| `PATCH /api/grupos/:grupoId/matches/:id/encerrar` | `IN_PROGRESS` → `FINISHED`; grava `result` e `finishedAt` | 404, 422 |
+| `POST /api/grupos/:grupoId/matches/:id/gols` | Lança um gol: `{ scorerId, assistId?, minute?, ownGoal? }` → 201 com a partida | 400, 404, 422 |
+| `DELETE /api/grupos/:grupoId/matches/:id/gols/:goalId` | Remove um gol lançado errado → 200 com a partida | 400, 404, 422 |
+| `GET /api/grupos/:grupoId/players/:id/stats` | Estatísticas do jogador (partidas, V/E/D, gols, assistências, gols por partida, saldo) e `recentes` (últimas 5 partidas como V/E/D com placar); filtro opcional `?periodo=mes`, `ano` ou `tudo` **ou** `?de=AAAA-MM-DD&ate=AAAA-MM-DD` (`ate` exclusive; os dois juntos dão 400) | 400, 404 |
+| `PUT /api/grupos/:grupoId/matches/:id/avaliacoes` | Minha nota (qualquer participante cujo jogador no grupo jogou a partida): `{ ratedId, score 1–5, comment? }`; cria ou edita; só partida finalizada e até 48h depois | 400, 404, 422 |
+| `GET /api/grupos/:grupoId/matches/:id/avaliacoes/pendentes` | Quem eu ainda não avaliei e o prazo: `{ open, deadline, pending }` | 404 |
+| `GET /api/grupos/:grupoId/matches/:id/avaliacoes/minhas` | As notas que EU dei na partida (`ratedId`, `nickname`, `score`, `comment`); nunca as de outros | 404 |
+| `GET /api/grupos/:grupoId/matches/:id/destaque` | Jogador com a maior média da partida (ou `null`) | 404 |
+| `GET /api/grupos/:grupoId/players/:id/ratings` | Média geral e por partida (1 casa; só com 3+ notas; nunca mostra quem avaliou) | 404 |
+| `POST /api/grupos/:grupoId/sorteio` | Só organizador do grupo. `{ playerIds: [6 a 22 ids] }` → `{ teamA, teamB, difference }` (times equilibrados pela média de notas; não grava nada) | 400 entrada inválida, 403, 422 jogador inexistente ou inativo |
+| `GET /api/grupos/:grupoId/rankings` | `{ geral, artilharia, assistencias }`; filtros `?periodo=mes`, `ano` ou `tudo` (padrão `tudo`) e `?posicao=GOALKEEPER`, `DEFENDER`, `MIDFIELDER` ou `FORWARD` (opcional; vale para o geral, a artilharia e as assistências) | 400 período ou posição inválidos |
 
 Regras (em `matches.core.js`): local de 2 a 100 caracteres; um jogador não aparece duas vezes nem nos dois times; jogador inexistente ou inativo não é escalado; a escalação só muda com a partida agendada; para começar, cada time precisa de pelo menos 3 jogadores. Ver `docs/adr/0007-partida-e-escalacao.md`.
 

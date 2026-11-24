@@ -14,3 +14,10 @@ export const RESULTADO = {
 
 export const formatarData = (iso) =>
   new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+
+// Times possíveis (mesmo enum Team do back-end). Jogo único usa A e B; a pelada, de 3 a 6.
+export const TIMES = ['A', 'B', 'C', 'D', 'E', 'F']
+export const timesDaPartida = (partida) => TIMES.slice(0, partida.teamCount ?? 2)
+export const ehPelada = (partida) => partida?.format === 'PELADA'
+
+export const FORMATOS = { SINGLE_GAME: 'Jogo único', PELADA: 'Pelada (vários times)' }

@@ -34,7 +34,7 @@ describe('validarDadosDaPartida', () => {
       location: '  Quadra da UNIFESP  ',
       status: 'FINISHED',
     })
-    expect(dados).toEqual({ date: new Date('2026-11-20T22:00:00Z'), location: 'Quadra da UNIFESP' })
+    expect(dados).toEqual({ date: new Date('2026-11-20T22:00:00Z'), location: 'Quadra da UNIFESP', maxPlayers: null, format: 'SINGLE_GAME', teamCount: 2 })
   })
 
   it.each([[undefined], ['amanhã'], [20261120]])('rejeita data %s', (date) => {

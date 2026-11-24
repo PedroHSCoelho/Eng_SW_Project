@@ -1,6 +1,6 @@
 # ADR 0005 — Autenticação com JWT em cookie httpOnly e papéis geridos pelo organizador
 
-- Status: aceita
+- Status: aceita; a parte de papéis (papel global, pedidos de organizador, bootstrap e vínculo em `/api/users`) foi substituída pelo ADR 0013 (papel por grupo). O login com JWT em cookie continua valendo.
 - Data: 2026-11-09
 
 ## Contexto

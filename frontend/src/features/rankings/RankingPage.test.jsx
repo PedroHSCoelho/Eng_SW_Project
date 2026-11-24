@@ -3,6 +3,10 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter } from 'react-router-dom'
 import '@testing-library/jest-dom/vitest'
 import RankingPage from './RankingPage.jsx'
+import { definirGrupoAtual } from '../../api/grupoAtual.js'
+
+// As APIs montam as URLs com o grupo atual: nos testes, o grupo 1.
+beforeEach(() => definirGrupoAtual(1))
 
 const linha = (position, playerId, nickname, extra = {}) => ({
   position, playerId, nickname, name: nickname, points: 9, matches: 3, wins: 3, draws: 0, losses: 0,
@@ -44,7 +48,7 @@ describe('RankingPage', () => {
     expect(linhas).toHaveLength(3) // cabeçalho + 2 jogadores
     expect(within(linhas[1]).getByRole('link', { name: 'Zé' })).toHaveAttribute('href', '/jogadores/1')
     expect(within(linhas[1]).getByText('9')).toBeInTheDocument()
-    expect(fetch).toHaveBeenCalledWith('/api/rankings?periodo=tudo', undefined)
+    expect(fetch).toHaveBeenCalledWith('/api/grupos/1/rankings?periodo=tudo', undefined)
   })
 
   it('troca para a aba de artilharia', async () => {
@@ -83,7 +87,7 @@ describe('RankingPage', () => {
 
     fireEvent.change(screen.getByLabelText('Período'), { target: { value: 'mes' } })
 
-    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/rankings?periodo=mes', undefined))
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/grupos/1/rankings?periodo=mes', undefined))
   })
 
   it('mostra o erro da API e esconde a tabela', async () => {
@@ -103,11 +107,11 @@ describe('RankingPage: filtro por posição', () => {
 
     fireEvent.change(screen.getByLabelText('Posição'), { target: { value: 'GOALKEEPER' } })
     await waitFor(() =>
-      expect(fetch).toHaveBeenCalledWith('/api/rankings?periodo=tudo&posicao=GOALKEEPER', undefined),
+      expect(fetch).toHaveBeenCalledWith('/api/grupos/1/rankings?periodo=tudo&posicao=GOALKEEPER', undefined),
     )
 
     fireEvent.change(screen.getByLabelText('Posição'), { target: { value: '' } })
-    await waitFor(() => expect(fetch.mock.calls.at(-1)[0]).toBe('/api/rankings?periodo=tudo'))
+    await waitFor(() => expect(fetch.mock.calls.at(-1)[0]).toBe('/api/grupos/1/rankings?periodo=tudo'))
   })
 
   it('oferece as quatro posições em português e combina com o período', async () => {
@@ -119,6 +123,6 @@ describe('RankingPage: filtro por posição', () => {
 
     fireEvent.change(screen.getByLabelText('Posição'), { target: { value: 'FORWARD' } })
     fireEvent.change(screen.getByLabelText('Período'), { target: { value: 'mes' } })
-    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/rankings?periodo=mes&posicao=FORWARD', undefined))
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/grupos/1/rankings?periodo=mes&posicao=FORWARD', undefined))
   })
 })

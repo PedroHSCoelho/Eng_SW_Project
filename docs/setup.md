@@ -24,19 +24,11 @@ npx prisma migrate deploy       # aplica as migrações no banco (não apaga dad
 npm run dev                     # http://localhost:3001/api/health
 ```
 
-O servidor não sobe sem `JWT_SECRET` (mínimo 32 caracteres). A migração `auth-user-role` adiciona senha, papel e vínculo com jogador à tabela `User`.
+O servidor não sobe sem `JWT_SECRET` (mínimo 32 caracteres).
 
-### Primeiro organizador
+### Grupos e organizadores
 
-Todo cadastro nasce **jogador**. Para o primeiro organizador (e para recuperar o acesso se o sistema ficar sem nenhum):
-
-1. Crie a conta no front (**Entrar > Não tenho conta**).
-2. Promova-a direto no banco, pelo terminal:
-   ```powershell
-   cd backend
-   npm run organizador:promover -- seu@email.com
-   ```
-3. Depois disso, tudo é pela interface: em **Usuários** o organizador vincula contas a jogadores, muda papéis e **aprova ou recusa pedidos de organizador**. Um jogador vinculado pede em **Ser organizador** (um pedido por vez; depois de recusado, espera 7 dias).
+Não existe mais organizador do sistema todo: o papel é **por grupo**. Qualquer pessoa cria a conta, cria um grupo (vira organizadora dele) e convida os outros pelo código de convite. Um grupo pode ter vários organizadores e nunca fica sem nenhum (ver `docs/adr/0013-grupos-e-papel-por-grupo.md`).
 
 `/api/health/db` deve responder OK. Se der 503, confira a senha e as duas URLs.
 Erro `@prisma/client did not initialize`: rode `npx prisma generate` dentro de `backend`.
@@ -68,7 +60,7 @@ Um projeto só na Vercel, ligado à raiz do repositório (ver `docs/adr/0006-dep
    - `NODE_ENV` não precisa: a Vercel já usa `production`.
 3. **Deploy**. Teste `https://<seu-projeto>.vercel.app/api/health` e `/api/health/db`.
 4. Migrações não rodam no deploy: depois de criar uma migração, rode `npx prisma migrate deploy` na sua máquina (usa a `DIRECT_URL` do `.env`).
-5. Primeiro organizador em produção: `npm run organizador:promover -- seu@email.com` na sua máquina (aponta para o mesmo banco). A conta precisa já ter sido criada pelo site.
+5. **Migração que apaga colunas ou tabelas** (como `remove-papel-global`): faça antes um backup do banco no Supabase (**Database → Backups**, ou `pg_dump` com a `DIRECT_URL`). Ela não tem volta sem backup.
 
 ### Aplicação publicada
 

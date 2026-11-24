@@ -3,7 +3,6 @@ import {
   lerCookie,
   validarCadastro,
   validarLogin,
-  validarPapel,
 } from '../src/features/auth/auth.core.js'
 
 const valido = { name: 'Maria Souza', email: 'Maria@Exemplo.com ', password: 'senha-forte-1' }
@@ -39,14 +38,6 @@ describe('validarLogin', () => {
   it('exige e-mail e senha', () => {
     expect(() => validarLogin({ email: '', password: 'x' })).toThrow('Informe')
     expect(() => validarLogin({ email: 'a@b.com' })).toThrow('Informe')
-  })
-})
-
-describe('validarPapel', () => {
-  it('aceita só os papéis do sistema', () => {
-    expect(validarPapel('ORGANIZER')).toBe('ORGANIZER')
-    expect(() => validarPapel('ADMIN')).toThrow('Papel inválido')
-    expect(() => validarPapel(undefined)).toThrow('Papel inválido')
   })
 })
 

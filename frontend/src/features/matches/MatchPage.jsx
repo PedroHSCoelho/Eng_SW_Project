@@ -1,22 +1,29 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useAuth } from '../auth/AuthContext.jsx'
+import { ehOrganizadorDo, useGrupo } from '../groups/GrupoContext.jsx'
 import RatingsPanel from '../ratings/RatingsPanel.jsx'
 import { listarJogadores } from '../players/playersApi.js'
 import {
   atualizarPartida,
   buscarPartida,
   cancelarPartida,
+  comecarJogo,
   definirEscalacao,
+  encerrarJogo,
   encerrarPartida,
   iniciarPartida,
   lancarGol,
+  lancarLance,
   removerGol,
+  removerLance,
 } from './matchesApi.js'
-import GoalForm from './GoalForm.jsx'
 import LineupEditor from './LineupEditor.jsx'
 import MatchEditForm from './MatchEditForm.jsx'
-import { RESULTADO, STATUS, formatarData } from './textos.js'
+import PeladaPainel from './PeladaPainel.jsx'
+import PresencaPanel from './PresencaPanel.jsx'
+import SumulaAoVivo from './SumulaAoVivo.jsx'
+import { NOME_DO_LANCE } from './lances.js'
+import { RESULTADO, STATUS, ehPelada, formatarData, timesDaPartida } from './textos.js'
 
 const botao = 'rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50'
 
@@ -24,14 +31,16 @@ const botao = 'rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50'
 // (com placar calculado no back-end) e a tela apenas troca o que tem pela resposta.
 export default function MatchPage() {
   const { id } = useParams()
-  const { usuario } = useAuth()
-  const ehOrganizador = usuario?.role === 'ORGANIZER'
+  const { grupo } = useGrupo()
+  const ehOrganizador = ehOrganizadorDo(grupo)
   const [partida, setPartida] = useState(null)
   const [jogadores, setJogadores] = useState([])
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [confirmandoEncerrar, setConfirmandoEncerrar] = useState(false)
   const [confirmandoCancelar, setConfirmandoCancelar] = useState(false)
+  // Ids de quem confirmou presença (vem do painel da lista): a escalação mostra esses primeiro.
+  const [confirmados, setConfirmados] = useState([])
 
   useEffect(() => {
     let ativo = true
@@ -79,7 +88,9 @@ export default function MatchPage() {
   }
 
   const status = STATUS[partida.status]
-  const doTime = (time) => partida.players.filter((p) => p.team === time)
+  const lances = partida.events ?? []
+  const pelada = ehPelada(partida)
+  const numeroDoJogo = (gameId) => partida.games?.find((j) => j.id === gameId)?.number
 
   return (
     <section className="mx-auto max-w-5xl px-4 pb-16" aria-labelledby="titulo-partida">
@@ -94,6 +105,7 @@ export default function MatchPage() {
       </div>
       <p className="text-green-200">
         {formatarData(partida.date)} · {partida.location}
+        {pelada && ` · Pelada com ${partida.teamCount} times`}
       </p>
 
       {erro && (
@@ -108,7 +120,20 @@ export default function MatchPage() {
         </p>
       )}
 
-      {!['SCHEDULED', 'CANCELED'].includes(partida.status) && (
+      {pelada && !['SCHEDULED', 'CANCELED'].includes(partida.status) && (
+        <PeladaPainel
+          partida={partida}
+          ehOrganizador={ehOrganizador}
+          enviando={enviando}
+          aoComecar={(jogo) => executar(() => comecarJogo(partida.id, jogo))}
+          aoEncerrarJogo={(gameId) => executar(() => encerrarJogo(partida.id, gameId))}
+        />
+      )}
+      {pelada && partida.status === 'FINISHED' && (
+        <p className="mt-2 text-green-200">Pelada encerrada · súmula fechada, não pode mais ser alterada</p>
+      )}
+
+      {!pelada && !['SCHEDULED', 'CANCELED'].includes(partida.status) && (
         <div className="mt-4 rounded-xl bg-green-900 p-5 text-center ring-1 ring-green-700">
           <p className="text-4xl font-bold tabular-nums" aria-label="Placar">
             Time A {partida.score.A} x {partida.score.B} Time B
@@ -124,16 +149,29 @@ export default function MatchPage() {
       {ehOrganizador && partida.status === 'SCHEDULED' && (
         <MatchEditForm
           // A chave faz o formulário recomeçar com os valores novos depois de salvar.
-          key={`${partida.date}-${partida.location}`}
+          key={`${partida.date}-${partida.location}-${partida.maxPlayers}`}
           partida={partida}
           enviando={enviando}
           aoSalvar={(dados) => executar(() => atualizarPartida(partida.id, dados))}
         />
       )}
 
+      {/* Lista de presença: todo mundo vê e confirma o próprio nome enquanto a partida está agendada. */}
+      {partida.status === 'SCHEDULED' && (
+        <PresencaPanel
+          partida={partida}
+          ehOrganizador={ehOrganizador}
+          meuJogadorId={grupo?.myPlayerId ?? null}
+          jogadores={jogadores}
+          aoMudar={(lista) => setConfirmados(lista.confirmed.map((l) => l.playerId))}
+        />
+      )}
+
       {ehOrganizador && partida.status === 'SCHEDULED' && (
         <LineupEditor
           jogadores={jogadores}
+          times={timesDaPartida(partida)}
+          confirmados={confirmados}
           escalacao={partida.players}
           enviando={enviando}
           aoSalvar={(times) => executar(() => definirEscalacao(partida.id, times))}
@@ -141,31 +179,15 @@ export default function MatchPage() {
         />
       )}
 
-      {/* Quem não organiza (ou já passou da fase de escalar) vê os times só para leitura. */}
+      {/* Times com um box por jogador. Organizador com a partida em andamento: clica no box e lança
+          gol, assistência, cartão ou defesa (súmula ao vivo). Os demais só leem. */}
       {!(ehOrganizador && partida.status === 'SCHEDULED') && (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {['A', 'B'].map((time) => (
-            <div key={time} className="rounded-xl bg-green-900 p-4 ring-1 ring-green-700">
-              <h3 className="font-semibold">Time {time}</h3>
-              {doTime(time).length === 0 ? (
-                <p className="text-sm text-green-200">Ninguém escalado.</p>
-              ) : (
-                <ul className="mt-1 text-sm">
-                  {doTime(time).map((p) => (
-                    <li key={p.playerId}>{p.player.nickname}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {ehOrganizador && partida.status === 'IN_PROGRESS' && (
-        <GoalForm
-          escalacao={partida.players}
+        <SumulaAoVivo
+          partida={partida}
+          editavel={ehOrganizador && partida.status === 'IN_PROGRESS'}
           enviando={enviando}
-          aoLancar={(gol) => executar(() => lancarGol(partida.id, gol))}
+          aoLancarGol={(gol) => executar(() => lancarGol(partida.id, gol))}
+          aoLancarLance={(lance) => executar(() => lancarLance(partida.id, lance))}
         />
       )}
 
@@ -186,7 +208,11 @@ export default function MatchPage() {
                     <strong>{g.scorer.nickname}</strong>
                     {g.ownGoal ? ' (gol contra)' : ''}
                     {g.assist && <span className="text-green-200"> · assistência de {g.assist.nickname}</span>}
-                    <span className="text-green-300"> · ponto do Time {g.team}</span>
+                    <span className="text-green-300">
+                      {' '}
+                      · ponto do Time {g.team}
+                      {pelada && g.gameId && ` · jogo ${numeroDoJogo(g.gameId)}`}
+                    </span>
                   </span>
                   {ehOrganizador && partida.status === 'IN_PROGRESS' && (
                     <button
@@ -206,11 +232,42 @@ export default function MatchPage() {
         </div>
       )}
 
-      {/* Depois do encerramento: destaque para todos; avaliar só para quem jogou (a API confere de novo). */}
+      {!['SCHEDULED', 'CANCELED'].includes(partida.status) && lances.length > 0 && (
+        <div className="mt-6">
+          <h3 className="text-lg font-semibold">Cartões e defesas</h3>
+          <ul className="mt-2 grid gap-2">
+            {lances.map((e) => (
+              <li
+                key={e.id}
+                className="flex items-center justify-between gap-3 rounded-lg bg-green-900 px-4 py-2 ring-1 ring-green-700"
+              >
+                <span>
+                  {e.minute !== null && e.minute !== undefined && <span className="text-green-300">{e.minute}′ </span>}
+                  {NOME_DO_LANCE[e.type]} · <strong>{e.player?.nickname}</strong>
+                </span>
+                {ehOrganizador && partida.status === 'IN_PROGRESS' && (
+                  <button
+                    type="button"
+                    disabled={enviando}
+                    onClick={() => executar(() => removerLance(partida.id, e.id))}
+                    className={`${botao} bg-red-200 text-red-900 hover:bg-red-100`}
+                    aria-label={`Remover ${NOME_DO_LANCE[e.type].slice(2).toLowerCase()} de ${e.player?.nickname}`}
+                  >
+                    Remover
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Depois do encerramento: destaque para todos; avaliar só para quem jogou, com o MEU jogador
+          neste grupo (a API confere de novo). */}
       {partida.status === 'FINISHED' && (
         <RatingsPanel
           matchId={partida.id}
-          podeAvaliar={partida.players.some((p) => p.playerId === usuario?.playerId)}
+          podeAvaliar={partida.players.some((p) => p.playerId === grupo?.myPlayerId)}
         />
       )}
 
@@ -219,7 +276,9 @@ export default function MatchPage() {
           {confirmandoEncerrar ? (
             <>
               <span className="text-sm text-yellow-200">
-                Encerrar com o placar {partida.score.A} x {partida.score.B}? Depois a súmula não muda mais.
+                {pelada
+                  ? 'Encerrar a pelada? O jogo que está rolando é encerrado junto, e depois a súmula não muda mais.'
+                  : `Encerrar com o placar ${partida.score.A} x ${partida.score.B}? Depois a súmula não muda mais.`}
               </span>
               <button
                 type="button"
@@ -243,7 +302,7 @@ export default function MatchPage() {
               onClick={() => setConfirmandoEncerrar(true)}
               className={`${botao} bg-yellow-200 text-yellow-900 hover:bg-yellow-100`}
             >
-              Encerrar partida
+              {pelada ? 'Encerrar a pelada' : 'Encerrar partida'}
             </button>
           )}
         </div>
