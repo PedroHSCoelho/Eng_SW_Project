@@ -189,6 +189,51 @@ describe('lista de presença: talvez e convidados', () => {
     expect((await chefe.delete(`${CONVIDADOS}/2`)).status).toBe(404)
   })
 
+  it('convidado vai para os confirmados: vira jogador do grupo e sai dos convidados', async () => {
+    const { ana, chefe, playersRepo } = await cenario({ maxPlayers: null })
+    const CONVIDADOS = '/api/grupos/1/matches/1/convidados'
+    await ana.post(URL)
+    await ana.post(CONVIDADOS, { name: 'Otavio' })
+
+    const res = await ana.post(`${CONVIDADOS}/1/confirmar`, { position: 'FORWARD' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.data.guests).toEqual([])
+    const novo = playersRepo.jogadores.find((j) => j.nickname === 'Otavio')
+    expect(novo).toMatchObject({ groupId: 1, name: 'Otavio', position: 'FORWARD', active: true })
+    expect(res.body.data.confirmed.map((l) => l.playerId)).toEqual([1, novo.id])
+
+    // O novo jogador aparece na lista de jogadores do grupo (e por isso na escalação).
+    const lista = await chefe.get('/api/grupos/1/players')
+    expect(lista.body.data.map((j) => j.nickname)).toContain('Otavio')
+  })
+
+  it('convidado com o apelido de um jogador ativo usa esse jogador; inativo -> 422', async () => {
+    const { chefe, playersRepo } = await cenario({ maxPlayers: null })
+    const CONVIDADOS = '/api/grupos/1/matches/1/convidados'
+    await chefe.post(CONVIDADOS, { name: 'j2' })
+    await chefe.post(CONVIDADOS, { name: 'Parado' })
+    const antes = playersRepo.jogadores.length
+
+    const res = await chefe.post(`${CONVIDADOS}/1/confirmar`, { position: 'DEFENDER' })
+    expect(res.body.data.confirmed.map((l) => l.playerId)).toEqual([2])
+    expect(playersRepo.jogadores.length).toBe(antes)
+
+    const inativo = await chefe.post(`${CONVIDADOS}/2/confirmar`, { position: 'DEFENDER' })
+    expect(inativo.status).toBe(422)
+    expect(inativo.body.erro).toMatch(/inativo/)
+  })
+
+  it('confirmar convidado: posição obrigatória (400), outro membro não (403), inexistente (404)', async () => {
+    const { ana, bia } = await cenario()
+    const CONVIDADOS = '/api/grupos/1/matches/1/convidados'
+    await ana.post(CONVIDADOS, { name: 'Primo' })
+
+    expect((await ana.post(`${CONVIDADOS}/1/confirmar`, {})).status).toBe(400)
+    expect((await bia.post(`${CONVIDADOS}/1/confirmar`, { position: 'FORWARD' })).status).toBe(403)
+    expect((await ana.post(`${CONVIDADOS}/9/confirmar`, { position: 'FORWARD' })).status).toBe(404)
+  })
+
   it('admin sem jogador põe convidado; membro sem jogador não; nome curto -> 400', async () => {
     const { chefe, semjogador } = await cenario()
     const CONVIDADOS = '/api/grupos/1/matches/1/convidados'

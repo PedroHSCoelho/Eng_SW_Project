@@ -38,5 +38,12 @@ export function criarAttendanceRouter(service) {
     res.json({ data: await service.tirarConvidado(req.participacao, lerId(req, 'id'), lerId(req, 'guestId')) })
   })
 
+  // Convidado vira jogador do grupo e entra nos confirmados. Corpo: { "position": "MIDFIELDER" }
+  router.post('/matches/:id/convidados/:guestId/confirmar', async (req, res) => {
+    res.json({
+      data: await service.confirmarConvidado(req.participacao, lerId(req, 'id'), lerId(req, 'guestId'), req.body ?? {}),
+    })
+  })
+
   return router
 }

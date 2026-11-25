@@ -4,7 +4,9 @@
 import { BusinessRuleError, NotFoundError } from '../../errors/AppError.js'
 import {
   jogadorDaPresenca,
+  jogadorDoConvidado,
   lerConvidado,
+  lerPosicaoDoConvidado,
   lerTalvez,
   montarLista,
   quemConvida,
@@ -29,6 +31,12 @@ export function criarAttendanceService({ attendanceRepo, matchesRepo, playersRep
       maxPlayers: partida.maxPlayers ?? null,
       meuJogadorId: participacao.playerId ?? null,
     })
+  }
+
+  async function convidadoDaPartida(matchId, guestId) {
+    const convidado = await attendanceRepo.buscarConvidado(guestId)
+    if (!convidado || convidado.matchId !== matchId) throw new NotFoundError('Convidado não encontrado')
+    return convidado
   }
 
   return {
@@ -76,9 +84,32 @@ export function criarAttendanceService({ attendanceRepo, matchesRepo, playersRep
     async tirarConvidado(participacao, matchId, guestId) {
       const partida = await partidaDoGrupo(participacao.groupId, matchId)
       verificarListaAberta(partida)
-      const convidado = await attendanceRepo.buscarConvidado(guestId)
-      if (!convidado || convidado.matchId !== matchId) throw new NotFoundError('Convidado não encontrado')
+      const convidado = await convidadoDaPartida(matchId, guestId)
       verificarPodeTirarConvidado({ participacao, convidado })
+      await attendanceRepo.removerConvidado(guestId)
+      return lista(participacao, partida)
+    },
+
+    // Passa o convidado para os confirmados: ele vira jogador do grupo (sem conta), entra na lista
+    // como qualquer jogador (e por isso na escalação e no sorteio) e sai dos convidados.
+    // Se já existe um jogador ativo com o mesmo apelido, usa esse em vez de criar outro.
+    // Corpo: { "position": "MIDFIELDER" }. Pode quem levou o convidado ou um admin.
+    async confirmarConvidado(participacao, matchId, guestId, corpo) {
+      const { groupId } = participacao
+      const partida = await partidaDoGrupo(groupId, matchId)
+      verificarListaAberta(partida)
+      const convidado = await convidadoDaPartida(matchId, guestId)
+      verificarPodeTirarConvidado({ participacao, convidado })
+      const novo = jogadorDoConvidado(convidado, lerPosicaoDoConvidado(corpo))
+
+      let jogador = await playersRepo.buscarPorNicknameKey(groupId, novo.nicknameKey)
+      if (jogador && !jogador.active) {
+        throw new BusinessRuleError(`Já existe um jogador inativo com o apelido ${jogador.nickname}: reative-o em Jogadores`)
+      }
+      if (!jogador) jogador = await playersRepo.criar({ ...novo, groupId })
+
+      const jaNaLista = (await attendanceRepo.listarDaPartida(matchId)).some((p) => p.playerId === jogador.id)
+      if (!jaNaLista) await attendanceRepo.adicionar({ matchId, playerId: jogador.id, maybe: false })
       await attendanceRepo.removerConvidado(guestId)
       return lista(participacao, partida)
     },

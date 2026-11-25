@@ -3,6 +3,7 @@ import Icone from '../../ui/Icones.jsx'
 import { numerosDosJogadores } from './lances.js'
 import { jogoAberto } from './pelada.js'
 import { ehPelada, nomeDoTime, timesDaPartida } from './textos.js'
+import Avatar from '../../ui/Avatar.jsx'
 
 // Súmula ao vivo: um "box" por jogador escalado, separado por time, com o que ele já fez na
 // partida. Com `editavel` (organizador, partida em andamento), clicar no box abre o drill-down
@@ -113,7 +114,8 @@ function BoxDoJogador({ escalado, numeros, editavel, aoAbrir }) {
   const conteudo = (
     <>
       <span className="flex items-center justify-between gap-1">
-        <span className="min-w-0 break-words font-semibold">{escalado.player.nickname}</span>
+        <Avatar jogador={escalado.player} />
+        <span className="min-w-0 flex-1 break-words font-semibold">{escalado.player.nickname}</span>
         {ehGoleiro(escalado) && (
           <span className="rounded bg-superficie-2 px-1 text-[10px] font-bold text-ouro" title="Goleiro">
             GOL
@@ -304,6 +306,7 @@ function EscolherColega({ titulo, colegas, enviando, semNinguem, aoEscolher, aoV
             onClick={() => aoEscolher(c.playerId)}
             className={`${acao} bg-superficie-2 ring-borda hover:ring-gramado`}
           >
+            <Avatar jogador={c.player} className="mr-1.5" />
             {c.player.nickname}
           </button>
         ))}

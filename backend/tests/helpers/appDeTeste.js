@@ -11,6 +11,7 @@ import { criarCraqueService } from '../../src/features/craque/craque.service.js'
 import { criarDrawService } from '../../src/features/draw/draw.service.js'
 import { criarGroupsService } from '../../src/features/groups/groups.service.js'
 import { criarAttendanceService } from '../../src/features/attendance/attendance.service.js'
+import { criarPhotosService } from '../../src/features/photos/photos.service.js'
 import { BusinessRuleError } from '../../src/errors/AppError.js'
 
 export const SEGREDO = 'segredo-de-teste-com-mais-de-32-caracteres!!'
@@ -242,6 +243,28 @@ export function criarGroupsRepoEmMemoria({ usersRepo, playersRepo }) {
   return repo
 }
 
+// Repositório em memória das fotos. Como o real, guarda uma por jogador e só lista as do grupo.
+// `relogio` dá o updatedAt (a "versão" da foto).
+export function criarPhotosRepoEmMemoria({ playersRepo, relogio = () => new Date() }) {
+  const fotos = new Map()
+  return {
+    fotos,
+    listarDoGrupo: async (groupId) =>
+      [...fotos.values()]
+        .filter((f) => playersRepo.jogadores.find((j) => j.id === f.playerId)?.groupId === groupId)
+        .map(({ playerId, updatedAt }) => ({ playerId, updatedAt })),
+    buscar: async (playerId) => fotos.get(playerId) ?? null,
+    salvar: async (playerId, { mimeType, data }) => {
+      const foto = { playerId, mimeType, data, updatedAt: relogio() }
+      fotos.set(playerId, foto)
+      return { playerId, updatedAt: foto.updatedAt }
+    },
+    remover: async (playerId) => {
+      fotos.delete(playerId)
+    },
+  }
+}
+
 // `comGrupoDeTeste` (padrão): existe o grupo 1 e TODA conta criada já participa dele como MEMBER,
 // como se tivesse entrado pelo convite. Para virar organizador ou ter jogador no teste:
 //   ctx.participacaoDe('chefe@x.com').role = 'ORGANIZER'
@@ -258,6 +281,11 @@ export function montarApp({ expiraEmSegundos, jogadores = [], agora, aleatorio, 
   const attendanceRepo = criarAttendanceRepoEmMemoria({
     playersRepo,
     relogio: () => new Date(Date.UTC(2026, 10, 1, 12, minuto++)),
+  })
+  let segundo = 0
+  const photosRepo = criarPhotosRepoEmMemoria({
+    playersRepo,
+    relogio: () => new Date(Date.UTC(2026, 10, 1, 12, 0, segundo++)),
   })
   if (comGrupoDeTeste) {
     groupsRepo.adicionarGrupo({ name: 'Grupo de teste', inviteCode: 'TESTE234' })
@@ -287,7 +315,8 @@ export function montarApp({ expiraEmSegundos, jogadores = [], agora, aleatorio, 
     drawService: criarDrawService({ playersRepo, aleatorio }),
     groupsService: criarGroupsService({ groupsRepo, playersRepo, ...(gerarBytes && { gerarBytes }) }),
     attendanceService: criarAttendanceService({ attendanceRepo, matchesRepo, playersRepo }),
+    photosService: criarPhotosService({ photosRepo, playersRepo }),
     tokens,
   })
-  return { app, usersRepo, playersRepo, matchesRepo, craqueRepo, groupsRepo, attendanceRepo, participacaoDe, tokens }
+  return { app, usersRepo, playersRepo, matchesRepo, craqueRepo, groupsRepo, attendanceRepo, photosRepo, participacaoDe, tokens }
 }

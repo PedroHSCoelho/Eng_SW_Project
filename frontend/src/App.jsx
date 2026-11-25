@@ -12,6 +12,7 @@ import LoginPage from './features/auth/LoginPage.jsx'
 import RotaProtegida from './features/auth/RotaProtegida.jsx'
 import { AuthProvider, useAuth } from './features/auth/AuthContext.jsx'
 import { GrupoProvider, ehOrganizadorDo, useGrupo } from './features/groups/GrupoContext.jsx'
+import { FotosProvider } from './features/photos/FotosContext.jsx'
 import GroupsPage from './features/groups/GroupsPage.jsx'
 import InvitePage from './features/groups/InvitePage.jsx'
 import MembersPage from './features/groups/MembersPage.jsx'
@@ -27,13 +28,15 @@ const itemPrincipal = ({ isActive }) =>
 
 
 // O AuthProvider deixa "quem está logado" disponível para todas as telas, e o GrupoProvider,
-// "em que grupo estou" (os dados de jogadores, partidas e ranking são de cada grupo).
+// "em que grupo estou" e o FotosProvider, "quem do grupo tem foto" (os dados de jogadores, partidas e ranking são de cada grupo).
 // O BrowserRouter fica em main.jsx (nos testes entra o MemoryRouter).
 export default function App() {
   return (
     <AuthProvider>
       <GrupoProvider>
-        <Layout />
+        <FotosProvider>
+          <Layout />
+        </FotosProvider>
       </GrupoProvider>
     </AuthProvider>
   )

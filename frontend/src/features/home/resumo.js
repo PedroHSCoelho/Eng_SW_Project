@@ -9,13 +9,13 @@ const ouNulo = (promessa) => promessa.catch(() => null)
 const nomeDe = (linha) => linha?.nickname || linha?.name || 'Sem nome'
 
 // Artilheiros de cada time na súmula. Gol contra não entra (não é gol do autor).
-// gols: [{ team, ownGoal, scorer: { id, nickname } }] -> { A: [{ nome, gols }], B: [...] }
+// gols: [{ team, ownGoal, scorer: { id, nickname } }] -> { A: [{ id, nome, gols }], B: [...] }
 export function artilheirosPorTime(gols = []) {
   const porTime = { A: new Map(), B: new Map() }
   for (const gol of gols) {
     if (gol.ownGoal || !gol.scorer || !porTime[gol.team]) continue
     const mapa = porTime[gol.team]
-    const atual = mapa.get(gol.scorer.id) ?? { nome: nomeDe(gol.scorer), gols: 0 }
+    const atual = mapa.get(gol.scorer.id) ?? { id: gol.scorer.id, nome: nomeDe(gol.scorer), gols: 0 }
     mapa.set(gol.scorer.id, { ...atual, gols: atual.gols + 1 })
   }
   const ordenar = (mapa) => [...mapa.values()].sort((a, b) => b.gols - a.gols || a.nome.localeCompare(b.nome, 'pt-BR'))

@@ -68,6 +68,24 @@ afterEach(() => {
 })
 
 describe('MatchPage: partida agendada (escalação)', () => {
+  it('agrupa a escalação em colunas, uma por time, e o botão troca a cor do time', async () => {
+    simularApi({ ...comJogadores, ...partidaNaApi(partida({ teamNames: { A: 'Azul' } })) })
+    renderizar()
+    await screen.findByText('Escalação')
+
+    escolherTime('J1', 'A')
+    escolherTime('J2', 'B')
+    const azul = screen.getByRole('region', { name: 'Azul' })
+    expect(within(azul).getByLabelText('J1')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Time B' })).getByLabelText('J2')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Fora dos times' })).getByLabelText('J3')).toBeInTheDocument()
+
+    const cor = screen.getByRole('button', { name: 'Mudar a cor de Azul' })
+    expect(cor).toHaveAttribute('title', 'Cor: Azul (clique para trocar)')
+    fireEvent.click(cor)
+    expect(cor).toHaveAttribute('title', 'Cor: Laranja (clique para trocar)')
+  })
+
   it('monta os times, salva a escalação e só então libera o início', async () => {
     const salva = partida({ players: escalacao })
     simularApi({

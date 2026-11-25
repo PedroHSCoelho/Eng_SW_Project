@@ -5,6 +5,7 @@ import { listarJogadores } from '../players/playersApi.js'
 import { ehOrganizadorDo, useGrupo } from './GrupoContext.jsx'
 import { alterarMembro, gerarNovoConvite, listarMembros, removerMembro } from './groupsApi.js'
 import { alerta, botaoSecundario, campo, cartao } from './estilos.js'
+import Avatar from '../../ui/Avatar.jsx'
 
 const PAPEL = { ORGANIZER: 'Admin', MEMBER: 'Membro' }
 
@@ -133,13 +134,16 @@ export default function MembersPage() {
                   {souEu && ' (você)'}
                 </span>
                 <span className="text-sm text-green-200">
-                  {PAPEL[m.role]} · {m.player ? `joga como ${m.player.nickname}` : 'sem jogador'}
+                  {PAPEL[m.role]} · {m.player && <Avatar jogador={m.player} className="mr-1" />}
+                  {m.player ? `joga como ${m.player.nickname}` : 'sem jogador'}
                 </span>
               </span>
 
               <span className="flex flex-wrap items-center gap-2">
                 {ehOrganizador && (
                   <>
+                    {/* Ninguém muda o próprio papel: outro admin precisa tirar o seu admin. */}
+                    {!souEu && (
                     <select
                       aria-label={`Papel de ${m.user.name}`}
                       className="rounded-lg bg-green-950 px-2 py-1 text-sm ring-1 ring-green-700"
@@ -152,6 +156,7 @@ export default function MembersPage() {
                       <option value="MEMBER">Membro</option>
                       <option value="ORGANIZER">Admin</option>
                     </select>
+                    )}
                     <select
                       aria-label={`Jogador de ${m.user.name}`}
                       className="rounded-lg bg-green-950 px-2 py-1 text-sm ring-1 ring-green-700"

@@ -16,6 +16,8 @@ import { criarGroupsService } from './features/groups/groups.service.js'
 import { groupsRepository } from './features/groups/groups.repository.js'
 import { criarAttendanceService } from './features/attendance/attendance.service.js'
 import { attendanceRepository } from './features/attendance/attendance.repository.js'
+import { criarPhotosService } from './features/photos/photos.service.js'
+import { photosRepository } from './features/photos/photos.repository.js'
 
 const tokens = criarTokens()
 
@@ -38,6 +40,7 @@ const app = criarApp({
     matchesRepo: matchesRepository,
     playersRepo: playersRepository,
   }),
+  photosService: criarPhotosService({ photosRepo: photosRepository, playersRepo: playersRepository }),
   tokens,
   cookieSeguro: process.env.NODE_ENV === 'production',
 })
