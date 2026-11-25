@@ -28,8 +28,9 @@ export function lerDadosDoGol(dados) {
 
 const adversario = (time) => (time === 'A' ? 'B' : 'A')
 
+// Só quem está em campo: quem saiu numa substituição não recebe gol nem assistência.
 function timeDoJogador(partida, playerId) {
-  return partida.players.find((p) => p.playerId === playerId)?.team
+  return partida.players.find((p) => p.playerId === playerId && !p.benched)?.team
 }
 
 // Gols só entram (e saem) com a partida em andamento: antes ninguém jogou,

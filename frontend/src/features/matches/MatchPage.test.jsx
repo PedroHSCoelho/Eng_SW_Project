@@ -37,7 +37,15 @@ function simularApi(rotas) {
   })
 }
 
-const comJogadores = { 'GET /api/grupos/1/players?ativos=true': () => resposta(200, { data: jogadores }) }
+// A escalação só mostra quem confirmou presença: aqui, todos os jogadores.
+const presencasDe = (lista) => () =>
+  resposta(200, {
+    data: { maxPlayers: null, confirmed: lista.map((j, i) => ({ playerId: j.id, nickname: j.nickname, order: i + 1 })), waitlist: [], guests: [], openSpots: null, me: null },
+  })
+const comJogadores = {
+  'GET /api/grupos/1/players?ativos=true': () => resposta(200, { data: jogadores }),
+  'GET /api/grupos/1/matches/7/presencas': presencasDe(jogadores),
+}
 const partidaNaApi = (p) => ({ 'GET /api/grupos/1/matches/7': () => resposta(200, { data: p }) })
 const chamou = (chave) => fetch.mock.calls.some(([url, o]) => `${o?.method ?? 'GET'} ${url}` === chave)
 
@@ -55,6 +63,9 @@ function renderizar(papel = 'ORGANIZER', playerId = null) {
   )
 }
 
+// A escalação só lista quem confirmou presença, que chega depois da partida.
+const esperarJogadores = () => screen.findByLabelText('J1')
+
 const escolherTime = (apelido, time) =>
   fireEvent.change(screen.getByLabelText(apelido), { target: { value: time } })
 
@@ -68,17 +79,32 @@ afterEach(() => {
 })
 
 describe('MatchPage: partida agendada (escalação)', () => {
+  it('a escalação só mostra quem confirmou presença, e quem não está em time fica Sem Time', async () => {
+    simularApi({
+      ...comJogadores,
+      ...partidaNaApi(partida()),
+      'GET /api/grupos/1/matches/7/presencas': presencasDe(jogadores.slice(0, 5)),
+    })
+    renderizar()
+    await esperarJogadores()
+
+    expect(screen.queryByLabelText('J6')).not.toBeInTheDocument()
+    expect(within(screen.getByLabelText('J1')).getAllByRole('option').map((o) => o.textContent)).toEqual(['Sem Time', 'Time A', 'Time B'])
+    expect(within(screen.getByRole('region', { name: 'Sem Time' })).getAllByRole('combobox')).toHaveLength(5)
+  })
+
   it('agrupa a escalação em colunas, uma por time, e o botão troca a cor do time', async () => {
     simularApi({ ...comJogadores, ...partidaNaApi(partida({ teamNames: { A: 'Azul' } })) })
     renderizar()
     await screen.findByText('Escalação')
+    await esperarJogadores()
 
     escolherTime('J1', 'A')
     escolherTime('J2', 'B')
     const azul = screen.getByRole('region', { name: 'Azul' })
     expect(within(azul).getByLabelText('J1')).toBeInTheDocument()
     expect(within(screen.getByRole('region', { name: 'Time B' })).getByLabelText('J2')).toBeInTheDocument()
-    expect(within(screen.getByRole('region', { name: 'Fora dos times' })).getByLabelText('J3')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Sem Time' })).getByLabelText('J3')).toBeInTheDocument()
 
     const cor = screen.getByRole('button', { name: 'Mudar a cor de Azul' })
     expect(cor).toHaveAttribute('title', 'Cor: Azul (clique para trocar)')
@@ -98,6 +124,7 @@ describe('MatchPage: partida agendada (escalação)', () => {
     })
     renderizar()
     await screen.findByText('Escalação')
+    await esperarJogadores()
 
     expect(screen.getByRole('button', { name: 'Salvar escalação' })).toBeDisabled() // nada mudou
     ;[1, 2, 3].forEach((n) => escolherTime(`J${n}`, 'A'))
@@ -573,7 +600,10 @@ describe('MatchPage: pelada (vários times e jogos)', () => {
   const pelada = (extra = {}) =>
     partida({ format: 'PELADA', teamCount: 3, status: 'IN_PROGRESS', players: escalacao3, games: [], standings: [], score: { A: 0, B: 0, C: 0 }, ...extra })
   const jogo1 = { id: 1, number: 1, homeTeam: 'A', awayTeam: 'C', result: null, finishedAt: null, score: { home: 0, away: 0 } }
-  const comNove = { 'GET /api/grupos/1/players?ativos=true': () => resposta(200, { data: nove }) }
+  const comNove = {
+    'GET /api/grupos/1/players?ativos=true': () => resposta(200, { data: nove }),
+    'GET /api/grupos/1/matches/7/presencas': presencasDe(nove),
+  }
 
   it('escalação da pelada tem os 3 times e salva teamA, teamB e teamC', async () => {
     simularApi({
@@ -586,8 +616,9 @@ describe('MatchPage: pelada (vários times e jogos)', () => {
     })
     renderizar()
     await screen.findByText('Escalação')
+    await esperarJogadores()
     const opcoes = within(screen.getByLabelText('J1')).getAllByRole('option').map((o) => o.textContent)
-    expect(opcoes).toEqual(['Fora', 'Time A', 'Time B', 'Time C'])
+    expect(opcoes).toEqual(['Sem Time', 'Time A', 'Time B', 'Time C'])
 
     escolherTime('J1', 'A')
     escolherTime('J9', 'C')
