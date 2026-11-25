@@ -66,6 +66,24 @@ export const groupsRepository = {
     }
   },
 
+  // Jogadores ativos do grupo que ninguém assumiu ainda (cadastrados à mão pelo admin).
+  listarJogadoresSemConta: (groupId) =>
+    prisma.player.findMany({
+      where: { groupId, active: true, membership: null },
+      select: { id: true, name: true, nickname: true, position: true },
+      orderBy: { nickname: 'asc' },
+    }),
+
+  // Entrar pelo convite dizendo "sou eu": a participação já nasce ligada ao jogador existente.
+  // O playerId é único em Membership: se duas pessoas tentarem o mesmo jogador, a segunda é recusada.
+  async entrarComoJogador({ groupId, userId, playerId }) {
+    try {
+      return await prisma.membership.create({ data: { groupId, userId, role: 'MEMBER', playerId } })
+    } catch (erro) {
+      traduzirUnicidade(erro)
+    }
+  },
+
   // Entrar pelo convite: cria o jogador da pessoa no grupo e a participação, juntos.
   async entrar({ groupId, userId, jogador }) {
     try {

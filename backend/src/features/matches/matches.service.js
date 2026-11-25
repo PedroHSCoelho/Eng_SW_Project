@@ -8,6 +8,8 @@ import { BusinessRuleError, NotFoundError } from '../../errors/AppError.js'
 import {
   calcularPlacar,
   lerEscalacao,
+  lerSubstituicao,
+  montarSubstituicao,
   resultadoDoPlacar,
   validarDadosDaPartida,
   validarEscalacao,
@@ -119,6 +121,20 @@ export function criarMatchesService({ matchesRepo, playersRepo, agora = () => ne
       const porChave = Object.fromEntries(Object.entries(times).map(([t, ids]) => [`team${t}`, ids]))
       const escalacao = validarEscalacao({ ...porChave, jogadores })
       return comPlacar(await matchesRepo.substituirEscalacao(id, escalacao))
+    },
+
+    // Durante a partida: substituição, pôr alguém num time ou tirar alguém de campo.
+    // Quem sai continua na súmula (jogou), só fica Sem Time.
+    async substituir(groupId, id, dados) {
+      const partida = await buscarOuFalhar(groupId, id)
+      const substituicao = lerSubstituicao(dados)
+      let jogadorQueEntra = null
+      if (substituicao.entraId !== null) {
+        const jogador = await playersRepo.buscarPorId(substituicao.entraId)
+        jogadorQueEntra = jogador && jogador.groupId === groupId ? jogador : null
+      }
+      const troca = montarSubstituicao({ partida, substituicao, jogadorQueEntra })
+      return comPlacar(await matchesRepo.substituir(id, troca))
     },
 
     async iniciar(groupId, id) {

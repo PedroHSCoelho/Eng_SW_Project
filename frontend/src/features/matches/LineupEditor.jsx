@@ -17,7 +17,8 @@ const iguais = (a, b) => {
 
 // Editor da escalação (só enquanto a partida está agendada). Componente de apresentação:
 // as regras (mínimo de 3 por time, jogador só em um time) são do back-end, que responde 422.
-// `confirmados` (ids da lista de presença) aparecem primeiro e podem ser sorteados nos times.
+// Só aparecem os `confirmados` (ids da lista de presença) e quem já está na escalação salva.
+// Quem não está em time nenhum fica "Sem Time" (na pelada, quem espera para entrar).
 // `times`: ['A', 'B'] no jogo único; na pelada, de 3 a 6 times.
 export default function LineupEditor({ partidaId, jogadores, times = ['A', 'B'], nomeDoTime = (t) => `Time ${t}`, confirmados = [], escalacao, enviando, aoSalvar, aoIniciar }) {
   // Cor escolhida de cada time ({ A: índice na paleta }); sem escolha, vale a cor inicial.
@@ -28,7 +29,9 @@ export default function LineupEditor({ partidaId, jogadores, times = ['A', 'B'],
   const [erroDoSorteio, setErroDoSorteio] = useState('')
   const alterada = !iguais(selecao, salva)
   const naLista = new Set(confirmados)
-  const ordenados = [...jogadores].sort((a, b) => Number(naLista.has(b.id)) - Number(naLista.has(a.id)))
+  const ordenados = jogadores
+    .filter((j) => naLista.has(j.id) || salva[j.id])
+    .sort((a, b) => Number(naLista.has(b.id)) - Number(naLista.has(a.id)))
   const minimo = minimoParaSortear(times.length)
   const maximo = maximoParaSortear(times.length)
   const podeSortear = confirmados.length >= minimo && confirmados.length <= maximo
@@ -65,7 +68,7 @@ export default function LineupEditor({ partidaId, jogadores, times = ['A', 'B'],
     setSelecao((atual) => {
       const nova = { ...atual }
       if (time) nova[id] = time
-      else delete nova[id] // "Fora" = não joga
+      else delete nova[id] // "Sem Time" = fora dos times
       return nova
     })
   }
@@ -76,10 +79,12 @@ export default function LineupEditor({ partidaId, jogadores, times = ['A', 'B'],
       <p className="mt-1 text-sm text-green-200">
         {times.map((t) => `${nomeDoTime(t)}: ${idsDoTime(t).length}`).join(' · ')} (mínimo de 3 por time para começar)
       </p>
-      {jogadores.length === 0 ? (
-        <p className="mt-3 text-green-200">Cadastre jogadores ativos para montar os times.</p>
+      {ordenados.length === 0 ? (
+        <p className="mt-3 text-green-200">
+          Ninguém confirmou presença ainda. Confirme os jogadores na lista de presença para montar os times.
+        </p>
       ) : (
-        // Uma coluna por time (com a cor do time) e, por último, quem está fora.
+        // Uma coluna por time (com a cor do time) e, por último, quem está Sem Time.
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {[...times, ''].map((t, i) => {
             const doTime = ordenados.filter((j) => (selecao[j.id] ?? '') === t)
@@ -88,13 +93,13 @@ export default function LineupEditor({ partidaId, jogadores, times = ['A', 'B'],
             return (
               <section
                 key={t || 'fora'}
-                aria-label={t ? nomeDoTime(t) : 'Fora dos times'}
+                aria-label={t ? nomeDoTime(t) : 'Sem Time'}
                 className="rounded-lg p-2 ring-1 ring-green-700"
                 style={cor ? { borderTop: `4px solid ${cor.hex}`, backgroundColor: `${cor.hex}1f` } : undefined}
               >
                 <div className="mb-2 flex items-center justify-between gap-2 px-1">
                   <h4 className="text-sm font-semibold">
-                    {t ? nomeDoTime(t) : 'Fora'} <span className="font-normal text-green-300">({doTime.length})</span>
+                    {t ? nomeDoTime(t) : 'Sem Time'} <span className="font-normal text-green-300">({doTime.length})</span>
                   </h4>
                   {cor && (
                     <button
@@ -113,7 +118,7 @@ export default function LineupEditor({ partidaId, jogadores, times = ['A', 'B'],
                       <label htmlFor={`time-${j.id}`}>
                         <Avatar jogador={j} className="mr-1.5" />
                         {j.nickname}
-                        {naLista.has(j.id) && <span className="text-xs text-green-300"> · confirmado</span>}
+                        {!naLista.has(j.id) && <span className="text-xs text-yellow-200"> · não confirmado</span>}
                       </label>
                       <select
                         id={`time-${j.id}`}
@@ -121,7 +126,7 @@ export default function LineupEditor({ partidaId, jogadores, times = ['A', 'B'],
                         value={selecao[j.id] ?? ''}
                         onChange={(e) => escolher(j.id, e.target.value)}
                       >
-                        <option value="">Fora</option>
+                        <option value="">Sem Time</option>
                         {times.map((x) => (
                           <option key={x} value={x}>
                             {nomeDoTime(x)}

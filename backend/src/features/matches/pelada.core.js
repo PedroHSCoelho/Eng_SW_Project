@@ -42,7 +42,9 @@ export function lerFormato(dados) {
 // O jogo que está rolando agora (no máximo um por vez), ou undefined.
 export const jogoAberto = (partida) => (partida.games ?? []).find((j) => !j.finishedAt)
 
-export const timeDoJogador = (partida, playerId) => partida.players.find((p) => p.playerId === playerId)?.team
+// Time de quem está EM CAMPO (quem saiu numa substituição não recebe lances até voltar).
+export const timeDoJogador = (partida, playerId) =>
+  partida.players.find((p) => p.playerId === playerId && !p.benched)?.team
 
 // Lê o corpo de "começar jogo": { homeTeam: 'A', awayTeam: 'C' }.
 export function lerDadosDoJogo(dados) {

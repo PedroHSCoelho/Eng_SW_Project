@@ -124,6 +124,52 @@ export function verificarEscalacaoEditavel(partida) {
   }
 }
 
+// Substituição com a partida em andamento. Corpo: { entraId, saiId?, team? }
+//  - com saiId: quem entra assume o time de quem sai, e quem sai fica Sem Time (fora de campo);
+//  - sem saiId: quem entra vai para `team` (pôr alguém num time, ou trocar de time);
+//  - só saiId (sem entraId): tira o jogador de campo.
+export function lerSubstituicao(dados) {
+  const idOuNulo = (valor, nome) => {
+    if (valor === undefined || valor === null) return null
+    if (!Number.isInteger(valor) || valor <= 0) throw new ValidationError(`${nome} inválido`)
+    return valor
+  }
+  const entraId = idOuNulo(dados.entraId, 'entraId')
+  const saiId = idOuNulo(dados.saiId, 'saiId')
+  const team = dados.team ?? null
+  if (team !== null && !TIMES.includes(team)) throw new ValidationError('Time inválido')
+  if (entraId === null && saiId === null) throw new ValidationError('Informe quem entra (entraId) ou quem sai (saiId)')
+  if (entraId !== null && saiId === null && team === null) throw new ValidationError('Informe quem sai ou o time de quem entra')
+  if (entraId !== null && entraId === saiId) throw new ValidationError('Quem entra e quem sai precisam ser jogadores diferentes')
+  return { entraId, saiId, team }
+}
+
+// Regras da substituição (a leitura do corpo já passou por lerSubstituicao):
+//  1. a partida está em andamento;
+//  2. quem sai está em campo;
+//  3. quem entra é jogador ativo do grupo (`jogadorQueEntra`) e o time é da partida;
+//  4. quem entra não pode já estar em campo no mesmo time.
+// Devolve o que gravar: { entra: { playerId, team } | null, sai: playerId | null }.
+export function montarSubstituicao({ partida, substituicao, jogadorQueEntra }) {
+  if (partida.status !== 'IN_PROGRESS') {
+    throw new BusinessRuleError('Substituições só com a partida em andamento')
+  }
+  const emCampo = (id) => partida.players.find((p) => p.playerId === id && !p.benched)
+  const { entraId, saiId } = substituicao
+  let team = substituicao.team
+  if (saiId !== null) {
+    const sai = emCampo(saiId)
+    if (!sai) throw new BusinessRuleError('Quem sai precisa estar em campo')
+    team = team ?? sai.team
+  }
+  if (entraId === null) return { entra: null, sai: saiId }
+  if (!jogadorQueEntra) throw new BusinessRuleError('Jogador não encontrado')
+  if (!jogadorQueEntra.active) throw new BusinessRuleError(`Jogador inativo não pode entrar: ${jogadorQueEntra.nickname}`)
+  if (!timesDaPartida(partida).includes(team)) throw new BusinessRuleError(`A partida não tem o Time ${team}`)
+  if (emCampo(entraId)?.team === team) throw new BusinessRuleError(`${jogadorQueEntra.nickname} já está nesse time`)
+  return { entra: { playerId: entraId, team }, sai: saiId }
+}
+
 // Agendada -> em andamento: cada time da partida precisa de pelo menos 3 jogadores
 // (no jogo único, A e B; na pelada, todos os times dela).
 export function verificarPodeIniciar(partida) {
@@ -164,17 +210,14 @@ export function resultadoDoPlacar({ A, B }) {
   return 'DRAW'
 }
 
-// Em andamento -> finalizada. Não encerra duas vezes nem partida marcada para o futuro.
-// `agora` entra por parâmetro para o teste controlar o relógio.
+// Em andamento -> finalizada. Não encerra duas vezes. A data marcada não trava: a pelada pode
+// começar e acabar antes ou depois do horário combinado (o organizador decide).
 export function verificarPodeEncerrar({ partida, agora }) {
   if (partida.status === 'FINISHED') {
     throw new BusinessRuleError('A partida já foi encerrada')
   }
   if (partida.status !== 'IN_PROGRESS') {
     throw new BusinessRuleError('Só uma partida em andamento pode ser encerrada')
-  }
-  if (new Date(partida.date) > agora) {
-    throw new BusinessRuleError('Não é possível encerrar uma partida marcada para o futuro')
   }
 }
 

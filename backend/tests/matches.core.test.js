@@ -146,9 +146,9 @@ describe('verificarPodeEncerrar', () => {
     expect(() => verificarPodeEncerrar({ partida: { ...jogada, status: 'SCHEDULED' }, agora })).toThrow('em andamento')
   })
 
-  it('não encerra partida marcada para o futuro', () => {
+  it('encerra partida marcada para o futuro (a data não trava)', () => {
     const futura = { ...jogada, date: new Date('2026-11-21T22:00:00Z') }
-    expect(() => verificarPodeEncerrar({ partida: futura, agora })).toThrow('futuro')
+    expect(() => verificarPodeEncerrar({ partida: futura, agora })).not.toThrow()
   })
 })
 

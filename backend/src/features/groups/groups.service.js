@@ -78,18 +78,37 @@ export function criarGroupsService({ groupsRepo, playersRepo, gerarBytes = rando
       return grupoParaParticipante(grupo, participacao)
     },
 
-    // Tela do convite: só o nome do grupo e quantas pessoas tem, antes de a pessoa confirmar.
+    // Tela do convite: o nome do grupo, quantas pessoas tem e os jogadores que o admin cadastrou
+    // à mão e ainda não têm conta (`unclaimedPlayers`), para a pessoa dizer "sou eu" e não virar
+    // um jogador duplicado.
     async verConvite(codigo, usuario) {
       const grupo = await grupoPeloCodigo(codigo)
       const jaParticipa = Boolean(await groupsRepo.buscarParticipacao(grupo.id, usuario.id))
-      return { id: grupo.id, name: grupo.name, totalMembers: grupo._count.memberships, alreadyMember: jaParticipa }
+      return {
+        id: grupo.id,
+        name: grupo.name,
+        totalMembers: grupo._count.memberships,
+        alreadyMember: jaParticipa,
+        unclaimedPlayers: jaParticipa ? [] : await groupsRepo.listarJogadoresSemConta(grupo.id),
+      }
     },
 
-    // Entra como MEMBER e ganha um jogador novo no grupo (apelido único dentro do grupo).
+    // Entra como MEMBER. Com { playerId }, a conta vira a desse jogador sem conta ("sou eu");
+    // senão ganha um jogador novo no grupo (apelido único dentro do grupo).
     async entrar(codigo, usuario, dados) {
       const grupo = await grupoPeloCodigo(codigo)
       if (await groupsRepo.buscarParticipacao(grupo.id, usuario.id)) {
         throw new BusinessRuleError('Você já participa deste grupo')
+      }
+      if (dados.playerId !== undefined && dados.playerId !== null) {
+        if (!Number.isInteger(dados.playerId) || dados.playerId <= 0) throw new ValidationError('playerId inválido')
+        const jogador = await playersRepo.buscarPorId(dados.playerId)
+        if (!jogador || jogador.groupId !== grupo.id || !jogador.active) throw new NotFoundError('Jogador não encontrado')
+        if (await groupsRepo.buscarParticipacaoPorJogador(jogador.id)) {
+          throw new BusinessRuleError('Esse jogador já está ligado a outra conta')
+        }
+        const participacao = await groupsRepo.entrarComoJogador({ groupId: grupo.id, userId: usuario.id, playerId: jogador.id })
+        return grupoParaParticipante(grupo, participacao)
       }
       const participacao = await groupsRepo.entrar({
         groupId: grupo.id, userId: usuario.id, jogador: lerJogador(usuario, dados),

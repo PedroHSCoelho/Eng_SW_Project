@@ -322,13 +322,13 @@ describe('PATCH /api/grupos/1/matches/:id/encerrar', () => {
     expect(res.body.erro).toBe('A partida já foi encerrada')
   })
 
-  it('422 ao encerrar partida marcada para o futuro', async () => {
+  it('encerra mesmo marcada para o futuro (inicia e encerra a qualquer momento)', async () => {
     const { chefe } = await partidaEmAndamento({ agora: () => new Date('2026-11-19T12:00:00Z') })
 
     const res = await chefe.patch('/api/grupos/1/matches/1/encerrar')
 
-    expect(res.status).toBe(422)
-    expect(res.body.erro).toMatch(/futuro/)
+    expect(res.status).toBe(200)
+    expect(res.body.data.status).toBe('FINISHED')
   })
 
   it('depois de encerrada, a súmula não muda (gol, remoção de gol e escalação)', async () => {
@@ -507,5 +507,74 @@ describe('PATCH /api/grupos/1/matches/:id/cancelar', () => {
     expect(historico.items.map((p) => p.id)).toEqual([1])
     expect(stats).toMatchObject({ matches: 1, goals: 1 })
     expect(ranking.artilharia[0]).toMatchObject({ playerId: 1, goals: 1 })
+  })
+})
+
+describe('POST /api/grupos/1/matches/:id/substituicao (durante a partida)', () => {
+  async function emAndamento() {
+    const ctx = await cenario()
+    await ctx.chefe.post('/api/grupos/1/matches', novaPartida)
+    await ctx.chefe.put('/api/grupos/1/matches/1/escalacao', escalacaoCompleta)
+    await ctx.chefe.patch('/api/grupos/1/matches/1/iniciar')
+    // Oito chega atrasado e fica Sem Time.
+    await ctx.chefe.post('/api/grupos/1/players', { name: 'Jogador Oito', nickname: 'J8', position: 'FORWARD' })
+    const oito = ctx.playersRepo.jogadores.find((j) => j.nickname === 'J8').id
+    return { ...ctx, oito, URL: '/api/grupos/1/matches/1/substituicao' }
+  }
+  const emCampo = (partida, time) =>
+    partida.players.filter((p) => p.team === time && !p.benched).map((p) => p.playerId).sort((a, b) => a - b)
+
+  it('substitui: quem entra assume o time de quem sai, e quem sai fica Sem Time', async () => {
+    const { chefe, oito, URL } = await emAndamento()
+
+    const res = await chefe.post(URL, { entraId: oito, saiId: 2 })
+
+    expect(res.status).toBe(200)
+    expect(emCampo(res.body.data, 'A')).toEqual([1, 3, oito])
+    // Quem saiu continua na súmula (jogou), marcado como fora de campo.
+    expect(res.body.data.players.find((p) => p.playerId === 2)).toMatchObject({ team: 'A', benched: true })
+  })
+
+  it('quem saiu não recebe gol; pode voltar depois, inclusive em outro time', async () => {
+    const { chefe, oito, URL } = await emAndamento()
+    await chefe.post(URL, { entraId: oito, saiId: 2 })
+
+    expect((await chefe.post('/api/grupos/1/matches/1/gols', { scorerId: 2 })).status).toBe(422)
+
+    const volta = await chefe.post(URL, { entraId: 2, saiId: 4 })
+    expect(emCampo(volta.body.data, 'B')).toEqual([2, 5, 6])
+    expect((await chefe.post('/api/grupos/1/matches/1/gols', { scorerId: 2 })).body.data.score).toEqual({ A: 0, B: 1 })
+  })
+
+  it('põe alguém num time sem tirar ninguém, e troca um jogador de time', async () => {
+    const { chefe, oito, URL } = await emAndamento()
+
+    expect(emCampo((await chefe.post(URL, { entraId: oito, team: 'B' })).body.data, 'B')).toEqual([4, 5, 6, oito])
+    const troca = await chefe.post(URL, { entraId: 1, team: 'B' })
+    expect(emCampo(troca.body.data, 'A')).toEqual([2, 3])
+    expect(emCampo(troca.body.data, 'B')).toEqual([1, 4, 5, 6, oito])
+  })
+
+  it('só tira de campo com { saiId }', async () => {
+    const { chefe, URL } = await emAndamento()
+    expect(emCampo((await chefe.post(URL, { saiId: 3 })).body.data, 'A')).toEqual([1, 2])
+  })
+
+  it('erros: 400 sem dados, 422 com quem sai fora de campo, inativo, mesmo time ou partida agendada; 403 para membro', async () => {
+    const { chefe, maria, oito, URL } = await emAndamento()
+
+    expect((await chefe.post(URL, {})).status).toBe(400)
+    expect((await chefe.post(URL, { entraId: oito })).status).toBe(400)
+    expect((await chefe.post(URL, { entraId: oito, saiId: oito })).status).toBe(400)
+    expect((await chefe.post(URL, { entraId: oito, saiId: 99 })).body.erro).toBe('Quem sai precisa estar em campo')
+    expect((await chefe.post(URL, { entraId: 7, saiId: 1 })).status).toBe(422)
+    expect((await chefe.post(URL, { entraId: 1, team: 'A' })).body.erro).toBe('J1 já está nesse time')
+    expect((await chefe.post(URL, { entraId: oito, team: 'C' })).body.erro).toBe('A partida não tem o Time C')
+    expect((await maria.post(URL, { entraId: oito, saiId: 1 })).status).toBe(403)
+
+    await chefe.post('/api/grupos/1/matches', novaPartida)
+    expect((await chefe.post('/api/grupos/1/matches/2/substituicao', { entraId: oito, team: 'A' })).body.erro).toMatch(
+      /em andamento/,
+    )
   })
 })
