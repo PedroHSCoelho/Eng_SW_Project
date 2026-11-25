@@ -56,6 +56,23 @@ export const matchesRepository = {
       return tx.match.findUnique({ where: { id: matchId }, include: comEscalacao })
     }),
 
+  // Substituição: quem entra vai para o time (criado na escalação ou mudado de time, de volta a campo);
+  // quem sai fica marcado como fora de campo (benched), sem sair da súmula.
+  substituir: (matchId, { entra, sai }) =>
+    prisma.$transaction(async (tx) => {
+      if (sai !== null) {
+        await tx.matchPlayer.update({ where: { matchId_playerId: { matchId, playerId: sai } }, data: { benched: true } })
+      }
+      if (entra !== null) {
+        await tx.matchPlayer.upsert({
+          where: { matchId_playerId: { matchId, playerId: entra.playerId } },
+          create: { matchId, playerId: entra.playerId, team: entra.team },
+          update: { team: entra.team, benched: false },
+        })
+      }
+      return tx.match.findUnique({ where: { id: matchId }, include: comEscalacao })
+    }),
+
   // Muda data e local só se a partida ainda estiver agendada (se alguém a iniciou ao mesmo tempo, 0 linhas).
   async atualizarDados(id, dados) {
     const { count } = await prisma.match.updateMany({ where: { id, status: 'SCHEDULED' }, data: dados })

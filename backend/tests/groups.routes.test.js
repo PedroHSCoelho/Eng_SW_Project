@@ -94,7 +94,43 @@ describe('convite', () => {
     const res = await caio.get('/api/convites/abcdefgh')
 
     expect(res.status).toBe(200)
-    expect(res.body.data).toEqual({ id: 1, name: 'Pelada', totalMembers: 1, alreadyMember: false })
+    expect(res.body.data).toEqual({ id: 1, name: 'Pelada', totalMembers: 1, alreadyMember: false, unclaimedPlayers: [] })
+  })
+
+  it('"sou eu": o convite lista os jogadores sem conta e a pessoa entra como um deles, sem duplicar', async () => {
+    const { ana, beto, caio, grupo, url, playersRepo } = await grupoComDois()
+    // Ana cadastra à mão o Caio (sem conta) e um jogador inativo, que não aparece.
+    await ana.post(`${url}/players`, { name: 'Caio Lima', nickname: 'Caião', position: 'DEFENDER' })
+    const caiao = playersRepo.jogadores.find((j) => j.nickname === 'Caião')
+    await ana.post(`${url}/players`, { name: 'Velho Silva', nickname: 'Velho', position: 'DEFENDER' })
+    playersRepo.jogadores.find((j) => j.nickname === 'Velho').active = false
+    const antes = playersRepo.jogadores.length
+
+    const convite = await caio.get(`/api/convites/${grupo.inviteCode}`)
+    expect(convite.body.data.unclaimedPlayers).toEqual([{ id: caiao.id, name: 'Caio Lima', nickname: 'Caião', position: 'DEFENDER' }])
+    // Quem já participa não recebe a lista.
+    expect((await beto.get(`/api/convites/${grupo.inviteCode}`)).body.data.unclaimedPlayers).toEqual([])
+
+    const res = await caio.post(`/api/convites/${grupo.inviteCode}/entrar`, { playerId: caiao.id })
+
+    expect(res.status).toBe(201)
+    expect(res.body.data).toMatchObject({ myRole: 'MEMBER', myPlayerId: caiao.id })
+    expect(playersRepo.jogadores.length).toBe(antes)
+    expect((await ana.get(`${url}/membros`)).body.data.find((m) => m.userId === caio.id).playerId).toBe(caiao.id)
+  })
+
+  it('"sou eu" recusa jogador de outra conta (422), inativo ou inexistente (404) e id inválido (400)', async () => {
+    const { ana, caio, grupo, url, playersRepo } = await grupoComDois()
+    const betao = playersRepo.jogadores.find((j) => j.nickname === 'Betão')
+    await ana.post(`${url}/players`, { name: 'Velho Silva', nickname: 'Velho', position: 'DEFENDER' })
+    const velho = playersRepo.jogadores.find((j) => j.nickname === 'Velho')
+    velho.active = false
+    const entrar = (corpo) => caio.post(`/api/convites/${grupo.inviteCode}/entrar`, corpo)
+
+    expect((await entrar({ playerId: betao.id })).body.erro).toBe('Esse jogador já está ligado a outra conta')
+    expect((await entrar({ playerId: velho.id })).status).toBe(404)
+    expect((await entrar({ playerId: 999 })).status).toBe(404)
+    expect((await entrar({ playerId: 'x' })).status).toBe(400)
   })
 
   it('código inexistente ou mal formado -> 404', async () => {

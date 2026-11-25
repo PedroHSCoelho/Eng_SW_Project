@@ -6,6 +6,8 @@ import { entrarNoGrupo, verConvite } from './groupsApi.js'
 import { alerta, botaoPrincipal, cartao } from './estilos.js'
 
 // Tela do link de convite (/convite/:codigo): mostra o grupo e a pessoa confirma com o apelido.
+// Se o admin já cadastrou a pessoa à mão (jogador sem conta), ela escolhe "sou eu" na lista
+// e a conta passa a ser desse jogador, em vez de criar outro com o mesmo nome.
 export default function InvitePage() {
   const { codigo } = useParams()
   const { trocarGrupo, recarregar } = useGrupo()
@@ -13,6 +15,7 @@ export default function InvitePage() {
   const [convite, setConvite] = useState(null)
   const [erro, setErro] = useState('')
   const [jogador, setJogador] = useState({ nickname: '', position: '' })
+  const [souEu, setSouEu] = useState('') // id do jogador sem conta escolhido; '' = sou novo
   const [enviando, setEnviando] = useState(false)
 
   useEffect(() => {
@@ -36,7 +39,7 @@ export default function InvitePage() {
     setErro('')
     setEnviando(true)
     try {
-      const grupo = await entrarNoGrupo(codigo, jogador)
+      const grupo = await entrarNoGrupo(codigo, souEu ? { playerId: Number(souEu) } : jogador)
       await abrirGrupo(grupo.id)
     } catch (e) {
       setErro(e.message)
@@ -80,7 +83,23 @@ export default function InvitePage() {
             Você foi convidado para <strong>{convite.name}</strong> ({convite.totalMembers}{' '}
             {convite.totalMembers === 1 ? 'pessoa' : 'pessoas'}).
           </p>
-          <CamposDoJogador valor={jogador} aoMudar={setJogador} />
+          {convite.unclaimedPlayers?.length > 0 && (
+            <fieldset className="grid gap-1">
+              <legend className="text-sm font-semibold">O admin já pôs você na lista do grupo?</legend>
+              <p className="text-xs text-green-300">Se o seu nome está aqui, escolha ele para não ficar duplicado.</p>
+              {convite.unclaimedPlayers.map((p) => (
+                <label key={p.id} className="flex items-center gap-2 text-sm">
+                  <input type="radio" name="sou-eu" value={p.id} checked={souEu === String(p.id)} onChange={(e) => setSouEu(e.target.value)} />
+                  Sou {p.nickname} <span className="text-green-300">({p.name})</span>
+                </label>
+              ))}
+              <label className="flex items-center gap-2 text-sm">
+                <input type="radio" name="sou-eu" value="" checked={souEu === ''} onChange={() => setSouEu('')} />
+                Não estou na lista
+              </label>
+            </fieldset>
+          )}
+          {!souEu && <CamposDoJogador valor={jogador} aoMudar={setJogador} />}
           <div>
             <button type="submit" disabled={enviando} className={botaoPrincipal}>
               Entrar no grupo

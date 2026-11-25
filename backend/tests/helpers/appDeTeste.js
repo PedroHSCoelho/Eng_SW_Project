@@ -91,6 +91,22 @@ export function criarMatchesRepoEmMemoria({ playersRepo } = {}) {
           return { matchId: id, ...e, ...(j && { player: { id: j.id, nickname: j.nickname, position: j.position } }) }
         }),
       }),
+    substituir: async (id, { entra, sai }) => {
+      const partida = partidas.find((p) => p.id === id)
+      if (sai !== null) partida.players.find((p) => p.playerId === sai).benched = true
+      if (entra !== null) {
+        const atual = partida.players.find((p) => p.playerId === entra.playerId)
+        if (atual) Object.assign(atual, { team: entra.team, benched: false })
+        else {
+          const j = playersRepo?.jogadores.find((x) => x.id === entra.playerId)
+          partida.players.push({
+            matchId: id, playerId: entra.playerId, team: entra.team, benched: false,
+            ...(j && { player: { id: j.id, nickname: j.nickname, position: j.position } }),
+          })
+        }
+      }
+      return partida
+    },
     mudarStatus: async (id, { para, dados = {} }) =>
       Object.assign(partidas.find((p) => p.id === id), { ...dados, status: para }),
     criarGol: async ({ matchId, ...gol }) => {
@@ -226,6 +242,16 @@ export function criarGroupsRepoEmMemoria({ usersRepo, playersRepo }) {
       const participacao = { groupId: grupo.id, userId, role: 'ORGANIZER', playerId: player?.id ?? null }
       participacoes.push(participacao)
       return { grupo, participacao }
+    },
+    listarJogadoresSemConta: async (groupId) =>
+      (playersRepo?.jogadores ?? [])
+        .filter((j) => j.groupId === groupId && j.active && !participacoes.some((p) => p.playerId === j.id))
+        .map(({ id, name, nickname, position }) => ({ id, name, nickname, position }))
+        .sort((a, b) => a.nickname.localeCompare(b.nickname)),
+    entrarComoJogador: async ({ groupId, userId, playerId }) => {
+      const participacao = { groupId, userId, role: 'MEMBER', playerId }
+      participacoes.push(participacao)
+      return participacao
     },
     entrar: async ({ groupId, userId, jogador }) => {
       const player = await criarJogador(groupId, jogador)
