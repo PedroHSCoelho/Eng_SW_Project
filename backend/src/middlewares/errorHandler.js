@@ -18,6 +18,11 @@ export function errorHandler(err, req, res, next) {
     return res.status(400).json({ erro: 'JSON inválido no corpo da requisição' })
   }
 
+  // Corpo maior que o limite do leitor (ex.: foto acima de 200 KB)
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ erro: 'Arquivo grande demais' })
+  }
+
   console.error(err)
   return res.status(500).json({ erro: 'Erro interno do servidor' })
 }

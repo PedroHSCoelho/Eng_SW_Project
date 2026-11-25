@@ -5,6 +5,7 @@ import { POSICOES } from '../players/PlayerForm.jsx'
 import { listarJogadores } from '../players/playersApi.js'
 import { maximoParaSortear, minimoParaSortear, sortearTimes } from './drawApi.js'
 import AbasDePartidas from '../matches/AbasDePartidas.jsx'
+import Avatar from '../../ui/Avatar.jsx'
 
 const campo =
   'w-full rounded-lg bg-green-950 px-3 py-2 text-white ring-1 ring-green-700 focus:outline-none focus:ring-2 focus:ring-green-400'
@@ -27,6 +28,7 @@ function CartaoDoTime({ nome, time }) {
         {time.players.map((p) => (
           <li key={p.id} className="flex justify-between gap-3">
             <span>
+              <Avatar jogador={p} className="mr-1.5" />
               {p.nickname} <span className="text-green-300">· {POSICOES[p.position] ?? p.position}</span>
             </span>
             <span className="tabular-nums text-green-200">{p.strength.toFixed(1)}</span>
@@ -148,6 +150,7 @@ export default function DrawPage() {
               <li key={j.id}>
                 <label className="flex items-center gap-2 rounded-lg bg-green-950 px-3 py-2 text-sm">
                   <input type="checkbox" checked={presentes.has(j.id)} onChange={() => alternar(j.id)} />
+                  <Avatar jogador={j} />
                   {j.nickname}
                   <span className="text-green-300">· {POSICOES[j.position] ?? j.position}</span>
                 </label>

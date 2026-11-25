@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { POSICOES } from '../players/PlayerForm.jsx'
 import { buscarRanking } from './rankingApi.js'
+import Avatar from '../../ui/Avatar.jsx'
 
 const PERIODOS = { mes: 'Este mês', ano: 'Este ano', tudo: 'Tudo' }
 
@@ -151,6 +152,7 @@ export default function RankingPage() {
                   <tr key={linha.playerId} className="border-t border-green-800">
                     <td className="px-3 py-2">{linha.position}</td>
                     <td className="px-3 py-2 font-medium">
+                      <Avatar jogador={linha} className="mr-2" />
                       <Link to={`/jogadores/${linha.playerId}`} className="underline">
                         {linha.nickname}
                       </Link>

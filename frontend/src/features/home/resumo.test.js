@@ -9,10 +9,10 @@ describe('artilheirosPorTime', () => {
 
     expect(artilheirosPorTime(gols)).toEqual({
       A: [
-        { nome: 'Bia', gols: 2 },
-        { nome: 'Zé', gols: 1 },
+        { id: 3, nome: 'Bia', gols: 2 },
+        { id: 1, nome: 'Zé', gols: 1 },
       ],
-      B: [{ nome: 'Tico', gols: 1 }],
+      B: [{ id: 2, nome: 'Tico', gols: 1 }],
     })
   })
 

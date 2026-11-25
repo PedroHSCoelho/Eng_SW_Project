@@ -86,6 +86,23 @@ export function verificarPodeTirarConvidado({ participacao, convidado }) {
   }
 }
 
+// Convidado que vira jogador do grupo precisa de uma posição (o cadastro de jogador exige).
+export const POSICOES = ['GOALKEEPER', 'DEFENDER', 'MIDFIELDER', 'FORWARD']
+
+export function lerPosicaoDoConvidado(corpo) {
+  const position = corpo?.position
+  if (!POSICOES.includes(position)) {
+    throw new ValidationError(`Posição inválida (use ${POSICOES.join(', ')})`)
+  }
+  return position
+}
+
+// Nome do convidado vira o nome e o apelido do novo jogador (cortados no tamanho do cadastro).
+export function jogadorDoConvidado(convidado, position) {
+  const nickname = convidado.name.trim().slice(0, 30).trim()
+  return { name: convidado.name.trim().slice(0, 50), nickname, nicknameKey: nickname.toLowerCase(), position }
+}
+
 // A lista só muda enquanto a partida está agendada (depois que começa, quem jogou é a escalação).
 export function verificarListaAberta(partida) {
   if (partida.status !== 'SCHEDULED') {

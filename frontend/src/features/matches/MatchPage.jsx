@@ -24,6 +24,7 @@ import PresencaPanel from './PresencaPanel.jsx'
 import SumulaAoVivo from './SumulaAoVivo.jsx'
 import { NOME_DO_LANCE } from './lances.js'
 import { STATUS, doTime, ehPelada, formatarData, nomeDoTime, textoDoResultadoDaPartida, timesDaPartida } from './textos.js'
+import Avatar from '../../ui/Avatar.jsx'
 
 const botao = 'rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50'
 
@@ -163,12 +164,23 @@ export default function MatchPage() {
           ehOrganizador={ehOrganizador}
           meuJogadorId={grupo?.myPlayerId ?? null}
           jogadores={jogadores}
-          aoMudar={(lista) => setConfirmados(lista.confirmed.map((l) => l.playerId))}
+          aoMudar={(lista) => {
+            const ids = lista.confirmed.map((l) => l.playerId)
+            setConfirmados(ids)
+            // Convidado que foi para os confirmados virou jogador novo: busca a lista de novo
+            // para ele aparecer na escalação.
+            if (ehOrganizador && ids.some((pid) => !jogadores.some((j) => j.id === pid))) {
+              listarJogadores({ apenasAtivos: true })
+                .then(setJogadores)
+                .catch(() => {})
+            }
+          }}
         />
       )}
 
       {ehOrganizador && partida.status === 'SCHEDULED' && (
         <LineupEditor
+          partidaId={partida.id}
           jogadores={jogadores}
           times={timesDaPartida(partida)}
           nomeDoTime={(t) => nomeDoTime(partida, t)}
@@ -206,6 +218,7 @@ export default function MatchPage() {
                 >
                   <span>
                     {g.minute !== null && <span className="text-green-300">{g.minute}′ </span>}
+                    <Avatar jogador={g.scorer} className="mr-1.5" />
                     <strong>{g.scorer.nickname}</strong>
                     {g.ownGoal ? ' (gol contra)' : ''}
                     {g.assist && <span className="text-green-200"> · assistência de {g.assist.nickname}</span>}
@@ -244,7 +257,8 @@ export default function MatchPage() {
               >
                 <span>
                   {e.minute !== null && e.minute !== undefined && <span className="text-green-300">{e.minute}′ </span>}
-                  {NOME_DO_LANCE[e.type]} · <strong>{e.player?.nickname}</strong>
+                  {NOME_DO_LANCE[e.type]} · <Avatar jogador={e.player} className="mr-1" />
+                  <strong>{e.player?.nickname}</strong>
                 </span>
                 {ehOrganizador && partida.status === 'IN_PROGRESS' && (
                   <button

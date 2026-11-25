@@ -46,6 +46,13 @@ export function verificarSobraOrganizador({ alvo, totalOrganizadores }) {
   }
 }
 
+// Ninguém tira o próprio admin: outro admin precisa fazer isso.
+export function verificarPodeMudarPapel({ quemPede, alvo, novoPapel }) {
+  if (quemPede.userId === alvo.userId && alvo.role === 'ORGANIZER' && novoPapel !== 'ORGANIZER') {
+    throw new BusinessRuleError('Você não pode tirar o seu próprio admin')
+  }
+}
+
 // Quem pode tirar quem do grupo: qualquer um sai sozinho; só organizador remove outra pessoa.
 export function verificarPodeRemover({ quemPede, alvo }) {
   const ehOProprio = quemPede.userId === alvo.userId
