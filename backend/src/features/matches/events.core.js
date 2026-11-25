@@ -43,8 +43,8 @@ export function montarEvento({ partida, evento }) {
   if (partida.status !== 'IN_PROGRESS') {
     throw new BusinessRuleError('Lances só podem ser lançados ou removidos com a partida em andamento')
   }
-  if (!partida.players.some((p) => p.playerId === evento.playerId)) {
-    throw new BusinessRuleError('O jogador precisa estar escalado na partida')
+  if (!partida.players.some((p) => p.playerId === evento.playerId && !p.benched)) {
+    throw new BusinessRuleError('O jogador precisa estar escalado e em campo na partida')
   }
   if (cartoesDoJogador(partida.events ?? [], evento.playerId).expulso) {
     throw new BusinessRuleError('Jogador expulso não recebe mais lances nesta partida')

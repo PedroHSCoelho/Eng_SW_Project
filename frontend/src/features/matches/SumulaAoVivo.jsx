@@ -14,7 +14,8 @@ import Avatar from '../../ui/Avatar.jsx'
 export default function SumulaAoVivo({ partida, editavel = false, enviando = false, aoLancarGol, aoLancarLance }) {
   const [aberto, setAberto] = useState(null) // playerId do box aberto
   const numeros = numerosDosJogadores(partida)
-  const doTime = (time) => partida.players.filter((p) => p.team === time)
+  // Quem saiu numa substituição (benched) fica fora dos boxes do time até voltar.
+  const doTime = (time) => partida.players.filter((p) => p.team === time && !p.benched)
   const escalado = partida.players.find((p) => p.playerId === aberto)
   const pelada = ehPelada(partida)
   const jogo = pelada ? jogoAberto(partida) : null
@@ -45,7 +46,7 @@ export default function SumulaAoVivo({ partida, editavel = false, enviando = fal
             {doTime(time).length === 0 ? (
               <p className="text-sm text-green-200">Ninguém escalado.</p>
             ) : (
-              <ul className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-3">
+              <ul className="mt-2 grid grid-cols-[repeat(auto-fill,minmax(6rem,1fr))] gap-2">
                 {doTime(time).map((p) => (
                   <li key={p.playerId}>
                     <BoxDoJogador
@@ -58,6 +59,15 @@ export default function SumulaAoVivo({ partida, editavel = false, enviando = fal
                 ))}
               </ul>
             )}
+            {partida.players.some((p) => p.team === time && p.benched) && (
+              <p className="mt-2 text-xs text-texto-suave">
+                Saíram:{' '}
+                {partida.players
+                  .filter((p) => p.team === time && p.benched)
+                  .map((p) => p.player?.nickname)
+                  .join(', ')}
+              </p>
+            )}
           </div>
         ))}
       </div>
@@ -67,7 +77,7 @@ export default function SumulaAoVivo({ partida, editavel = false, enviando = fal
           escalado={escalado}
           nomeDoTimeDele={nomeDoTime(partida, escalado.team)}
           numeros={numeros[escalado.playerId]}
-          colegas={partida.players.filter((p) => p.team === escalado.team && p.playerId !== escalado.playerId)}
+          colegas={doTime(escalado.team).filter((p) => p.playerId !== escalado.playerId)}
           enviando={enviando}
           aoFechar={() => setAberto(null)}
           aoLancarGol={aoLancarGol}
@@ -89,7 +99,7 @@ function Numeros({ numeros }) {
     numeros.contra > 0 && { chave: 'contra', texto: `GC ${numeros.contra}`, nome: `${numeros.contra} gol(s) contra` },
   ].filter(Boolean)
   return (
-    <span className="mt-1 flex min-h-5 flex-wrap items-center gap-1.5 text-xs tabular-nums text-texto-suave">
+    <span className="mt-1 flex min-h-5 flex-wrap items-center justify-center gap-1.5 text-xs tabular-nums text-texto-suave">
       {itens.map((i) => (
         <span key={i.chave} title={i.nome}>
           <span aria-hidden="true">{i.texto}</span>
@@ -113,17 +123,20 @@ function Numeros({ numeros }) {
 function BoxDoJogador({ escalado, numeros, editavel, aoAbrir }) {
   const conteudo = (
     <>
-      <span className="flex items-center justify-between gap-1">
-        <Avatar jogador={escalado.player} />
-        <span className="min-w-0 flex-1 break-words font-semibold">{escalado.player.nickname}</span>
+      {/* Foto em cima e o nome inteiro embaixo (quebra só entre palavras, nunca no meio). */}
+      <span className="relative flex flex-col items-center gap-1 text-center">
+        <Avatar jogador={escalado.player} tamanho="m" className="h-12 w-12 text-sm" />
+        <span className="w-full font-semibold leading-tight [overflow-wrap:normal] [word-break:keep-all] text-sm">
+          {escalado.player.nickname}
+        </span>
         {ehGoleiro(escalado) && (
-          <span className="rounded bg-superficie-2 px-1 text-[10px] font-bold text-ouro" title="Goleiro">
+          <span className="absolute -top-1 right-0 rounded bg-superficie-2 px-1 text-[10px] font-bold text-ouro" title="Goleiro">
             GOL
           </span>
         )}
       </span>
       <Numeros numeros={numeros} />
-      {numeros.expulso && <span className="text-xs font-semibold text-red-300">Expulso</span>}
+      {numeros.expulso && <span className="text-center text-xs font-semibold text-red-300">Expulso</span>}
     </>
   )
   const classe = `flex w-full flex-col rounded-lg px-3 py-2 text-left ring-1 ${

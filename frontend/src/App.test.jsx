@@ -213,6 +213,34 @@ describe('App: grupos', () => {
     expect(JSON.parse(opcoes.body)).toEqual({ nickname: 'Mari', position: 'DEFENDER' })
   })
 
+  it('convite com jogadores sem conta: "sou eu" manda só o playerId e esconde apelido e posição', async () => {
+    simularApi(jogador, { semGrupo: true })
+    const padrao = fetch.getMockImplementation()
+    fetch.mockImplementation(async (url, opcoes = {}) => {
+      if (url === '/api/convites/ABCD2345' && !opcoes.method) {
+        return resposta(200, {
+          data: {
+            id: 1, name: 'Pelada de quinta', totalMembers: 2, alreadyMember: false,
+            unclaimedPlayers: [{ id: 9, name: 'Maria Souza', nickname: 'Mari', position: 'DEFENDER' }],
+          },
+        })
+      }
+      if (url === '/api/convites/ABCD2345/entrar') {
+        return resposta(201, { data: { id: 1, name: 'Pelada de quinta', myRole: 'MEMBER', myPlayerId: 9 } })
+      }
+      return padrao(url, opcoes)
+    })
+    renderizar('/convite/ABCD2345')
+
+    fireEvent.click(await screen.findByLabelText(/Sou Mari/))
+    expect(screen.queryByLabelText('Seu apelido no grupo')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Entrar no grupo' }))
+
+    await waitFor(() => expect(fetch.mock.calls.some(([url]) => url === '/api/convites/ABCD2345/entrar')).toBe(true))
+    const [, opcoes] = fetch.mock.calls.find(([url]) => url === '/api/convites/ABCD2345/entrar')
+    expect(JSON.parse(opcoes.body)).toEqual({ playerId: 9 })
+  })
+
   it('membros: organizador vê o link de convite e o motivo quando o back-end recusa mudar papel', async () => {
     simularApi(organizador)
     const padrao = fetch.getMockImplementation()

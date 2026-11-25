@@ -15,6 +15,7 @@ import {
   lancarLance,
   removerGol,
   removerLance,
+  substituir,
 } from './matchesApi.js'
 import CraquePanel from './CraquePanel.jsx'
 import LineupEditor from './LineupEditor.jsx'
@@ -22,6 +23,7 @@ import MatchEditForm from './MatchEditForm.jsx'
 import PeladaPainel from './PeladaPainel.jsx'
 import PresencaPanel from './PresencaPanel.jsx'
 import SumulaAoVivo from './SumulaAoVivo.jsx'
+import SubstituicoesPanel from './SubstituicoesPanel.jsx'
 import { NOME_DO_LANCE } from './lances.js'
 import { STATUS, doTime, ehPelada, formatarData, nomeDoTime, textoDoResultadoDaPartida, timesDaPartida } from './textos.js'
 import Avatar from '../../ui/Avatar.jsx'
@@ -201,6 +203,15 @@ export default function MatchPage() {
           enviando={enviando}
           aoLancarGol={(gol) => executar(() => lancarGol(partida.id, gol))}
           aoLancarLance={(lance) => executar(() => lancarLance(partida.id, lance))}
+        />
+      )}
+
+      {ehOrganizador && partida.status === 'IN_PROGRESS' && (
+        <SubstituicoesPanel
+          partida={partida}
+          jogadores={jogadores}
+          enviando={enviando}
+          aoSubstituir={(corpo) => executar(() => substituir(partida.id, corpo))}
         />
       )}
 

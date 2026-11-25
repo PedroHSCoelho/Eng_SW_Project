@@ -34,7 +34,8 @@ export function criarConvitesRouter(service) {
     res.json({ data: await service.verConvite(req.params.codigo, req.usuario) })
   })
 
-  // Corpo: { "nickname": "Zé", "position": "FORWARD" } -> cria o jogador da pessoa no grupo
+  // Corpo: { "nickname": "Zé", "position": "FORWARD" } -> cria o jogador da pessoa no grupo;
+  // ou { "playerId": 3 } -> "sou eu": assume um jogador do grupo que ainda não tem conta
   router.post('/:codigo/entrar', async (req, res) => {
     res.status(201).json({ data: await service.entrar(req.params.codigo, req.usuario, req.body ?? {}) })
   })

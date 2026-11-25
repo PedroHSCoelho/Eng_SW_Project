@@ -19,6 +19,9 @@ export const cancelarPartida = (id) => pedir(`${apiDoGrupo()}/matches/${id}/canc
 // times: { teamA: [ids], teamB: [ids] } (na pelada também teamC, teamD...)
 export const definirEscalacao = (id, times) => pedir(`${apiDoGrupo()}/matches/${id}/escalacao`, comJson('PUT', times))
 
+// Durante a partida: { entraId, saiId } (troca), { entraId, team } (pôr num time) ou { saiId } (tirar de campo).
+export const substituir = (id, corpo) => pedir(`${apiDoGrupo()}/matches/${id}/substituicao`, comJson('POST', corpo))
+
 export const iniciarPartida = (id) => pedir(`${apiDoGrupo()}/matches/${id}/iniciar`, { method: 'PATCH' })
 
 export const encerrarPartida = (id) => pedir(`${apiDoGrupo()}/matches/${id}/encerrar`, { method: 'PATCH' })

@@ -48,6 +48,12 @@ export function criarMatchesRouter(service) {
     res.json({ data: await service.definirEscalacao(grupo(req), lerId(req), req.body ?? {}) })
   })
 
+  // Com a partida em andamento. Corpo: { "entraId": 7, "saiId": 3 } (troca), { "entraId": 7, "team": "B" }
+  // (pôr num time) ou { "saiId": 3 } (tirar de campo)
+  router.post('/:id/substituicao', async (req, res) => {
+    res.json({ data: await service.substituir(grupo(req), lerId(req), req.body ?? {}) })
+  })
+
   router.patch('/:id/iniciar', async (req, res) => {
     res.json({ data: await service.iniciar(grupo(req), lerId(req)) })
   })
