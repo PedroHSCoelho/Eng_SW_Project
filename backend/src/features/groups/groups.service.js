@@ -11,6 +11,7 @@ import {
   validarNomeDoGrupo,
   validarPapelNoGrupo,
   verificarPodeRemover,
+  verificarPodeMudarPapel,
   verificarSobraOrganizador,
 } from './groups.core.js'
 
@@ -109,6 +110,7 @@ export function criarGroupsService({ groupsRepo, playersRepo, gerarBytes = rando
 
       if (dados.role !== undefined) {
         mudancas.role = validarPapelNoGrupo(dados.role)
+        verificarPodeMudarPapel({ quemPede: participacao, alvo, novoPapel: mudancas.role })
         if (mudancas.role !== 'ORGANIZER') {
           verificarSobraOrganizador({ alvo, totalOrganizadores: await groupsRepo.contarOrganizadores(groupId) })
         }

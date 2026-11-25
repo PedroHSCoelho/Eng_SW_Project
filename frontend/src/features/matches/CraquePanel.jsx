@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { buscarCraque, votarNoCraque } from './matchesApi.js'
 import { formatarData, nomeDoTime } from './textos.js'
+import Avatar from '../../ui/Avatar.jsx'
 
 const botao = 'rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50'
 
@@ -83,6 +84,7 @@ export default function CraquePanel({ partida, meuJogadorId }) {
           return (
             <li key={c.playerId} className="flex items-center justify-between gap-2 rounded-lg bg-green-950 px-3 py-2">
               <span>
+                <Avatar jogador={c} className="mr-1.5" />
                 <strong>{c.nickname}</strong>
                 <span className="text-sm text-green-300"> · {nomeDoTime(partida, c.team)}</span>
                 <span className="block text-sm tabular-nums text-green-200">

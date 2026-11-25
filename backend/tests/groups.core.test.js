@@ -6,6 +6,7 @@ import {
   normalizarCodigo,
   validarNomeDoGrupo,
   validarPapelNoGrupo,
+  verificarPodeMudarPapel,
   verificarPodeRemover,
   verificarSobraOrganizador,
 } from '../src/features/groups/groups.core.js'
@@ -86,6 +87,25 @@ describe('verificarPodeRemover', () => {
 
   it('membro não remove outra pessoa', () => {
     expect(() => verificarPodeRemover({ quemPede: membro, alvo: organizador })).toThrow(/Só um admin/)
+  })
+})
+
+describe('verificarPodeMudarPapel', () => {
+  const ana = { userId: 1, role: 'ORGANIZER' }
+  const beto = { userId: 2, role: 'ORGANIZER' }
+
+  it('admin não tira o próprio admin', () => {
+    expect(() => verificarPodeMudarPapel({ quemPede: ana, alvo: ana, novoPapel: 'MEMBER' })).toThrow(
+      'Você não pode tirar o seu próprio admin',
+    )
+  })
+
+  it('admin tira o admin de outro', () => {
+    expect(() => verificarPodeMudarPapel({ quemPede: ana, alvo: beto, novoPapel: 'MEMBER' })).not.toThrow()
+  })
+
+  it('mandar o mesmo papel para si mesmo passa', () => {
+    expect(() => verificarPodeMudarPapel({ quemPede: ana, alvo: ana, novoPapel: 'ORGANIZER' })).not.toThrow()
   })
 })
 

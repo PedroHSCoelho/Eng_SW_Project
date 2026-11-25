@@ -10,6 +10,7 @@ import {
   exigirOrganizadorDoGrupoParaEscrever,
 } from './middlewares/auth.js'
 import { criarPlayersRouter } from './features/players/players.routes.js'
+import { criarPhotosRouter } from './features/photos/photos.routes.js'
 import { criarAuthRouter } from './features/auth/auth.routes.js'
 import { criarMatchesRouter } from './features/matches/matches.routes.js'
 import { criarStatsRouter } from './features/stats/stats.routes.js'
@@ -27,6 +28,7 @@ export function criarApp({
   drawService,
   groupsService,
   attendanceService,
+  photosService,
   tokens,
   cookieSeguro = false,
 }) {
@@ -57,6 +59,9 @@ export function criarApp({
   // Lista de presença: cada membro confirma o próprio nome; o organizador mexe em qualquer um.
   // Também ANTES de /matches, pelo mesmo motivo.
   dentroDoGrupo.use('/', criarAttendanceRouter(attendanceService))
+  // Fotos dos jogadores: qualquer participante vê; o admin ou o próprio jogador troca.
+  // ANTES de /players, que só deixa admin escrever.
+  dentroDoGrupo.use('/', criarPhotosRouter(photosService))
   // Jogadores e partidas: qualquer participante vê; só organizador cria, edita, escala, lança gols e encerra.
   dentroDoGrupo.use('/players', exigirOrganizadorDoGrupoParaEscrever, criarPlayersRouter(playersService))
   dentroDoGrupo.use('/matches', exigirOrganizadorDoGrupoParaEscrever, criarMatchesRouter(matchesService))

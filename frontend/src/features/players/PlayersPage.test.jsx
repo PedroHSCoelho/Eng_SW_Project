@@ -321,6 +321,17 @@ describe('PlayersPage: dar e tirar admin', () => {
     expect(corpoDaChamada('PATCH /api/grupos/1/membros/8')).toEqual({ role: 'MEMBER' })
   })
 
+  it('admin não vê o botão de tirar o próprio admin', async () => {
+    // Lu é o jogador da própria conta (userId 1, a do usuário logado) e é admin.
+    const eu = { userId: 1, role: 'ORGANIZER', playerId: 3, user: { id: 1, name: 'Luana' }, player: { id: 3, nickname: 'Lu' } }
+    simularApi(comMembros({ 'GET /api/grupos/1/membros': () => resposta(200, { data: [...membros, eu] }) }))
+
+    renderizarPagina()
+
+    expect(await screen.findByRole('button', { name: 'Tirar admin de Beto' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tirar admin de Lu' })).not.toBeInTheDocument()
+  })
+
   it('membro comum vê a marca de admin, mas não os botões nem o convite', async () => {
     simularApi(comMembros())
 

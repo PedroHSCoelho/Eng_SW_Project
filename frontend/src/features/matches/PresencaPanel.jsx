@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import Icone from '../../ui/Icones.jsx'
-import { buscarPresencas, confirmarPresenca, levarConvidado, sairDaLista, tirarConvidado } from './matchesApi.js'
+import { buscarPresencas, confirmarConvidado, confirmarPresenca, levarConvidado, sairDaLista, tirarConvidado } from './matchesApi.js'
+import { POSICOES } from '../players/PlayerForm.jsx'
 import { nomeDoConvidado, textoDaLista } from './lances.js'
 import { formatarData } from './textos.js'
+import Avatar from '../../ui/Avatar.jsx'
 
 const botao = 'rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50'
 
@@ -19,6 +21,8 @@ export default function PresencaPanel({ partida, ehOrganizador, meuJogadorId, jo
   const [adicionar, setAdicionar] = useState('')
   const [copiado, setCopiado] = useState(false)
   const [convidado, setConvidado] = useState('')
+  // Posição escolhida para cada convidado que vai para os confirmados (vira jogador do grupo).
+  const [posicaoDoConvidado, setPosicaoDoConvidado] = useState({})
 
   useEffect(() => {
     let ativo = true
@@ -83,7 +87,8 @@ export default function PresencaPanel({ partida, ehOrganizador, meuJogadorId, jo
   const linha = (l, i) => (
     <li key={l.playerId} className="flex items-center justify-between gap-2 rounded-lg bg-green-950 px-3 py-1.5">
       <span>
-        <span className="tabular-nums text-green-300">{i + 1}.</span> {l.nickname}
+        <span className="tabular-nums text-green-300">{i + 1}.</span> <Avatar jogador={l} className="mr-1" />
+        {l.nickname}
         {l.maybe && <span className="text-yellow-200"> (talvez)</span>}
         {l.playerId === meuJogadorId && <span className="text-green-300"> (você)</span>}
       </span>
@@ -220,7 +225,10 @@ export default function PresencaPanel({ partida, ehOrganizador, meuJogadorId, jo
 
       <div className="mt-4">
         <h4 className="text-sm font-semibold text-green-200">Convidados</h4>
-        <p className="text-xs text-green-300">Gente de fora do grupo. Entra nas vagas que sobram depois do pessoal do grupo.</p>
+        <p className="text-xs text-green-300">
+          Gente de fora do grupo. Entra nas vagas que sobram depois do pessoal do grupo. Para ele entrar na escalação,
+          clique em Confirmar: ele vira jogador do grupo.
+        </p>
         {convidados.length === 0 ? (
           <p className="mt-1 text-sm text-green-200">Nenhum convidado.</p>
         ) : (
@@ -234,15 +242,41 @@ export default function PresencaPanel({ partida, ehOrganizador, meuJogadorId, jo
                     {g.status === 'WAITLIST' && <span className="text-yellow-200"> · na espera</span>}
                   </span>
                   {podeTirar && (
-                    <button
-                      type="button"
-                      disabled={enviando}
-                      onClick={() => executar(() => tirarConvidado(partida.id, g.id))}
-                      aria-label={`Tirar o convidado ${g.name}`}
-                      className="rounded p-1 text-green-300 hover:bg-green-800 hover:text-white disabled:opacity-50"
-                    >
-                      <Icone nome="fechar" tamanho={16} />
-                    </button>
+                    <span className="flex flex-wrap items-center gap-1">
+                      {/* Vira jogador do grupo e entra nos confirmados (e assim na escalação). */}
+                      <select
+                        aria-label={`Posição de ${g.name}`}
+                        value={posicaoDoConvidado[g.id] ?? 'MIDFIELDER'}
+                        onChange={(e) => setPosicaoDoConvidado((atual) => ({ ...atual, [g.id]: e.target.value }))}
+                        className="rounded bg-green-900 px-1 py-0.5 text-xs ring-1 ring-green-700"
+                      >
+                        {Object.entries(POSICOES).map(([valor, texto]) => (
+                          <option key={valor} value={valor}>
+                            {texto}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        disabled={enviando}
+                        onClick={() =>
+                          executar(() => confirmarConvidado(partida.id, g.id, posicaoDoConvidado[g.id] ?? 'MIDFIELDER'))
+                        }
+                        aria-label={`Pôr ${g.name} nos confirmados`}
+                        className="rounded bg-green-700 px-2 py-0.5 text-xs font-semibold hover:bg-green-600 disabled:opacity-50"
+                      >
+                        Confirmar
+                      </button>
+                      <button
+                        type="button"
+                        disabled={enviando}
+                        onClick={() => executar(() => tirarConvidado(partida.id, g.id))}
+                        aria-label={`Tirar o convidado ${g.name}`}
+                        className="rounded p-1 text-green-300 hover:bg-green-800 hover:text-white disabled:opacity-50"
+                      >
+                        <Icone nome="fechar" tamanho={16} />
+                      </button>
+                    </span>
                   )}
                 </li>
               )

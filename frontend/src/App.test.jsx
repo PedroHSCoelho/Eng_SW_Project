@@ -217,19 +217,21 @@ describe('App: grupos', () => {
     simularApi(organizador)
     const padrao = fetch.getMockImplementation()
     fetch.mockImplementation(async (url, opcoes = {}) =>
-      url === '/api/grupos/1/membros/2' && opcoes.method === 'PATCH'
-        ? resposta(422, { erro: 'O grupo precisa ter ao menos um admin' })
+      url === '/api/grupos/1/membros/1' && opcoes.method === 'PATCH'
+        ? resposta(422, { erro: 'Não deu para mudar o papel agora' })
         : padrao(url, opcoes),
     )
     renderizar('/membros')
 
     expect(await screen.findByLabelText('Link de convite')).toHaveValue(`${window.location.origin}/convite/ABCD2345`)
-    fireEvent.change(await screen.findByLabelText('Papel de Chefe'), { target: { value: 'MEMBER' } })
+    // Ninguém muda o próprio papel: o Chefe não tem o seletor dele.
+    expect(screen.queryByLabelText('Papel de Chefe')).not.toBeInTheDocument()
+    fireEvent.change(await screen.findByLabelText('Papel de Maria'), { target: { value: 'ORGANIZER' } })
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('ao menos um admin')
-    const [, opcoes] = fetch.mock.calls.find(([url, o]) => url === '/api/grupos/1/membros/2' && o?.method === 'PATCH')
-    expect(JSON.parse(opcoes.body)).toEqual({ role: 'MEMBER' })
-    expect(screen.getByLabelText('Papel de Chefe')).toHaveValue('ORGANIZER')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Não deu para mudar o papel')
+    const [, opcoes] = fetch.mock.calls.find(([url, o]) => url === '/api/grupos/1/membros/1' && o?.method === 'PATCH')
+    expect(JSON.parse(opcoes.body)).toEqual({ role: 'ORGANIZER' })
+    expect(screen.getByLabelText('Papel de Maria')).toHaveValue('MEMBER')
   })
 
   it('membros: membro comum vê a lista, sem convite nem troca de papel, e pode sair', async () => {
