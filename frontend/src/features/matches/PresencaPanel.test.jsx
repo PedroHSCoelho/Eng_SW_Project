@@ -160,4 +160,26 @@ describe('PresencaPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tirar o convidado Primo' }))
     expect(await screen.findByText(/0\/2 confirmados/)).toBeInTheDocument()
   })
+  it('quem levou passa o convidado para os confirmados, com a posição escolhida', async () => {
+    const otavio = { id: 5, name: 'Otavio', invitedBy: { playerId: 1, nickname: 'J1' }, status: 'CONFIRMED' }
+    let corpo
+    const aoMudar = vi.fn()
+    simularApi({
+      [`GET ${URL}`]: () => resposta(200, { data: lista({ guests: [otavio], openSpots: 1 }) }),
+      ['POST /api/grupos/1/matches/7/convidados/5/confirmar']: (c) => {
+        corpo = c
+        return resposta(200, { data: lista({ confirmed: [{ ...linha(9, 1), nickname: 'Otavio' }], openSpots: 1 }) })
+      },
+    })
+    render(<PresencaPanel partida={partida} ehOrganizador={false} meuJogadorId={1} aoMudar={aoMudar} />)
+
+    fireEvent.change(await screen.findByLabelText('Posição de Otavio'), { target: { value: 'FORWARD' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Pôr Otavio nos confirmados' }))
+
+    const confirmados = await screen.findByRole('list', { name: 'Confirmados' })
+    expect(within(confirmados).getByText(/Otavio/)).toBeInTheDocument()
+    expect(corpo).toEqual({ position: 'FORWARD' })
+    expect(screen.getByText('Nenhum convidado.')).toBeInTheDocument()
+    expect(aoMudar).toHaveBeenCalled()
+  })
 })

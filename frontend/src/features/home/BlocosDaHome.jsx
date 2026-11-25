@@ -2,6 +2,7 @@
 // Cada um tem três caras: carregando (esqueleto), sem dados (vazio amigável) e com dados.
 import { Link } from 'react-router-dom'
 import Icone from '../../ui/Icones.jsx'
+import Avatar from '../../ui/Avatar.jsx'
 
 const formatarDia = (iso) =>
   new Date(iso).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })
@@ -37,7 +38,8 @@ function ListaArtilheiros({ lista, alinhamento }) {
   return (
     <ul className={`space-y-0.5 text-sm ${alinhamento}`}>
       {lista.map((a) => (
-        <li key={a.nome}>
+        <li key={a.id ?? a.nome}>
+          <Avatar jogador={{ id: a.id, nickname: a.nome }} className="mr-1" />
           {a.nome}
           {a.gols > 1 && <span className="ml-1 font-semibold text-ouro">×{a.gols}</span>}
         </li>
@@ -145,6 +147,7 @@ export function Podio({ carregando, podio }) {
                   {linha ? (
                     <>
                       {lugar === 1 && <Icone nome="coroa" className="mb-1 text-ouro" />}
+                      <Avatar jogador={{ id: linha.id, nickname: linha.nome }} tamanho="m" className="mb-1" />
                       <span className="w-full truncate text-center text-sm font-semibold">{linha.nome}</span>
                       <span className="text-xs text-texto-suave">
                         {linha.valor} {unidade}
@@ -186,7 +189,10 @@ export function CobraDaRodada({ carregando, cobra }) {
           <span className="flex size-14 items-center justify-center rounded-full bg-ouro text-fundo">
             <Icone nome={cobra.tipo === 'craque' ? 'estrela' : 'bola'} tamanho={28} />
           </span>
-          <p className="titulo mt-3 text-3xl text-ouro">{cobra.nome}</p>
+          <p className="titulo mt-3 text-3xl text-ouro">
+            <Avatar jogador={{ id: cobra.id, nickname: cobra.nome }} tamanho="m" className="mr-2" />
+            {cobra.nome}
+          </p>
           {cobra.tipo === 'craque' ? (
             <p className="text-sm text-texto-suave">
               {cobra.empate ? 'Craques' : 'Craque'} da última partida, com{' '}

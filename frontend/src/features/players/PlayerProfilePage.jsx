@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { buscarEstatisticas, buscarJogador } from '../rankings/rankingApi.js'
 import { POSICOES } from './PlayerForm.jsx'
+import FotoDoJogador from '../photos/FotoDoJogador.jsx'
 
 const PERIODOS = { tudo: 'Tudo', ano: 'Este ano', mes: 'Este mês' }
 
@@ -75,6 +76,9 @@ export default function PlayerProfilePage() {
       <Link to="/ranking" className="text-sm underline">
         ← Voltar ao ranking
       </Link>
+      <div className="mt-3">
+        <FotoDoJogador jogador={jogador} />
+      </div>
       <h2 id="titulo-perfil" className="mt-3 text-2xl font-bold">
         {jogador.nickname}
       </h2>

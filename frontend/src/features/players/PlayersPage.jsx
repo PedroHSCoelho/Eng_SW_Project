@@ -12,6 +12,7 @@ import PlayerForm, { POSICOES } from './PlayerForm.jsx'
 import { ehOrganizadorDo, useGrupo } from '../groups/GrupoContext.jsx'
 import { alterarMembro, listarMembros } from '../groups/groupsApi.js'
 import { useAuth } from '../auth/AuthContext.jsx'
+import Avatar from '../../ui/Avatar.jsx'
 
 const FORM_VAZIO = { name: '', nickname: '', position: '' }
 
@@ -26,7 +27,7 @@ const botao = 'rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50'
 export default function PlayersPage() {
   // Só admin (papel ORGANIZER do grupo) cadastra/edita/inativa/exclui e dá ou tira admin.
   // Esconder os botões é conforto: o back-end responde 403 de qualquer jeito.
-  const { grupo, recarregar } = useGrupo()
+  const { grupo } = useGrupo()
   const { usuario } = useAuth()
   const ehOrganizador = ehOrganizadorDo(grupo)
   // Contas do grupo, para saber quais jogadores têm conta e quais são admin.
@@ -77,9 +78,7 @@ export default function PlayersPage() {
 
   async function mudarAdmin(membro) {
     const role = membro.role === 'ORGANIZER' ? 'MEMBER' : 'ORGANIZER'
-    const ok = await executar(() => alterarMembro(grupo.id, membro.userId, { role }))
-    // Quem tirou o próprio admin perde os botões: recarrega o papel no grupo.
-    if (ok && membro.userId === usuario?.id) await recarregar?.()
+    await executar(() => alterarMembro(grupo.id, membro.userId, { role }))
   }
 
   const linkDoConvite = grupo.inviteCode ? `${window.location.origin}/convite/${grupo.inviteCode}` : ''
@@ -211,49 +210,53 @@ export default function PlayersPage() {
               key={j.id}
               className="flex items-center justify-between gap-3 rounded-xl bg-green-900 p-4 ring-1 ring-green-700"
             >
-              <div>
-                <p className="font-semibold">
-                  <Link to={`/jogadores/${j.id}`} className="underline">
-                    {j.nickname}
-                  </Link>{' '}
-                  {contaDoJogador.get(j.id)?.role === 'ORGANIZER' && (
-                    <span className="rounded-full bg-yellow-300 px-2 py-0.5 text-xs font-bold text-green-950">Admin</span>
-                  )}{' '}
-                  {!j.active && (
-                    <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
-                      Inativo
-                    </span>
+              <div className="flex min-w-0 items-center gap-3">
+                <Avatar jogador={j} tamanho="m" />
+                <div className="min-w-0">
+                  <p className="font-semibold">
+                    <Link to={`/jogadores/${j.id}`} className="underline">
+                      {j.nickname}
+                    </Link>{' '}
+                    {contaDoJogador.get(j.id)?.role === 'ORGANIZER' && (
+                      <span className="rounded-full bg-yellow-300 px-2 py-0.5 text-xs font-bold text-green-950">Admin</span>
+                    )}{' '}
+                    {!j.active && (
+                      <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
+                        Inativo
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-sm text-green-200">
+                    {`${j.name} · ${POSICOES[j.position] ?? j.position}${ehOrganizador && !contaDoJogador.has(j.id) ? ' · sem conta' : ''}`}
+                  </p>
+                  {/* Nota do admin: só admin vê e muda (a API nem manda o campo para os outros). */}
+                  {ehOrganizador && (
+                    <label className="mt-1 flex items-center gap-2 text-sm text-green-200">
+                      Nota
+                      <select
+                        aria-label={`Nota de ${j.nickname}`}
+                        disabled={enviando}
+                        value={j.skill ?? ''}
+                        onChange={(e) =>
+                          executar(() => definirNota(j.id, e.target.value === '' ? null : Number(e.target.value)))
+                        }
+                        className="rounded-lg bg-green-950 px-2 py-1 text-white ring-1 ring-green-700"
+                      >
+                        <option value="">sem nota</option>
+                        {NOTAS.map((n) => (
+                          <option key={n} value={n}>
+                            {textoDaNota(n)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   )}
-                </p>
-                <p className="text-sm text-green-200">
-                  {`${j.name} · ${POSICOES[j.position] ?? j.position}${ehOrganizador && !contaDoJogador.has(j.id) ? ' · sem conta' : ''}`}
-                </p>
-                {/* Nota do admin: só admin vê e muda (a API nem manda o campo para os outros). */}
-                {ehOrganizador && (
-                  <label className="mt-1 flex items-center gap-2 text-sm text-green-200">
-                    Nota
-                    <select
-                      aria-label={`Nota de ${j.nickname}`}
-                      disabled={enviando}
-                      value={j.skill ?? ''}
-                      onChange={(e) =>
-                        executar(() => definirNota(j.id, e.target.value === '' ? null : Number(e.target.value)))
-                      }
-                      className="rounded-lg bg-green-950 px-2 py-1 text-white ring-1 ring-green-700"
-                    >
-                      <option value="">sem nota</option>
-                      {NOTAS.map((n) => (
-                        <option key={n} value={n}>
-                          {textoDaNota(n)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
+                </div>
               </div>
               {ehOrganizador && (
               <div className="flex flex-wrap justify-end gap-2">
-                {contaDoJogador.has(j.id) && (
+                {/* Ninguém tira o próprio admin (o back-end também recusa). */}
+                {contaDoJogador.has(j.id) && contaDoJogador.get(j.id).userId !== usuario?.id && (
                   <button
                     type="button"
                     disabled={enviando}

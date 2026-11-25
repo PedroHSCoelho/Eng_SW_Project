@@ -208,3 +208,12 @@ Modelo:
 - Dúvidas que ficaram: dois organizadores rebaixando um ao outro ao mesmo tempo (ver ADR 0013); excluir grupo ficou de fora.
 - Não verificado: as telas (o front ainda chama as rotas antigas e é a próxima etapa); a migração no Supabase real.
 - Quem revisou/entendeu: (preencher)
+
+## 2026-11-25 — Foto do jogador e mini foto ao lado do nome
+- O que mudou: tabela `PlayerPhoto` (migração `cria-foto-do-jogador`, só aditiva); módulo `features/photos/` no back (`GET /players/fotos`, `GET|PUT|DELETE /players/:id/foto` dentro do grupo); no front, `FotosContext`, `ui/Avatar.jsx` (foto ou iniciais) em todas as telas onde aparece o nome do jogador, e "Adicionar/Trocar/Remover foto" no perfil. ADR 0015.
+- Por quê: pedido do grupo, para reconhecer a galera mais rápido nas listas e na súmula.
+- Conceito aprendido: onde guardar arquivo num app serverless (banco x storage); validar arquivo pelos bytes (assinatura), não pelo nome; limite de tamanho no leitor do corpo (413); cache com versão na URL; separar dado pesado numa tabela própria para não carregar sem querer.
+- Arquivos principais: `photos.core.js`, `photos.service.js`, `photos.routes.js`, `photos.repository.js`, `criarApp.js`, `errorHandler.js`, `FotosContext.jsx`, `Avatar.jsx`, `FotoDoJogador.jsx`, `reduzirFoto.js`, `fotos.js`.
+- Teste que prova: 18 testes novos no back (núcleo e API: tipos, tamanho, 413, quem pode, isolamento entre grupos) e 15 no front (iniciais, recorte, avatar com e sem foto, envio e remoção no perfil). A migração rodou num Postgres local junto com as 15 anteriores e o schema bateu; upload real pelo navegador (foto 1200 x 1600 de 47 KB virou 3,5 KB).
+- Não verificado: no Supabase e na Vercel (depende do `migrate deploy` e do deploy).
+- Quem revisou/entendeu: (preencher)

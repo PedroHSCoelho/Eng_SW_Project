@@ -80,6 +80,7 @@ model Player {
   guestsInvited   MatchGuest[] // convidados que levou para as partidas
   votesGiven      MvpVote[]     @relation("VoteGiven") // votos de craque que deu
   votesReceived   MvpVote[]     @relation("VoteReceived") // votos de craque que recebeu
+  photo           PlayerPhoto? // foto do jogador (tabela própria, para as consultas de Player não carregarem a imagem)
 
   @@unique([groupId, nicknameKey])
 }
@@ -310,4 +311,14 @@ model MvpVote {
 
   @@id([matchId, voterId])
   @@index([votedId])
+}
+
+// Foto do jogador: no máximo uma por jogador (a chave é o próprio playerId). Fica numa tabela
+// separada para que nenhuma consulta de Player traga os bytes sem pedir. Ver ADR 0015.
+model PlayerPhoto {
+  playerId  Int      @id
+  mimeType  String   @db.VarChar(20) // image/jpeg, image/png ou image/webp (conferido pelos bytes)
+  data      Bytes // a imagem em si (até 200 KB; o front envia ~256 x 256)
+  updatedAt DateTime @updatedAt // vira a "versão" da foto na URL (?v=...), para o cache
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
 }

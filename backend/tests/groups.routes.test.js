@@ -221,15 +221,21 @@ describe('papéis no grupo (vários organizadores, nunca nenhum)', () => {
     expect((await beto.patch(`${url}/membros/${ana.id}`, { role: 'MEMBER' })).status).toBe(403)
   })
 
-  it('não deixa rebaixar o ÚLTIMO organizador (422); com dois, deixa', async () => {
+  it('admin não tira o próprio admin (422), nem sendo o único; outro admin pode tirar', async () => {
     const { ana, beto, url } = await grupoComDois()
 
     const sozinha = await ana.patch(`${url}/membros/${ana.id}`, { role: 'MEMBER' })
     expect(sozinha.status).toBe(422)
-    expect(sozinha.body.erro).toBe('O grupo precisa ter ao menos um admin')
+    expect(sozinha.body.erro).toBe('Você não pode tirar o seu próprio admin')
 
     await ana.patch(`${url}/membros/${beto.id}`, { role: 'ORGANIZER' })
-    expect((await ana.patch(`${url}/membros/${ana.id}`, { role: 'MEMBER' })).status).toBe(200)
+    const comDois = await ana.patch(`${url}/membros/${ana.id}`, { role: 'MEMBER' })
+    expect(comDois.status).toBe(422)
+    expect(comDois.body.erro).toBe('Você não pode tirar o seu próprio admin')
+
+    // Mandar o mesmo papel para si mesmo não muda nada e passa.
+    expect((await ana.patch(`${url}/membros/${ana.id}`, { role: 'ORGANIZER' })).status).toBe(200)
+    expect((await beto.patch(`${url}/membros/${ana.id}`, { role: 'MEMBER' })).status).toBe(200)
   })
 
   it('papel inválido -> 400; corpo vazio -> 400; quem não é membro -> 404', async () => {

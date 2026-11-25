@@ -50,6 +50,9 @@ export const confirmarPresenca = (id, { playerId, maybe } = {}) =>
 export const levarConvidado = (id, name) => pedir(`${apiDoGrupo()}/matches/${id}/convidados`, comJson('POST', { name }))
 export const tirarConvidado = (id, guestId) =>
   pedir(`${apiDoGrupo()}/matches/${id}/convidados/${guestId}`, { method: 'DELETE' })
+// O convidado vira jogador do grupo (sem conta) e entra nos confirmados.
+export const confirmarConvidado = (id, guestId, position) =>
+  pedir(`${apiDoGrupo()}/matches/${id}/convidados/${guestId}/confirmar`, comJson('POST', { position }))
 
 // Votação do craque: { open, deadline, canVote, myVote, totalVotes, totalVoters, candidates, craques }
 export const buscarCraque = (id) => pedir(`${apiDoGrupo()}/matches/${id}/craque`)
