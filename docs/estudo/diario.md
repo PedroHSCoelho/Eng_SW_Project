@@ -245,3 +245,10 @@ Modelo:
 - Teste que prova: back-end 526 testes sem banco + 11 com PostgreSQL real (schema `test`); front-end 195. Seed e API conferidos num PostgreSQL local (busca "carlao", reativar, escalação indo para a presença).
 - Não verificado: as telas no navegador; os bancos no Supabase real (o projeto de dev ainda precisa ser criado); o job novo do CI (roda no primeiro push).
 - Quem revisou/entendeu: (preencher)
+
+## 2026-11-27 — Back-end no mesmo modelo de pastas do front
+- O que mudou: junção da refatoração do front (`refactor/estrutura-features-frontend`) com os ajustes finais; no back-end, cada feature passou a ter subpastas `routes/`, `service/`, `core/` e `repository/` (e `utils/` no auth). Imports atualizados por script. ADR 0017.
+- Por quê: os dois lados do projeto seguirem a mesma organização (por feature, com camadas dentro) e cada tipo de arquivo ter um lugar previsível.
+- Conceito aprendido: *package by feature* (coesão por assunto) com arquitetura em camadas dentro da feature; regra de dependência num sentido só; núcleo de regras puras separado do acesso a dados.
+- Teste que prova: back-end 526 testes; todos os imports relativos conferidos por script; o CI roda também os 11 testes com banco.
+- Quem revisou/entendeu: (preencher)

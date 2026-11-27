@@ -122,7 +122,7 @@ Resumo operacional; detalhes e fontes em `docs/referencia/README.md`.
 
 ### Convenções de código
 - API: JSON; sucesso `{ data: ... }`; erro `{ erro: "mensagem em português" }` com status HTTP correto (400 validação, 404 inexistente, 409 conflito, 500 inesperado). Rotas sob `/api/<modulo>`.
-- Back: ESM com extensão `.js` nos imports; um `*.routes.js` por feature, e quando houver regra, `*.service.js` (lógica) e `*.repository.js` (Prisma). Prisma via `src/db.js` (instância única).
+- Back: ESM com extensão `.js` nos imports; cada feature em subpastas por camada: `routes/<nome>.routes.js`, e quando houver regra, `service/<nome>.service.js` (casos de uso), `core/<nome>.core.js` (regras puras) e `repository/<nome>.repository.js` (Prisma) — ADR 0017. Prisma via `src/db.js` (instância única).
 - Front: componentes funcionais, estado com hooks, Tailwind para estilo; teste junto (`X.test.jsx`).
 - Siga o estilo do código ao redor (densidade de comentários, nomes). Comentários explicam o **porquê**, em português, curtos.
 - Não adicione dependência sem justificar (tamanho, manutenção, alternativa nativa) e sem aprovação.
