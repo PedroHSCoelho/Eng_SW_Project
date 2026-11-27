@@ -1,28 +1,48 @@
 # Como rodar o projeto do zero
 
-Pré-requisitos: Node.js 22 e Git. **Não é preciso instalar banco nem Docker**: o PostgreSQL roda no Supabase.
+Pré-requisitos: Node.js 22 e Git. **Não é preciso instalar banco nem Docker**: os bancos (dev, teste e produção) rodam no Supabase.
 
-## 1. Banco (Supabase)
+## 1. Bancos (Supabase): desenvolvimento, teste e produção
 
-O grupo usa **um projeto Supabase compartilhado**. Peça a senha do banco a um colega (nunca commite).
+São **três bancos**, para que nada do que fazemos na máquina mexa nos dados reais (ADR 0016):
 
-Se for criar o projeto do zero: em supabase.com, crie um projeto (região mais próxima), guarde a senha do banco, clique em **Connect** e copie:
+| Ambiente | Onde fica | Arquivo | Quem usa |
+|---|---|---|---|
+| Desenvolvimento | projeto Supabase **de dev** (ex.: `eng-sw-dev`) | `backend/.env` | `npm run dev`, `db:migrate`, `db:reset`, `db:seed`, `db:studio` |
+| Teste | schema **`test`** dentro do projeto de dev | `backend/.env.test` | `npm run test:db` (testes com banco real) |
+| Produção | projeto Supabase atual (o da Vercel) | `backend/.env.production` | só `npm run db:deploy:prod` e `db:status:prod` |
+
+Os três arquivos são ignorados pelo Git; os modelos são `.env.example`, `.env.test.example` e
+`.env.production.example`. Cada um tem a linha `BANCO=...`, e o script `scripts/ambiente.js`
+se recusa a rodar se algo apontar para o banco errado. Peça as senhas a um colega (nunca commite).
+
+Criar o projeto de dev (uma vez, por um aluno): em supabase.com, **New project** (ex.: `eng-sw-dev`),
+guarde a senha, clique em **Connect** e copie:
 
 | String | Porta | Vai em |
 |---|---|---|
-| Transaction pooler | 6543 | `DATABASE_URL` (acrescente `?pgbouncer=true`) |
-| Session pooler | 5432 | `DIRECT_URL` |
+| Transaction pooler | 6543 | `DATABASE_URL` do `.env` (acrescente `?pgbouncer=true`) |
+| Session pooler | 5432 | `DIRECT_URL` do `.env` e as duas URLs do `.env.test` (acrescente `?schema=test`) |
+
+O schema `test` é criado sozinho na primeira vez que as migrações rodam nele (`npm run test:db:preparar`).
 
 ## 2. Back-end
 
 ```powershell
 cd backend
-Copy-Item .env.example .env     # só na primeira vez
-# edite o .env: troque [SENHA] nas duas URLs e gere o JWT_SECRET (comando no .env.example)
+Copy-Item .env.example .env                       # dev (só na primeira vez)
+Copy-Item .env.test.example .env.test             # teste
+Copy-Item .env.production.example .env.production # produção (só quem aplica migrações)
+# preencha as senhas e gere o JWT_SECRET (comando no .env.example)
 npm install
-npx prisma migrate deploy       # aplica as migrações no banco (não apaga dados)
-npm run dev                     # http://localhost:3001/api/health
+npm run db:deploy                # aplica as migrações no banco de DEV
+npm run db:seed                  # dados de exemplo: admin@dev.local / senha-dev-123
+npm run dev                      # http://localhost:3001/api/health
 ```
+
+> Quem já tinha o `.env` antigo (com a senha da **produção**): renomeie para `.env.production`,
+> ponha `BANCO=producao` na primeira linha e crie o `.env` novo a partir do `.env.example`.
+> Se esquecer, o `npm run dev` avisa e não sobe.
 
 O servidor não sobe sem `JWT_SECRET` (mínimo 32 caracteres).
 
@@ -44,9 +64,23 @@ npm run dev                     # http://localhost:5173
 ## 4. Testes
 
 ```powershell
-cd backend;  npm test           # não precisa de banco
+cd backend;  npm test           # 500+ testes, SEM banco (repositórios em memória)
+cd backend;  npm run test:db    # testes com PostgreSQL de verdade, no schema "test" (.env.test)
 cd frontend; npm test
 ```
+
+- `npm test` nunca abre conexão com banco: regras puras e API com repositórios em memória.
+- `npm run test:db` aplica as migrações no schema `test` e roda `tests-db/` (repositórios reais:
+  índices únicos, transações, `onDelete: Restrict`...). Cada teste apaga tudo antes de começar,
+  por isso ele **se recusa** a rodar fora de um schema de teste ou no banco da produção.
+- No GitHub Actions, o job "Testes do back-end com banco" faz o mesmo num PostgreSQL descartável.
+
+### Fluxo de uma migração nova
+
+1. `npm run db:migrate -- --name minha-mudanca` (cria e aplica no **dev**);
+2. `npm run test:db` (aplica no **teste** e roda os testes de banco);
+3. commit, PR e merge;
+4. `npm run db:deploy:prod` (aplica na **produção**; faça backup antes se a migração apaga algo).
 
 ## 5. Publicar na Vercel (produção)
 
@@ -54,12 +88,13 @@ Um projeto só na Vercel, ligado à raiz do repositório (ver `docs/adr/0006-dep
 
 1. Em vercel.com, **Add New → Project**, importe o repositório do GitHub e deixe **Root Directory** = raiz (não escolha `backend` nem `frontend`). O `vercel.json` já define install, build e saída.
 2. Em **Settings → Environment Variables**, crie (Production e Preview):
-   - `DATABASE_URL`: a do `.env`, com `&connection_limit=1` no final.
-   - `DIRECT_URL`: a do `.env`.
+   - `DATABASE_URL`: a do `.env.production`, com `&connection_limit=1` no final.
+   - `DIRECT_URL`: a do `.env.production`.
+   - No ambiente **Preview** (deploys dos PRs), use as URLs do banco de **dev**: assim nem a prévia mexe na produção.
    - `JWT_SECRET`: um segredo NOVO só de produção (comando no `.env.example`).
    - `NODE_ENV` não precisa: a Vercel já usa `production`.
 3. **Deploy**. Teste `https://<seu-projeto>.vercel.app/api/health` e `/api/health/db`.
-4. Migrações não rodam no deploy: depois de criar uma migração, rode `npx prisma migrate deploy` na sua máquina (usa a `DIRECT_URL` do `.env`).
+4. Migrações não rodam no deploy: depois do merge, rode `npm run db:deploy:prod` na sua máquina (usa o `.env.production`).
 5. **Migração que apaga colunas ou tabelas** (como `remove-papel-global`): faça antes um backup do banco no Supabase (**Database → Backups**, ou `pg_dump` com a `DIRECT_URL`). Ela não tem volta sem backup.
 
 ### Aplicação publicada

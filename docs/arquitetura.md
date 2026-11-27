@@ -70,6 +70,8 @@ Testes de rota usam o Supertest e substituem o banco com `vi.mock('../src/db.js'
 
 Testes de rota também podem usar o **serviço real com um repositório em memória** (sem `vi.mock`), como em `tests/players.routes.test.js`: prova status e corpo da resposta sem precisar do banco.
 
+Testes **com banco de verdade** ficam em `tests-db/` e rodam com `npm run test:db`, no schema `test` do banco de desenvolvimento (`.env.test`), nunca na produção. Eles conferem o que a memória não simula: SQL das migrações, índices únicos (inclusive o parcial da pelada), transações e `onDelete: Restrict`. Cada teste começa com as tabelas vazias (`tests-db/preparar.js`). Os ambientes e as travas estão no ADR 0016 e em `scripts/ambiente.js`.
+
 ## Grupos (como grupos de WhatsApp)
 
 Qualquer pessoa logada cria um grupo (uma pelada ou campeonato) e vira **organizadora** dele; os outros entram pelo **código de convite**. Jogadores, partidas, gols, avaliações, estatísticas, ranking, histórico e sorteio pertencem a um grupo, e todas as rotas deles ficam em `/api/grupos/:grupoId/...`. Ver `docs/adr/0013-grupos-e-papel-por-grupo.md`.
