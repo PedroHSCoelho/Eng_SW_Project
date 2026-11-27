@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BusinessRuleError, NotFoundError, ValidationError } from '../src/errors/AppError.js'
-import { combinaComBusca, criarPlayersService, semAcento } from '../src/features/players/players.service.js'
+import { combinaComBusca, criarPlayersService, semAcento } from '../src/features/players/service/players.service.js'
 
 // Repositório falso: só o que o serviço precisa, sem Prisma nem banco.
 // Assim cada regra é testada isolada (núcleo decide, casca executa).

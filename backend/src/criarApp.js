@@ -9,15 +9,15 @@ import {
   exigirOrganizadorDoGrupo,
   exigirOrganizadorDoGrupoParaEscrever,
 } from './middlewares/auth.js'
-import { criarPlayersRouter } from './features/players/players.routes.js'
-import { criarPhotosRouter } from './features/photos/photos.routes.js'
-import { criarAuthRouter } from './features/auth/auth.routes.js'
-import { criarMatchesRouter } from './features/matches/matches.routes.js'
-import { criarStatsRouter } from './features/stats/stats.routes.js'
-import { criarCraqueRouter } from './features/craque/craque.routes.js'
-import { criarDrawRouter } from './features/draw/draw.routes.js'
-import { criarAttendanceRouter } from './features/attendance/attendance.routes.js'
-import { criarConvitesRouter, criarGroupRouter, criarGroupsRouter } from './features/groups/groups.routes.js'
+import { criarPlayersRouter } from './features/players/routes/players.routes.js'
+import { criarPhotosRouter } from './features/photos/routes/photos.routes.js'
+import { criarAuthRouter } from './features/auth/routes/auth.routes.js'
+import { criarMatchesRouter } from './features/matches/routes/matches.routes.js'
+import { criarStatsRouter } from './features/stats/routes/stats.routes.js'
+import { criarCraqueRouter } from './features/craque/routes/craque.routes.js'
+import { criarDrawRouter } from './features/draw/routes/draw.routes.js'
+import { criarAttendanceRouter } from './features/attendance/routes/attendance.routes.js'
+import { criarConvitesRouter, criarGroupRouter, criarGroupsRouter } from './features/groups/routes/groups.routes.js'
 
 export function criarApp({
   playersService,

@@ -1,6 +1,6 @@
 // Núcleo puro do histórico: filtros, ordem, paginação e placar. Sem banco nem HTTP.
 import { describe, expect, it } from 'vitest'
-import { lerFiltrosDoHistorico, montarHistorico } from '../src/features/matches/history.core.js'
+import { lerFiltrosDoHistorico, montarHistorico } from '../src/features/matches/core/history.core.js'
 
 const gol = (scorerId, team) => ({ scorerId, assistId: null, team, ownGoal: false })
 const partida = (id, date, { status = 'FINISHED', jogadores = [1, 2], goals = [], result = 'DRAW' } = {}) => ({

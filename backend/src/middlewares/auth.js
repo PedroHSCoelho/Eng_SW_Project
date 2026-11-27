@@ -3,7 +3,7 @@
 // "Exigir organizador do grupo" = checar se PODE (senão 403). A checagem é sempre aqui, no back-end:
 // esconder o botão no front é só conforto, não segurança.
 import { ForbiddenError, UnauthorizedError, ValidationError } from '../errors/AppError.js'
-import { lerCookie } from '../features/auth/auth.core.js'
+import { lerCookie } from '../features/auth/core/auth.core.js'
 
 export const NOME_DO_COOKIE = 'token'
 

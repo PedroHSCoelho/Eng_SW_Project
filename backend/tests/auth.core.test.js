@@ -3,7 +3,7 @@ import {
   lerCookie,
   validarCadastro,
   validarLogin,
-} from '../src/features/auth/auth.core.js'
+} from '../src/features/auth/core/auth.core.js'
 
 const valido = { name: 'Maria Souza', email: 'Maria@Exemplo.com ', password: 'senha-forte-1' }
 
