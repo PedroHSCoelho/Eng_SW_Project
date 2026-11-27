@@ -173,6 +173,14 @@ describe('sortearEmVariosTimes (pelada)', () => {
     expect(teams.map((t) => t.players.filter((p) => p.position === 'GOALKEEPER').length)).toEqual([1, 1, 1])
   })
 
+  it('lerIdsDoSorteio: o máximo é sempre 11 por time (3 times: 33; 6 times: 66)', () => {
+    const ids = (n) => Array.from({ length: n }, (_, i) => i + 1)
+    expect(lerIdsDoSorteio({ playerIds: ids(33), teamCount: 3 })).toHaveLength(33)
+    expect(() => lerIdsDoSorteio({ playerIds: ids(34), teamCount: 3 })).toThrow('no máximo 33')
+    expect(lerIdsDoSorteio({ playerIds: ids(66), teamCount: 6 })).toHaveLength(66)
+    expect(() => lerIdsDoSorteio({ playerIds: ids(67), teamCount: 6 })).toThrow('até 11 por time')
+  })
+
   it('lerIdsDoSorteio: com vários times, exige 3 por time; teamCount de 2 a 6', () => {
     const ids = (n) => Array.from({ length: n }, (_, i) => i + 1)
     expect(() => lerIdsDoSorteio({ playerIds: ids(8), teamCount: 3 })).toThrow('pelo menos 9')

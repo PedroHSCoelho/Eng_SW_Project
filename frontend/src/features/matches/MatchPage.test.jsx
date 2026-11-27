@@ -277,10 +277,23 @@ describe('MatchPage: partida em andamento (súmula)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Lances de J1' }))
     fireEvent.click(screen.getByRole('button', { name: /Vermelho/ }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('expulso')
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    // A mensagem aparece DENTRO do painel (antes ficava na página, escondida atrás do modal).
+    expect(await within(screen.getByRole('dialog')).findByRole('alert')).toHaveTextContent('expulso')
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('minuto fora de 0 a 120: avisa dentro do painel e nem chama a API', async () => {
+    simularApi({ ...comJogadores, ...partidaNaApi(emAndamento) })
+    renderizar()
+    fireEvent.click(await screen.findByRole('button', { name: 'Lances de J1' }))
+    const painel = screen.getByRole('dialog')
+
+    fireEvent.change(within(painel).getByLabelText(/Minuto/), { target: { value: '130' } })
+    fireEvent.click(within(painel).getByRole('button', { name: /Amarelo/ }))
+
+    expect(within(painel).getByRole('alert')).toHaveTextContent('0 a 120')
+    expect(fetch.mock.calls.some(([, opcoes]) => opcoes?.method === 'POST')).toBe(false)
   })
 
   it('jogador expulso (2 amarelos) aparece como expulso e o painel não oferece lances', async () => {

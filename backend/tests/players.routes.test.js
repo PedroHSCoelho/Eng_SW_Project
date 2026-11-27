@@ -149,6 +149,29 @@ describe('PATCH /api/players/:id/inativar', () => {
   })
 })
 
+describe('PATCH /api/players/:id/reativar', () => {
+  it('inativado volta a ficar ativo; já ativo -> 422', async () => {
+    await request(app).post('/api/players').send(novo)
+    await request(app).patch('/api/players/1/inativar')
+    const res = await request(app).patch('/api/players/1/reativar')
+
+    expect(res.status).toBe(200)
+    expect(res.body.data.active).toBe(true)
+    expect((await request(app).patch('/api/players/1/reativar')).status).toBe(422)
+  })
+})
+
+describe('GET /api/players?busca= (sem acento)', () => {
+  it('"joao" acha "João" e "carlao" acha "Carlão"', async () => {
+    await request(app).post('/api/players').send({ name: 'João Silva', nickname: 'Jão', position: 'FORWARD' })
+    await request(app).post('/api/players').send({ name: 'Carlos Lima', nickname: 'Carlão', position: 'DEFENDER' })
+
+    const nomes = async (busca) => (await request(app).get(`/api/players?busca=${busca}`)).body.data.map((j) => j.nickname)
+    expect(await nomes('joao')).toEqual(['Jão'])
+    expect(await nomes('carlao')).toEqual(['Carlão'])
+  })
+})
+
 describe('DELETE /api/players/:id', () => {
   it('422 para quem já tem partida (o jogador 1 do repositório falso)', async () => {
     await request(app).post('/api/players').send(novo)

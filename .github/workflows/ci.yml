@@ -24,6 +24,42 @@ jobs:
       - run: npx prisma generate
       - run: npm test
 
+  # Testes de integração com um PostgreSQL de verdade (tests-db/), num banco descartável que o
+  # GitHub cria só para esta execução (o "services" do Actions) e apaga no fim.
+  # Ninguém precisa instalar Docker na própria máquina: quem sobe o banco é o GitHub.
+  backend-banco:
+    name: Testes do back-end com banco (descartável)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      # O mesmo formato do .env.test da nossa máquina, apontando para o banco do CI.
+      - run: |
+          cat > .env.test <<'FIM'
+          BANCO=test
+          DATABASE_URL="postgresql://postgres:postgres@localhost:5432/postgres?schema=test"
+          DIRECT_URL="postgresql://postgres:postgres@localhost:5432/postgres?schema=test"
+          JWT_SECRET=segredo-so-do-ci-com-mais-de-32-caracteres!!
+          FIM
+      - run: npm run test:db
+
   frontend:
     name: Testes e build do front-end
     runs-on: ubuntu-latest

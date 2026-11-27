@@ -20,6 +20,17 @@ export function numerosDosJogadores(partida) {
   return numeros
 }
 
+// Ordem de leitura da súmula para gols e lances: na pelada, primeiro o número do jogo da noite;
+// depois o minuto (sem minuto vai para o fim) e, por último, a ordem em que foi lançado (id).
+// Antes os gols da pelada eram ordenados só pelo minuto (misturando os jogos) e os cartões nem eram.
+export function emOrdemDaSumula(lista, partida) {
+  const numeroDoJogo = (gameId) => (partida.games ?? []).find((j) => j.id === gameId)?.number ?? 0
+  const minuto = (x) => (x.minute === null || x.minute === undefined ? Number.MAX_SAFE_INTEGER : x.minute)
+  return [...lista].sort(
+    (a, b) => numeroDoJogo(a.gameId) - numeroDoJogo(b.gameId) || minuto(a) - minuto(b) || a.id - b.id,
+  )
+}
+
 export const NOME_DO_LANCE = {
   YELLOW_CARD: '🟨 Cartão amarelo',
   RED_CARD: '🟥 Cartão vermelho',

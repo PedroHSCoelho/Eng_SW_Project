@@ -30,7 +30,11 @@ const authService = criarAuthService({
 const app = criarApp({
   playersService: criarPlayersService(playersRepository),
   authService,
-  matchesService: criarMatchesService({ matchesRepo: matchesRepository, playersRepo: playersRepository }),
+  matchesService: criarMatchesService({
+    matchesRepo: matchesRepository,
+    playersRepo: playersRepository,
+    attendanceRepo: attendanceRepository,
+  }),
   statsService: criarStatsService({ matchesRepo: matchesRepository, playersRepo: playersRepository }),
   craqueService: criarCraqueService({ craqueRepo: craqueRepository, matchesRepo: matchesRepository }),
   drawService: criarDrawService({ playersRepo: playersRepository }),

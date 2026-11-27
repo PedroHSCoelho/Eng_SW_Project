@@ -5,10 +5,11 @@ node_modules/
 dist/
 build/
 
-# Variáveis de ambiente (use o .env.example como modelo)
+# Variáveis de ambiente (use os .example como modelo): .env = dev, .env.test, .env.production
 .env
 .env.*
 !.env.example
+!.env.*.example
 
 # Logs
 *.log

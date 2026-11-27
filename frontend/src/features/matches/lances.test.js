@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { numerosDosJogadores, textoDaLista } from './lances.js'
+import { emOrdemDaSumula, numerosDosJogadores, textoDaLista } from './lances.js'
 
 const escalacao = [1, 2, 3].map((playerId) => ({ playerId, team: playerId < 3 ? 'A' : 'B' }))
 
@@ -69,5 +69,29 @@ describe('textoDaLista', () => {
     })
     expect(texto).toContain('Confirmados (2/3):\n1. Zé\n2. Primo (convidado do Zé)\n3.')
     expect(texto).toContain('Lista de espera:\n1. Beto (talvez)\n2. Amigo (convidado)')
+  })
+})
+
+describe('emOrdemDaSumula (gols e cartões em ordem)', () => {
+  it('jogo único: pelo minuto, sem minuto no fim, empate pela ordem de lançamento', () => {
+    const cartoes = [{ id: 1, minute: 8 }, { id: 2, minute: 9 }, { id: 3, minute: 6 }, { id: 4, minute: null }, { id: 5, minute: 6 }]
+    expect(emOrdemDaSumula(cartoes, { games: [] }).map((c) => c.id)).toEqual([3, 5, 1, 2, 4])
+  })
+
+  it('pelada: primeiro o jogo da noite, depois o minuto (não mistura os jogos)', () => {
+    const partida = { games: [{ id: 10, number: 1 }, { id: 11, number: 2 }] }
+    const gols = [
+      { id: 1, gameId: 11, minute: 2 },
+      { id: 2, gameId: 10, minute: 9 },
+      { id: 3, gameId: 10, minute: 3 },
+      { id: 4, gameId: 11, minute: 1 },
+    ]
+    expect(emOrdemDaSumula(gols, partida).map((g) => g.id)).toEqual([3, 2, 4, 1])
+  })
+
+  it('não altera a lista original', () => {
+    const lista = [{ id: 2, minute: 5 }, { id: 1, minute: 1 }]
+    emOrdemDaSumula(lista, {})
+    expect(lista.map((x) => x.id)).toEqual([2, 1])
   })
 })

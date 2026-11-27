@@ -7,13 +7,23 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "node --watch src/index.js",
+    "dev": "node scripts/ambiente.js dev node --watch src/index.js",
     "start": "node src/index.js",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio",
+    "db:migrate": "node scripts/ambiente.js dev prisma migrate dev",
+    "db:deploy": "node scripts/ambiente.js dev prisma migrate deploy",
+    "db:reset": "node scripts/ambiente.js dev prisma migrate reset",
+    "db:seed": "node scripts/ambiente.js dev node prisma/seed.js",
+    "db:studio": "node scripts/ambiente.js dev prisma studio",
+    "db:deploy:prod": "node scripts/ambiente.js prod prisma migrate deploy",
+    "db:status:prod": "node scripts/ambiente.js prod prisma migrate status",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:db:preparar": "node scripts/ambiente.js test prisma migrate deploy",
+    "test:db": "npm run test:db:preparar && node scripts/ambiente.js test vitest run --config vitest.db.config.js"
+  },
+  "prisma": {
+    "seed": "node scripts/ambiente.js dev node prisma/seed.js"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

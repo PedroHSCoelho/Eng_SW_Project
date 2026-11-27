@@ -50,7 +50,7 @@ O sistema está no ar em **https://eng-sw-project-frontend.vercel.app** (front e
 1. **Entrar:** crie uma conta (todo cadastro nasce como *jogador*). O primeiro organizador é promovido pelo terminal (ver [docs/setup.md](docs/setup.md)).
 2. **Organizador:** cadastra jogadores, liga cada conta a um jogador, cria a partida (e pode corrigir data e local ou cancelá-la enquanto não for encerrada), escala os dois times (à mão ou pelo **sorteio de times equilibrado**, que usa a média de notas), lança os gols (e assistências) e encerra a súmula. Depois de encerrada, a súmula não muda mais.
 3. **Todos:** veem partidas (com o placar), histórico, ranking (geral, artilharia e assistências, por período e por posição) e o perfil de cada jogador com estatísticas (por período) e média de notas.
-4. **Quem jogou:** avalia os colegas (nota de 1 a 5) em até 48 horas depois do encerramento e pode mudar uma nota nesse prazo; a nota é anônima e a média só aparece com pelo menos 3 avaliações.
+4. **Quem jogou:** depois do encerramento, vota no craque da partida (dentro da própria partida). A nota de 0 a 5 de cada jogador é dada pelos admins do grupo e só serve para equilibrar o sorteio dos times.
 
 As regras de negócio (placar, resultado, pontos e desempates do ranking, prazo e anonimato das avaliações) ficam no back-end, em funções puras com testes automatizados.
 

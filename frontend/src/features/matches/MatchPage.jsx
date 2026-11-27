@@ -24,8 +24,17 @@ import PeladaPainel from './PeladaPainel.jsx'
 import PresencaPanel from './PresencaPanel.jsx'
 import SumulaAoVivo from './SumulaAoVivo.jsx'
 import SubstituicoesPanel from './SubstituicoesPanel.jsx'
-import { NOME_DO_LANCE } from './lances.js'
-import { STATUS, doTime, ehPelada, formatarData, nomeDoTime, textoDoResultadoDaPartida, timesDaPartida } from './textos.js'
+import { NOME_DO_LANCE, emOrdemDaSumula } from './lances.js'
+import {
+  STATUS,
+  doTime,
+  ehPelada,
+  formatarData,
+  nomeDoTime,
+  precisaDeResultado,
+  textoDoResultadoDaPartida,
+  timesDaPartida,
+} from './textos.js'
 import Avatar from '../../ui/Avatar.jsx'
 
 const botao = 'rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50'
@@ -91,7 +100,9 @@ export default function MatchPage() {
   }
 
   const status = STATUS[partida.status]
-  const lances = partida.events ?? []
+  // Gols e lances na ordem da súmula (jogo da noite, minuto, ordem de lançamento).
+  const gols = emOrdemDaSumula(partida.goals ?? [], partida)
+  const lances = emOrdemDaSumula(partida.events ?? [], partida)
   const pelada = ehPelada(partida)
   const numeroDoJogo = (gameId) => partida.games?.find((j) => j.id === gameId)?.number
 
@@ -114,6 +125,13 @@ export default function MatchPage() {
       {erro && (
         <p role="alert" className="mt-4 rounded-lg bg-red-100 px-4 py-2 text-sm text-red-800">
           {erro}
+        </p>
+      )}
+
+      {ehOrganizador && precisaDeResultado(partida) && (
+        <p className="mt-4 rounded-xl bg-yellow-100 px-4 py-3 text-sm text-yellow-900">
+          A data desta partida já passou e ela ainda está agendada. Se o jogo aconteceu, escale os times, inicie, lance
+          os gols e encerre para ele contar no ranking. Se não aconteceu, cancele.
         </p>
       )}
 
@@ -201,6 +219,7 @@ export default function MatchPage() {
           partida={partida}
           editavel={ehOrganizador && partida.status === 'IN_PROGRESS'}
           enviando={enviando}
+          erro={erro}
           aoLancarGol={(gol) => executar(() => lancarGol(partida.id, gol))}
           aoLancarLance={(lance) => executar(() => lancarLance(partida.id, lance))}
         />
@@ -218,11 +237,11 @@ export default function MatchPage() {
       {!['SCHEDULED', 'CANCELED'].includes(partida.status) && (
         <div className="mt-6">
           <h3 className="text-lg font-semibold">Gols</h3>
-          {partida.goals.length === 0 ? (
+          {gols.length === 0 ? (
             <p className="mt-2 text-green-200">Nenhum gol lançado.</p>
           ) : (
             <ul className="mt-2 grid gap-2">
-              {partida.goals.map((g) => (
+              {gols.map((g) => (
                 <li
                   key={g.id}
                   className="flex items-center justify-between gap-3 rounded-lg bg-green-900 px-4 py-2 ring-1 ring-green-700"
@@ -270,6 +289,7 @@ export default function MatchPage() {
                   {e.minute !== null && e.minute !== undefined && <span className="text-green-300">{e.minute}′ </span>}
                   {NOME_DO_LANCE[e.type]} · <Avatar jogador={e.player} className="mr-1" />
                   <strong>{e.player?.nickname}</strong>
+                  {pelada && e.gameId && <span className="text-green-300"> · jogo {numeroDoJogo(e.gameId)}</span>}
                 </span>
                 {ehOrganizador && partida.status === 'IN_PROGRESS' && (
                   <button
