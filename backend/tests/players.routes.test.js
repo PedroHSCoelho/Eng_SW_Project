@@ -2,8 +2,8 @@ import express from 'express'
 import request from 'supertest'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { errorHandler, notFound } from '../src/middlewares/errorHandler.js'
-import { criarPlayersService } from '../src/features/players/players.service.js'
-import { criarPlayersRouter } from '../src/features/players/players.routes.js'
+import { criarPlayersService } from '../src/features/players/service/players.service.js'
+import { criarPlayersRouter } from '../src/features/players/routes/players.routes.js'
 
 // Repositório em memória: comporta-se como o banco para o que a API precisa.
 // Serviço, rotas e errorHandler são os REAIS; só o banco é trocado.

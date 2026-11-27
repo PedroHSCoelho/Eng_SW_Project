@@ -5,7 +5,7 @@ import {
   montarLista,
   verificarListaAberta,
   verificarPodeMexer,
-} from '../src/features/attendance/attendance.core.js'
+} from '../src/features/attendance/core/attendance.core.js'
 
 const presenca = (playerId, minuto) => ({
   playerId,

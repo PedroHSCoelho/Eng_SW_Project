@@ -1,6 +1,6 @@
 // Regras puras da foto: tipo pelos bytes, tamanho e quem pode trocar.
 import { describe, expect, it } from 'vitest'
-import { podeMexerNaFoto, tipoDaImagem, validarFoto, TAMANHO_MAXIMO_DA_FOTO } from '../src/features/photos/photos.core.js'
+import { podeMexerNaFoto, tipoDaImagem, validarFoto, TAMANHO_MAXIMO_DA_FOTO } from '../src/features/photos/core/photos.core.js'
 
 // Começos reais de cada formato, completados com zeros até ter tamanho suficiente.
 const comecoDe = (...bytes) => Buffer.concat([Buffer.from(bytes), Buffer.alloc(20)])

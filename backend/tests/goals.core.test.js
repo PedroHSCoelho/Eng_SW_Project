@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lerDadosDoGol, montarGol, verificarSumulaAberta } from '../src/features/matches/goals.core.js'
+import { lerDadosDoGol, montarGol, verificarSumulaAberta } from '../src/features/matches/core/goals.core.js'
 
 // Partida em andamento: jogadores 1, 2, 3 no time A; 4, 5, 6 no time B.
 const emAndamento = {

@@ -3,9 +3,9 @@
 // Rodar: npm run test:db (lê o .env.test e se recusa a rodar fora do schema de teste).
 import { describe, expect, it } from 'vitest'
 import prisma from '../src/db.js'
-import { playersRepository } from '../src/features/players/players.repository.js'
-import { matchesRepository } from '../src/features/matches/matches.repository.js'
-import { attendanceRepository } from '../src/features/attendance/attendance.repository.js'
+import { playersRepository } from '../src/features/players/repository/players.repository.js'
+import { matchesRepository } from '../src/features/matches/repository/matches.repository.js'
+import { attendanceRepository } from '../src/features/attendance/repository/attendance.repository.js'
 import { BusinessRuleError } from '../src/errors/AppError.js'
 
 const jogador = (groupId, nickname, extra = {}) => ({

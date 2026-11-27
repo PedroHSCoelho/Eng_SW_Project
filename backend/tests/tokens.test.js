@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken'
 import { describe, expect, it } from 'vitest'
-import { criarTokens } from '../src/features/auth/tokens.js'
+import { criarTokens } from '../src/features/auth/utils/tokens.js'
 
 const SEGREDO = 'segredo-de-teste-com-mais-de-32-caracteres!!'
 const tokens = criarTokens({ obterSegredo: () => SEGREDO })
