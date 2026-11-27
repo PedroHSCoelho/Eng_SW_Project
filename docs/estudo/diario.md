@@ -218,10 +218,37 @@ Modelo:
 - Não verificado: no Supabase e na Vercel (depende do `migrate deploy` e do deploy).
 - Quem revisou/entendeu: (preencher)
 
+## 2026-11-26 — CI no fluxo dev → test → main
+- O que mudou: o workflow do GitHub Actions agora roda em pushes para `dev`, `test` e `main`, e em PRs direcionadas a essas branches.
+- Por quê: validar a mudança antes do merge e testar novamente quando ela chega a `test` e `main`.
+- Conceito aprendido: integração contínua nos pontos de integração do fluxo; checks de CI não bloqueiam merge sem proteção de branch configurada no GitHub.
+- Como foi verificado: revisão do workflow e `git diff --check`; eventos reais de GitHub não foram executados nesta sessão.
+- Quem revisou/entendeu: (preencher)
+
+## 2026-11-26 — Reorganizando a feature matches no front
+- O que mudou: páginas, componentes, APIs e regras de domínio passaram para subpastas próprias dentro de `frontend/src/features/matches/`; testes continuam junto do código testado; imports internos e externos foram atualizados.
+- Por quê: reduzir a mistura de responsabilidades na raiz da feature e facilitar localizar cada tipo de arquivo sem alterar o comportamento.
+- Conceito aprendido: organização por responsabilidade dentro de uma feature; manter testes co-localizados com a implementação.
+- Como foi verificado: `cd frontend; npm test` (20 arquivos e 181 testes passaram) e `cd frontend; npm run build` (build concluído).
+- Quem revisou/entendeu: (preencher)
+
+## 2026-11-26 — Organizando as demais features do front
+- O que mudou: auth, groups, photos, players, home, draw e rankings passaram a separar páginas, componentes, APIs, contextos e lógica conforme cada feature necessita; a página inicial foi movida para `features/home/pages/`; posições dos jogadores foram extraídas do formulário para `players/domain/positions.js`. O back-end não foi alterado.
+- Por quê: padronizar a navegação por responsabilidade sem criar pastas vazias ou forçar a mesma estrutura em features diferentes.
+- Conceito aprendido: coesão por feature, separação de responsabilidades e dependência de domínio sem acoplar outras features a um componente visual.
+- Como foi verificado: imports relativos conferidos; `cd frontend; npm test` (20 arquivos e 181 testes passaram); `cd frontend; npm run build` (build concluído).
+- Não verificado: navegação manual no navegador; o comportamento foi validado pela suíte e pelo build.
 ## 2026-11-27 — Ajustes finais (bugs da revisão) e bancos de dev e teste
 - O que mudou: (1) estatísticas: na pelada o J conta cada jogo da noite (J = V + E + D), e "Últimas partidas" mostra a pelada como campanha (ex.: "Pelada 3V 0E 2D") em vez de um falso empate com placar somado; o rodapé do ranking explica a regra de cada aba. (2) Jogadores: `PATCH /players/:id/reativar` e botão "Reativar"; busca ignora acentos ("joao" acha "João"); "Editar" rola até o formulário; o admin não tem Inativar/Excluir no próprio cartão. (3) Partidas: o erro do lance aparece dentro do painel (e o minuto fora de 0 a 120 é barrado antes de ir à API); gols e cartões em ordem (jogo da noite, minuto, ordem de lançamento); a classificação da noite mostra GP e o critério de desempate; partida com data passada é permitida, mas avisa e fica marcada "falta lançar o resultado"; o histórico avisa datas fora de ordem com acento e limpa os resultados antigos; quem é escalado (inclusive pelo Sorteio) entra na lista de presença; o sorteio aceita de 3 a 11 por time para qualquer número de times (antes 60 para 3 times); saiu o atalho "Avaliação" da home. (4) Bancos: dev (projeto Supabase próprio), teste (schema `test`) e produção, com `scripts/ambiente.js`, seed e testes de integração em `tests-db/`. ADR 0016.
 - Por quê: lista de bugs e ajustes da revisão final, e poder mostrar que testes e desenvolvimento não rodam no banco de produção.
 - Conceito aprendido: invariante (J = V + E + D) como teste; dado derivado com uma definição só; normalização Unicode (NFD) para busca; validar no cliente só para conforto (a regra continua no back-end); separação de ambientes (dev/test/prod) e "falhar fechado" (o script recusa em vez de adivinhar); pirâmide de testes (muitos em memória, poucos com banco real).
 - Teste que prova: back-end 526 testes sem banco + 11 com PostgreSQL real (schema `test`); front-end 195. Seed e API conferidos num PostgreSQL local (busca "carlao", reativar, escalação indo para a presença).
 - Não verificado: as telas no navegador; os bancos no Supabase real (o projeto de dev ainda precisa ser criado); o job novo do CI (roda no primeiro push).
+- Quem revisou/entendeu: (preencher)
+
+## 2026-11-27 — Back-end no mesmo modelo de pastas do front
+- O que mudou: junção da refatoração do front (`refactor/estrutura-features-frontend`) com os ajustes finais; no back-end, cada feature passou a ter subpastas `routes/`, `service/`, `core/` e `repository/` (e `utils/` no auth). Imports atualizados por script. ADR 0017.
+- Por quê: os dois lados do projeto seguirem a mesma organização (por feature, com camadas dentro) e cada tipo de arquivo ter um lugar previsível.
+- Conceito aprendido: *package by feature* (coesão por assunto) com arquitetura em camadas dentro da feature; regra de dependência num sentido só; núcleo de regras puras separado do acesso a dados.
+- Teste que prova: back-end 526 testes; todos os imports relativos conferidos por script; o CI roda também os 11 testes com banco.
 - Quem revisou/entendeu: (preencher)

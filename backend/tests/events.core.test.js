@@ -1,6 +1,6 @@
 // Núcleo puro dos lances (cartões e defesas difíceis): sem banco nem Express.
 import { describe, expect, it } from 'vitest'
-import { cartoesDoJogador, lerDadosDoEvento, montarEvento } from '../src/features/matches/events.core.js'
+import { cartoesDoJogador, lerDadosDoEvento, montarEvento } from '../src/features/matches/core/events.core.js'
 
 const emAndamento = (events = []) => ({
   status: 'IN_PROGRESS',

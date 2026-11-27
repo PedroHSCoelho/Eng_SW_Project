@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { criarMatchesService } from '../src/features/matches/matches.service.js'
+import { criarMatchesService } from '../src/features/matches/service/matches.service.js'
 
 // Repositórios falsos e mínimos: guardam o que o serviço pediu para gravar.
 function cenario({ partida = { id: 1, status: 'SCHEDULED', players: [] }, agora } = {}) {

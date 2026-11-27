@@ -9,9 +9,9 @@ import {
   resultadoDoJogo,
   timesDaPartida,
   verificarLanceNoJogo,
-} from '../src/features/matches/pelada.core.js'
-import { montarGol } from '../src/features/matches/goals.core.js'
-import { lerEscalacao, validarDadosDaPartida, verificarPodeIniciar } from '../src/features/matches/matches.core.js'
+} from '../src/features/matches/core/pelada.core.js'
+import { montarGol } from '../src/features/matches/core/goals.core.js'
+import { lerEscalacao, validarDadosDaPartida, verificarPodeIniciar } from '../src/features/matches/core/matches.core.js'
 
 // Pelada de 3 times: A (1, 2, 3), B (4, 5, 6), C (7, 8, 9).
 const escalacao = [1, 2, 3, 4, 5, 6, 7, 8, 9].map((playerId) => ({ playerId, team: 'ABC'[Math.floor((playerId - 1) / 3)] }))

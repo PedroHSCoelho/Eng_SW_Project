@@ -71,10 +71,10 @@ cd frontend; npm test                                               # testes do 
 Eng_SW_Project/
 ├── backend/                 # API (Node.js + Express + Prisma)
 │   ├── prisma/              # schema.prisma e migrações
-│   ├── src/features/        # um módulo por assunto: players, matches, stats, ratings, auth, users...
+│   ├── src/features/        # um módulo por assunto (players, matches, stats...), cada um com routes/ service/ core/ repository/
 │   └── tests/               # testes automatizados do back-end
 ├── frontend/                # Interface web (React + Vite + Tailwind)
-│   └── src/features/        # telas por assunto, com testes ao lado
+│   └── src/features/        # telas por assunto, cada uma com pages/ components/ api/ domain/..., testes ao lado
 ├── docs/
 │   ├── setup.md             # como rodar o projeto
 │   ├── arquitetura.md       # arquitetura e lista das rotas da API

@@ -1,12 +1,24 @@
 # Arquitetura do back-end
 
-Cada funcionalidade fica em `backend/src/features/<nome>/` e é dividida em três camadas.
+Cada funcionalidade fica em `backend/src/features/<nome>/` e é dividida em camadas, **uma subpasta por camada**, no mesmo modelo do front-end (ADR 0017):
 
-| Arquivo | Responsabilidade | Pode usar |
-|---------|------------------|-----------|
-| `<nome>.routes.js` | Recebe a requisição HTTP, chama o serviço e devolve a resposta | serviço |
-| `<nome>.service.js` | Regras de negócio e validações. Lança os erros de `src/errors/AppError.js` | repositório |
-| `<nome>.repository.js` | Acesso ao banco com o Prisma. Nenhuma regra aqui | `src/db.js` |
+```
+backend/src/features/matches/
+├── routes/       matches.routes.js        HTTP: lê a requisição, chama o serviço, responde
+├── service/      matches.service.js       casos de uso: orquestra regras e repositórios
+├── core/         matches.core.js, ...     regras puras do domínio (sem banco, sem HTTP)
+└── repository/   matches.repository.js    acesso ao banco com o Prisma
+```
+
+| Subpasta | Arquivo | Responsabilidade | Pode usar |
+|----------|---------|------------------|-----------|
+| `routes/` | `<nome>.routes.js` | Recebe a requisição HTTP, chama o serviço e devolve a resposta | serviço |
+| `service/` | `<nome>.service.js` | Casos de uso e validações. Lança os erros de `src/errors/AppError.js` | core, repositório |
+| `core/` | `<nome>.core.js` | Regras puras (funções sem efeito colateral), testadas sem banco | nada de fora |
+| `repository/` | `<nome>.repository.js` | Acesso ao banco com o Prisma. Nenhuma regra aqui | `src/db.js` |
+| `utils/` | ex.: `auth/utils/tokens.js` | Ajudantes técnicos da feature (JWT, hash de senha) | bibliotecas |
+
+Só existe a subpasta que a feature usa (o `draw` não tem repositório; o `users` só tem repositório). O nome do arquivo continua com o sufixo da camada (`matches.core.js`), para ser reconhecido também fora da pasta (busca, abas do editor, mensagens de erro).
 
 **Por que separar assim:** as regras ficam no serviço, que recebe o repositório como parâmetro. Nos testes trocamos o repositório por um objeto falso e testamos cada regra sem precisar do PostgreSQL.
 
@@ -26,8 +38,8 @@ Toda resposta de erro tem o formato `{ "erro": "mensagem" }`.
 ## Exemplo de feature
 
 ```js
-// players.service.js
-import { BusinessRuleError, ValidationError } from '../../errors/AppError.js'
+// players/service/players.service.js
+import { BusinessRuleError, ValidationError } from '../../../errors/AppError.js'
 
 export function criarPlayersService(repo) {
   return {
@@ -47,7 +59,7 @@ export function criarPlayersService(repo) {
 ```js
 // players.service.test.js
 import { describe, expect, it } from 'vitest'
-import { criarPlayersService } from '../src/features/players/players.service.js'
+import { criarPlayersService } from '../src/features/players/service/players.service.js'
 
 it('não aceita apelido repetido', async () => {
   const repoFalso = { buscarPorApelido: async () => ({ id: 1 }), criar: async (d) => d }
@@ -76,7 +88,7 @@ Testes **com banco de verdade** ficam em `tests-db/` e rodam com `npm run test:d
 
 Qualquer pessoa logada cria um grupo (uma pelada ou campeonato) e vira **organizadora** dele; os outros entram pelo **código de convite**. Jogadores, partidas, gols, avaliações, estatísticas, ranking, histórico e sorteio pertencem a um grupo, e todas as rotas deles ficam em `/api/grupos/:grupoId/...`. Ver `docs/adr/0013-grupos-e-papel-por-grupo.md`.
 
-Código em `backend/src/features/groups/`: `groups.core.js` (regras puras), `groups.service.js`, `groups.repository.js` e `groups.routes.js`. O middleware `carregarParticipacao` (em `middlewares/auth.js`) lê o `:grupoId` da URL e põe a participação de quem pede em `req.participacao` (`{ groupId, userId, role, playerId }`); quem não participa recebe **404**, igual a um grupo que não existe. `exigirOrganizadorDoGrupo` dá 403 a quem é só membro.
+Código em `backend/src/features/groups/`: `core/groups.core.js` (regras puras), `service/groups.service.js`, `repository/groups.repository.js` e `routes/groups.routes.js`. O middleware `carregarParticipacao` (em `middlewares/auth.js`) lê o `:grupoId` da URL e põe a participação de quem pede em `req.participacao` (`{ groupId, userId, role, playerId }`); quem não participa recebe **404**, igual a um grupo que não existe. `exigirOrganizadorDoGrupo` dá 403 a quem é só membro.
 
 | Método e rota | O que faz | Erros |
 |---|---|---|
@@ -95,7 +107,7 @@ Regras (em `groups.core.js`): o grupo **nunca fica sem organizador** (vale para 
 
 ## API de jogadores (F02)
 
-Código em `backend/src/features/players/`: `players.routes.js` (HTTP), `players.service.js` (regras) e `players.repository.js` (Prisma). O `app.js` liga as três camadas.
+Código em `backend/src/features/players/`: `routes/players.routes.js` (HTTP), `service/players.service.js` (regras) e `repository/players.repository.js` (Prisma). O `app.js` liga as três camadas.
 
 | Método e rota | O que faz | Erros |
 |---|---|---|
@@ -110,7 +122,7 @@ Regras: nome de 2 a 50 e apelido de 2 a 30 caracteres (sem contar espaços nas p
 
 ## API de partidas (F05)
 
-Código em `backend/src/features/matches/`: `matches.core.js` (regras puras), `matches.service.js` (casos de uso), `matches.repository.js` (Prisma) e `matches.routes.js` (HTTP). Qualquer participante do grupo lê; só o organizador do grupo escreve (403 para os outros).
+Código em `backend/src/features/matches/`: `core/matches.core.js` (regras puras; também `goals`, `events`, `pelada` e `history`), `service/matches.service.js` (casos de uso), `repository/matches.repository.js` (Prisma) e `routes/matches.routes.js` (HTTP). Qualquer participante do grupo lê; só o organizador do grupo escreve (403 para os outros).
 
 | Método e rota | O que faz | Erros |
 |---|---|---|

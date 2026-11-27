@@ -9,7 +9,7 @@ import {
   verificarPodeMudarPapel,
   verificarPodeRemover,
   verificarSobraOrganizador,
-} from '../src/features/groups/groups.core.js'
+} from '../src/features/groups/core/groups.core.js'
 
 describe('validarNomeDoGrupo', () => {
   it('aceita de 3 a 60 caracteres e tira os espaços das pontas', () => {
