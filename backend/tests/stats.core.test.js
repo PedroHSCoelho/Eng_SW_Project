@@ -9,7 +9,7 @@ import {
   lerPosicao,
   montarRanking,
   ultimasPartidas,
-} from '../src/features/stats/stats.core.js'
+} from '../src/features/stats/core/stats.core.js'
 
 // Atalhos para montar partidas finalizadas.
 const gol = (scorerId, team, extra = {}) => ({ scorerId, assistId: null, team, ownGoal: false, ...extra })

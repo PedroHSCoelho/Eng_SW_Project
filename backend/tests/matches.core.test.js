@@ -12,7 +12,7 @@ import {
   verificarPodeEncerrar,
   verificarPodeIniciar,
   escaladosParaALista,
-} from '../src/features/matches/matches.core.js'
+} from '../src/features/matches/core/matches.core.js'
 
 // Seis jogadores ativos (ids 1 a 6) e um inativo (id 7).
 const jogadores = [

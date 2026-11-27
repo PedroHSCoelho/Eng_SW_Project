@@ -8,8 +8,8 @@ import {
   forcaDoJogador,
   lerIdsDoSorteio,
   sortearTimes,
-} from '../src/features/draw/draw.core.js'
-import { sortearEmVariosTimes } from '../src/features/draw/draw.core.js'
+} from '../src/features/draw/core/draw.core.js'
+import { sortearEmVariosTimes } from '../src/features/draw/core/draw.core.js'
 
 // Atalho: jogador com média (null = sem média) e posição (padrão meio-campo).
 const j = (id, average, position = 'MIDFIELDER') => ({ id, nickname: `J${id}`, position, skill: average })

@@ -67,7 +67,7 @@ Boas práticas:
 ## Padrões de código
 
 - Indentação, finais de linha e codificação são definidos pelo `.editorconfig` e `.gitattributes` (UTF-8, LF). Use um editor com suporte a EditorConfig.
-- Back-end organizado por módulo de domínio em `backend/src/features/<modulo>/`.
+- Organização por feature nos dois lados (ADR 0017): no back-end, `backend/src/features/<modulo>/{routes,service,core,repository}/`; no front-end, `frontend/src/features/<modulo>/{pages,components,api,domain,context,...}/`. Crie só as subpastas que a feature usa.
 - Nomes de código (variáveis, rotas, arquivos) em inglês; textos para o usuário e documentação em português.
 - Nunca versione segredos: apenas o `.env.example` vai para o Git.
 
