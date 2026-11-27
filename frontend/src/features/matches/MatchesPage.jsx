@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ehOrganizadorDo, useGrupo } from '../groups/GrupoContext.jsx'
 import { criarPartida, listarPartidas } from './matchesApi.js'
-import { STATUS, formatarData, nomeDoTime } from './textos.js'
+import { STATUS, dataJaPassou, formatarData, nomeDoTime, precisaDeResultado } from './textos.js'
 import SeletorDeFormato from './SeletorDeFormato.jsx'
 import NomesDosTimes, { nomesParaEnviar } from './NomesDosTimes.jsx'
 import AbasDePartidas from './AbasDePartidas.jsx'
@@ -110,6 +110,12 @@ export default function MatchesPage() {
               onChange={(e) => setVagas(e.target.value)}
             />
           </label>
+          {dataJaPassou(data) && (
+            <p className="text-sm text-yellow-200 sm:col-span-4">
+              Esta data já passou. Tudo bem se for para lançar um jogo antigo: depois de criar, escale os times, inicie,
+              lance os gols e encerre a partida.
+            </p>
+          )}
           <div className="flex items-end">
             <button
               type="submit"
@@ -167,6 +173,9 @@ export default function MatchesPage() {
                   <span className={`rounded-full px-3 py-0.5 text-xs font-medium ${STATUS[p.status].classe}`}>
                     {STATUS[p.status].nome}
                   </span>
+                  {precisaDeResultado(p) && (
+                    <span className="mt-1 block text-xs text-yellow-200">Data já passou · falta lançar o resultado</span>
+                  )}
                 </span>
               </Link>
             </li>

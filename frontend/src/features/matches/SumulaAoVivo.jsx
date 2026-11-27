@@ -11,7 +11,9 @@ import Avatar from '../../ui/Avatar.jsx'
 // As regras de verdade (mesmo time, expulso, súmula aberta) são do back-end, que responde 422.
 // Na pelada, só os jogadores dos dois times do jogo que está rolando ficam clicáveis
 // (e esses dois times aparecem primeiro); os outros times estão esperando.
-export default function SumulaAoVivo({ partida, editavel = false, enviando = false, aoLancarGol, aoLancarLance }) {
+// `erro`: a mensagem do back-end da última ação. Com o painel do jogador aberto, ela aparece
+// DENTRO do painel (antes ficava na página, escondida atrás do modal).
+export default function SumulaAoVivo({ partida, editavel = false, enviando = false, erro = '', aoLancarGol, aoLancarLance }) {
   const [aberto, setAberto] = useState(null) // playerId do box aberto
   const numeros = numerosDosJogadores(partida)
   // Quem saiu numa substituição (benched) fica fora dos boxes do time até voltar.
@@ -79,6 +81,7 @@ export default function SumulaAoVivo({ partida, editavel = false, enviando = fal
           numeros={numeros[escalado.playerId]}
           colegas={doTime(escalado.team).filter((p) => p.playerId !== escalado.playerId)}
           enviando={enviando}
+          erro={erro}
           aoFechar={() => setAberto(null)}
           aoLancarGol={aoLancarGol}
           aoLancarLance={aoLancarLance}
@@ -89,6 +92,13 @@ export default function SumulaAoVivo({ partida, editavel = false, enviando = fal
 }
 
 const ehGoleiro = (escalado) => escalado.player?.position === 'GOALKEEPER'
+
+// Minuto opcional: vazio vale; senão, inteiro de 0 a 120 (o mesmo limite do back-end).
+export function erroNoMinuto(minuto) {
+  if (minuto === '') return ''
+  const n = Number(minuto)
+  return Number.isInteger(n) && n >= 0 && n <= 120 ? '' : 'O minuto vai de 0 a 120'
+}
 
 // Marcadores do box: só aparece o que o jogador já fez (box limpo para quem não fez nada).
 function Numeros({ numeros }) {
@@ -162,9 +172,12 @@ const secundaria = 'rounded-lg px-3 py-1.5 text-sm text-texto-suave ring-1 ring-
 
 // Painel do jogador (bottom sheet no celular, janela no meio no computador).
 // Passos: escolher o lance -> (gol) quem deu a assistência / (assistência) quem fez o gol.
-function DrillDown({ escalado, nomeDoTimeDele, numeros, colegas, enviando, aoFechar, aoLancarGol, aoLancarLance }) {
+function DrillDown({ escalado, nomeDoTimeDele, numeros, colegas, enviando, erro, aoFechar, aoLancarGol, aoLancarLance }) {
   const [passo, setPasso] = useState('lances') // 'lances' | 'assistDoGol' | 'autorDoGol'
   const [minuto, setMinuto] = useState('')
+  // Só mostra o erro da página depois de este painel ter enviado algo (não um erro antigo).
+  const [enviou, setEnviou] = useState(false)
+  const [erroDoMinuto, setErroDoMinuto] = useState('')
   const primeiro = useRef(null)
   const fechar = useRef(aoFechar)
   fechar.current = aoFechar
@@ -182,10 +195,19 @@ function DrillDown({ escalado, nomeDoTimeDele, numeros, colegas, enviando, aoFec
     return () => window.removeEventListener('keydown', aoTeclar)
   }, [])
 
-  // Fecha só se o back-end aceitou; se recusou, a página mostra o erro e o painel fica aberto.
+  // Fecha só se o back-end aceitou; se recusou, o erro aparece aqui dentro e o painel fica aberto.
+  // O minuto é conferido antes (mesma regra do back-end: inteiro de 0 a 120), sem ir à API.
   async function enviar(acaoDaApi) {
+    const erroLocal = erroNoMinuto(minuto)
+    setErroDoMinuto(erroLocal)
+    if (erroLocal) {
+      setPasso('lances')
+      return
+    }
+    setEnviou(true)
     if (await acaoDaApi()) aoFechar()
   }
+  const mensagem = erroDoMinuto || (enviou ? erro : '')
   const gol = (dados) => enviar(() => aoLancarGol(comMinuto(dados)))
   const lance = (type) => enviar(() => aoLancarLance(comMinuto({ type, playerId: escalado.playerId })))
 
@@ -239,6 +261,12 @@ function DrillDown({ escalado, nomeDoTimeDele, numeros, colegas, enviando, aoFec
             <Icone nome="fechar" />
           </button>
         </div>
+
+        {mensagem && (
+          <p role="alert" className="mt-3 rounded-lg bg-red-100 px-3 py-2 text-sm text-red-800">
+            {mensagem}
+          </p>
+        )}
 
         {numeros.expulso ? (
           <p className="mt-4 rounded-lg bg-red-950/50 px-3 py-2 text-sm text-red-200">

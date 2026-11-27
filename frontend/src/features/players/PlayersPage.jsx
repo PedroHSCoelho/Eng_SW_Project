@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   atualizarJogador,
@@ -7,6 +7,7 @@ import {
   excluirJogador,
   inativarJogador,
   listarJogadores,
+  reativarJogador,
 } from './playersApi.js'
 import PlayerForm, { POSICOES } from './PlayerForm.jsx'
 import { ehOrganizadorDo, useGrupo } from '../groups/GrupoContext.jsx'
@@ -45,6 +46,8 @@ export default function PlayersPage() {
   const [enviando, setEnviando] = useState(false)
   // Mudar este número força recarregar a lista depois de criar/editar/inativar/excluir.
   const [versao, setVersao] = useState(0)
+  // Onde está o formulário: ao clicar em "Editar" num jogador do fim da lista, a tela rola até ele.
+  const formulario = useRef(null)
 
   useEffect(() => {
     // "ativo" evita que uma resposta antiga sobrescreva a mais nova (busca digitada rápido).
@@ -131,7 +134,14 @@ export default function PlayersPage() {
     setErro('')
     setEditandoId(jogador.id)
     setForm({ name: jogador.name, nickname: jogador.nickname, position: jogador.position })
+    // `?.`: o jsdom dos testes não implementa scrollIntoView.
+    formulario.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
   }
+
+  // O cartão do próprio admin não tem Inativar/Excluir: um clique errado tiraria a pessoa do grupo
+  // dela mesma (o jogador some da escalação e da presença). Outro admin pode fazer, se precisar.
+  const ehOProprio = (jogador) =>
+    jogador.id === grupo?.myPlayerId || (usuario && contaDoJogador.get(jogador.id)?.userId === usuario.id)
 
   return (
     <section className="mx-auto max-w-5xl px-4 pb-16" aria-labelledby="titulo-jogadores">
@@ -170,14 +180,16 @@ export default function PlayersPage() {
       )}
 
       {ehOrganizador && (
-        <PlayerForm
-          valores={form}
-          editando={Boolean(editandoId)}
-          enviando={enviando}
-          aoMudar={atualizarCampo}
-          aoEnviar={salvar}
-          aoCancelar={limparFormulario}
-        />
+        <div ref={formulario} className="scroll-mt-24">
+          <PlayerForm
+            valores={form}
+            editando={Boolean(editandoId)}
+            enviando={enviando}
+            aoMudar={atualizarCampo}
+            aoEnviar={salvar}
+            aoCancelar={limparFormulario}
+          />
+        </div>
       )}
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
@@ -300,8 +312,21 @@ export default function PlayersPage() {
                       Cancelar
                     </button>
                   </>
+                ) : ehOProprio(j) ? (
+                  <span className="self-center text-xs text-green-300">Seu jogador</span>
                 ) : (
                   <>
+                    {!j.active && (
+                      <button
+                        type="button"
+                        disabled={enviando}
+                        onClick={() => executar(() => reativarJogador(j.id))}
+                        className={`${botao} bg-green-500 text-green-950 hover:bg-green-400`}
+                        aria-label={`Reativar ${j.nickname}`}
+                      >
+                        Reativar
+                      </button>
+                    )}
                     {j.active && (
                       <button
                         type="button"

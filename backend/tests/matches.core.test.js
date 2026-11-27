@@ -11,6 +11,7 @@ import {
   verificarPodeEditar,
   verificarPodeEncerrar,
   verificarPodeIniciar,
+  escaladosParaALista,
 } from '../src/features/matches/matches.core.js'
 
 // Seis jogadores ativos (ids 1 a 6) e um inativo (id 7).
@@ -210,5 +211,16 @@ describe('lerNomesDosTimes (nomes livres dos times)', () => {
   it('validarDadosDaPartida guarda os nomes', () => {
     const dados = validarDadosDaPartida({ date: '2026-11-20T19:00', location: 'Quadra', teamNames: { A: 'Com camisa', B: 'Sem camisa' } })
     expect(dados.teamNames).toEqual({ A: 'Com camisa', B: 'Sem camisa' })
+  })
+})
+
+describe('escaladosParaALista (escalado entra na lista de presença)', () => {
+  const escalacao = [{ playerId: 1, team: 'A' }, { playerId: 2, team: 'A' }, { playerId: 3, team: 'B' }]
+  it('quem não está na lista é adicionado; quem está como talvez é confirmado; confirmado fica como está', () => {
+    const presencas = [{ playerId: 2, maybe: true }, { playerId: 3, maybe: false }, { playerId: 9, maybe: false }]
+    expect(escaladosParaALista(escalacao, presencas)).toEqual({ adicionar: [1], confirmar: [2] })
+  })
+  it('lista vazia: todos os escalados entram', () => {
+    expect(escaladosParaALista(escalacao, [])).toEqual({ adicionar: [1, 2, 3], confirmar: [] })
   })
 })

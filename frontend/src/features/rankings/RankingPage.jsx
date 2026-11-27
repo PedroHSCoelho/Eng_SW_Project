@@ -10,7 +10,9 @@ const PERIODOS = { mes: 'Este mês', ano: 'Este ano', tudo: 'Tudo' }
 const ABAS = {
   geral: {
     nome: 'Geral',
-    vazio: 'Ninguém tem 3 partidas no período ainda. O ranking geral só inclui quem jogou pelo menos 3.',
+    regra:
+      'Pontos: vitória 3, empate 1, derrota 0. Desempate: saldo de gols, gols, assistências e nome. J = jogos (na pelada, cada jogo da noite conta), SG = saldo de gols.',
+    vazio: 'Ninguém tem 3 jogos no período ainda. O ranking geral só inclui quem jogou pelo menos 3.',
     colunas: [
       ['Pts', 'points'],
       ['J', 'matches'],
@@ -25,16 +27,19 @@ const ABAS = {
   artilharia: {
     nome: 'Artilharia',
     vazio: 'Ainda não há gols no período.',
+    regra: 'Mais gols na frente. Empate: quem jogou menos jogos fica na frente, depois o nome. J = jogos.',
     colunas: [['Gols', 'goals'], ['J', 'matches']],
   },
   assistencias: {
     nome: 'Assistências',
     vazio: 'Ainda não há assistências no período.',
+    regra: 'Mais assistências na frente. Empate: quem jogou menos jogos fica na frente, depois o nome. J = jogos.',
     colunas: [['Ast', 'assists'], ['J', 'matches']],
   },
   defesas: {
     nome: 'Defesas',
     vazio: 'Ainda não há defesas difíceis no período.',
+    regra: 'Mais defesas difíceis na frente. Empate: quem jogou menos jogos fica na frente, depois o nome. J = jogos.',
     colunas: [['Def', 'difficultSaves'], ['J', 'matches']],
   },
 }
@@ -169,10 +174,8 @@ export default function RankingPage() {
           </div>
         )
       )}
-      <p className="mt-3 text-xs text-green-300">
-        Pontos: vitória 3, empate 1, derrota 0. Desempate: saldo de gols, gols, assistências e nome. J = jogos, SG
-        = saldo de gols.
-      </p>
+      {/* Cada aba explica a própria regra: a de pontos só vale para a Geral. */}
+      <p className="mt-3 text-xs text-green-300">{config.regra}</p>
     </section>
   )
 }

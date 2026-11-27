@@ -60,7 +60,7 @@ describe('DrawPage: escolher quem joga', () => {
 
     expect(await screen.findByLabelText(/^J1\b/)).toBeInTheDocument()
     expect(screen.getByText(/Goleiro/)).toBeInTheDocument()
-    expect(screen.getByText(/0 selecionados \(de 6 a 22\)/)).toBeInTheDocument()
+    expect(screen.getByText(/0 selecionados \(de 6 a 22: 3 a 11 por time\)/)).toBeInTheDocument()
   })
 
   it('só habilita "Sortear" com pelo menos 6 selecionados', async () => {

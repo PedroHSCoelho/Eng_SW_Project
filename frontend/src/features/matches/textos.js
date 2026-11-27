@@ -34,3 +34,9 @@ export function textoDoResultadoDaPartida(partida) {
   if (partida.result === 'B_WINS') return `Vitória ${doTime(partida, 'B')}`
   return RESULTADO[partida.result] ?? ''
 }
+
+// Partida com data no passado é permitida (serve para lançar um jogo antigo), mas uma
+// "Agendada" com data que já passou provavelmente está esperando alguém lançar o resultado.
+export const dataJaPassou = (dataIso, agora = new Date()) => Boolean(dataIso) && new Date(dataIso) < agora
+export const precisaDeResultado = (partida, agora = new Date()) =>
+  partida.status === 'SCHEDULED' && dataJaPassou(partida.date, agora)

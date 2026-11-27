@@ -335,7 +335,7 @@ export function montarApp({ expiraEmSegundos, jogadores = [], agora, aleatorio, 
   const app = criarApp({
     playersService: criarPlayersService(playersRepo),
     authService,
-    matchesService: criarMatchesService({ matchesRepo, playersRepo, agora }),
+    matchesService: criarMatchesService({ matchesRepo, playersRepo, attendanceRepo, agora }),
     statsService: criarStatsService({ matchesRepo, playersRepo, agora }),
     craqueService: criarCraqueService({ craqueRepo, matchesRepo, agora }),
     drawService: criarDrawService({ playersRepo, aleatorio }),

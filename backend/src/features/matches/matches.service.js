@@ -7,6 +7,7 @@
 import { BusinessRuleError, NotFoundError } from '../../errors/AppError.js'
 import {
   calcularPlacar,
+  escaladosParaALista,
   lerEscalacao,
   lerSubstituicao,
   montarSubstituicao,
@@ -59,7 +60,9 @@ function verificarJogoDoLanceAberto(partida, lance) {
   if (jogo?.finishedAt) throw new BusinessRuleError(`O jogo ${jogo.number} já foi encerrado; o lance não pode mais ser removido`)
 }
 
-export function criarMatchesService({ matchesRepo, playersRepo, agora = () => new Date() }) {
+// `attendanceRepo` (repositório da lista de presença) é opcional: com ele, quem é escalado
+// também entra na lista de presença como confirmado.
+export function criarMatchesService({ matchesRepo, playersRepo, attendanceRepo = null, agora = () => new Date() }) {
   async function buscarOuFalhar(groupId, id) {
     const partida = await matchesRepo.buscarPorId(id)
     if (!partida || partida.groupId !== groupId) throw new NotFoundError('Partida não encontrada')
@@ -120,7 +123,13 @@ export function criarMatchesService({ matchesRepo, playersRepo, agora = () => ne
       const jogadores = cadastros.filter((j) => j.groupId === groupId)
       const porChave = Object.fromEntries(Object.entries(times).map(([t, ids]) => [`team${t}`, ids]))
       const escalacao = validarEscalacao({ ...porChave, jogadores })
-      return comPlacar(await matchesRepo.substituirEscalacao(id, escalacao))
+      const salva = await matchesRepo.substituirEscalacao(id, escalacao)
+      if (attendanceRepo) {
+        const { adicionar, confirmar } = escaladosParaALista(escalacao, await attendanceRepo.listarDaPartida(id))
+        for (const playerId of adicionar) await attendanceRepo.adicionar({ matchId: id, playerId, maybe: false })
+        for (const playerId of confirmar) await attendanceRepo.mudarTalvez({ matchId: id, playerId, maybe: false })
+      }
+      return comPlacar(salva)
     },
 
     // Durante a partida: substituição, pôr alguém num time ou tirar alguém de campo.

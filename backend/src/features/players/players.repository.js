@@ -15,18 +15,13 @@ function traduzirErroDeUnicidade(erro) {
 
 export const playersRepository = {
   // `comNota`: só para admin; a nota do admin vem escondida por padrão (ver db.js).
-  listar({ groupId, busca, apenasAtivos, comNota = false }) {
+  // A busca por nome/apelido (sem acento) é feita no serviço, em cima desta lista.
+  listar({ groupId, apenasAtivos, comNota = false }) {
     return prisma.player.findMany({
       omit: { skill: !comNota },
       where: {
         groupId,
         ...(apenasAtivos && { active: true }),
-        ...(busca && {
-          OR: [
-            { name: { contains: busca, mode: 'insensitive' } },
-            { nickname: { contains: busca, mode: 'insensitive' } },
-          ],
-        }),
       },
       orderBy: { name: 'asc' },
     })

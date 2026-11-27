@@ -42,6 +42,18 @@ export function validarDadosDoJogador(dados) {
   return { name, nickname, nicknameKey: nickname.toLowerCase(), position: dados.position }
 }
 
+// Texto para comparar na busca: minúsculas e SEM acento ("João" -> "joao", "Carlão" -> "carlao").
+// normalize('NFD') separa a letra do acento (ã = a + ~) e o replace apaga as marcas de acento.
+export const semAcento = (texto) => texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
+// Núcleo puro da busca: o jogador aparece se o nome OU o apelido contém o texto buscado,
+// ignorando maiúsculas e acentos. Busca vazia = todo mundo.
+export function combinaComBusca(jogador, busca) {
+  if (!busca) return true
+  const alvo = semAcento(busca)
+  return semAcento(jogador.name).includes(alvo) || semAcento(jogador.nickname).includes(alvo)
+}
+
 export function criarPlayersService(repo) {
   async function buscarOuFalhar(groupId, id) {
     const jogador = await repo.buscarPorId(id)
@@ -51,13 +63,12 @@ export function criarPlayersService(repo) {
 
   return {
     // `comNota`: quem pede é admin (só admin vê a nota de cada jogador).
+    // A busca é feita aqui (e não no banco) porque o Postgres só ignora acento com a extensão
+    // `unaccent`. Um grupo tem dezenas de jogadores, então filtrar em memória é barato e simples.
     async listar(groupId, { busca, apenasAtivos, comNota = false } = {}) {
-      const jogadores = await repo.listar({
-        groupId,
-        busca: typeof busca === 'string' ? busca.trim() : '',
-        apenasAtivos: apenasAtivos === true,
-        comNota,
-      })
+      const texto = typeof busca === 'string' ? busca.trim() : ''
+      const todos = await repo.listar({ groupId, apenasAtivos: apenasAtivos === true, comNota })
+      const jogadores = todos.filter((j) => combinaComBusca(j, texto))
       return comNota ? jogadores.map((j) => ({ ...j, skill: j.skill ?? null })) : jogadores.map(semNota)
     },
 
@@ -109,6 +120,13 @@ export function criarPlayersService(repo) {
     async inativar(groupId, id) {
       await buscarOuFalhar(groupId, id)
       return semNota(await repo.atualizar(id, { active: false }))
+    },
+
+    // Desfaz a inativação: o jogador volta a aparecer na escalação, na lista de presença e no sorteio.
+    async reativar(groupId, id) {
+      const jogador = await buscarOuFalhar(groupId, id)
+      if (jogador.active) throw new BusinessRuleError('Jogador já está ativo')
+      return semNota(await repo.atualizar(id, { active: true }))
     },
   }
 }
