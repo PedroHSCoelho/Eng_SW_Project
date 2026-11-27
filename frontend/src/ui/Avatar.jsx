@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useFotos } from '../features/photos/FotosContext.jsx'
-import { urlDaFoto } from '../features/photos/photosApi.js'
-import { iniciais } from '../features/photos/fotos.js'
+import { useFotos } from '../features/photos/context/FotosContext.jsx'
+import { urlDaFoto } from '../features/photos/api/photosApi.js'
+import { iniciais } from '../features/photos/domain/fotos.js'
 
 const TAMANHOS = {
   p: 'h-6 w-6 text-[0.6rem]', // ao lado do nome em listas
