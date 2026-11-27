@@ -217,3 +217,25 @@ Modelo:
 - Teste que prova: 18 testes novos no back (núcleo e API: tipos, tamanho, 413, quem pode, isolamento entre grupos) e 15 no front (iniciais, recorte, avatar com e sem foto, envio e remoção no perfil). A migração rodou num Postgres local junto com as 15 anteriores e o schema bateu; upload real pelo navegador (foto 1200 x 1600 de 47 KB virou 3,5 KB).
 - Não verificado: no Supabase e na Vercel (depende do `migrate deploy` e do deploy).
 - Quem revisou/entendeu: (preencher)
+
+## 2026-11-26 — CI no fluxo dev → test → main
+- O que mudou: o workflow do GitHub Actions agora roda em pushes para `dev`, `test` e `main`, e em PRs direcionadas a essas branches.
+- Por quê: validar a mudança antes do merge e testar novamente quando ela chega a `test` e `main`.
+- Conceito aprendido: integração contínua nos pontos de integração do fluxo; checks de CI não bloqueiam merge sem proteção de branch configurada no GitHub.
+- Como foi verificado: revisão do workflow e `git diff --check`; eventos reais de GitHub não foram executados nesta sessão.
+- Quem revisou/entendeu: (preencher)
+
+## 2026-11-26 — Reorganizando a feature matches no front
+- O que mudou: páginas, componentes, APIs e regras de domínio passaram para subpastas próprias dentro de `frontend/src/features/matches/`; testes continuam junto do código testado; imports internos e externos foram atualizados.
+- Por quê: reduzir a mistura de responsabilidades na raiz da feature e facilitar localizar cada tipo de arquivo sem alterar o comportamento.
+- Conceito aprendido: organização por responsabilidade dentro de uma feature; manter testes co-localizados com a implementação.
+- Como foi verificado: `cd frontend; npm test` (20 arquivos e 181 testes passaram) e `cd frontend; npm run build` (build concluído).
+- Quem revisou/entendeu: (preencher)
+
+## 2026-11-26 — Organizando as demais features do front
+- O que mudou: auth, groups, photos, players, home, draw e rankings passaram a separar páginas, componentes, APIs, contextos e lógica conforme cada feature necessita; a página inicial foi movida para `features/home/pages/`; posições dos jogadores foram extraídas do formulário para `players/domain/positions.js`. O back-end não foi alterado.
+- Por quê: padronizar a navegação por responsabilidade sem criar pastas vazias ou forçar a mesma estrutura em features diferentes.
+- Conceito aprendido: coesão por feature, separação de responsabilidades e dependência de domínio sem acoplar outras features a um componente visual.
+- Como foi verificado: imports relativos conferidos; `cd frontend; npm test` (20 arquivos e 181 testes passaram); `cd frontend; npm run build` (build concluído).
+- Não verificado: navegação manual no navegador; o comportamento foi validado pela suíte e pelo build.
+- Quem revisou/entendeu: (preencher)

@@ -1,10 +1,11 @@
 name: CI
 
-# Roda os testes em todo push para main/dev e em todo pull request.
+# Roda os testes em pushes e PRs direcionados a dev, test e main.
 on:
   push:
-    branches: [main, dev]
+    branches: [dev, test, main]
   pull_request:
+    branches: [dev, test, main]
 
 jobs:
   backend:
