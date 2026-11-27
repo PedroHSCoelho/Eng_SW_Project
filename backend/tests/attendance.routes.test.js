@@ -121,6 +121,27 @@ describe('lista de presença', () => {
   })
 })
 
+describe('escalação -> lista de presença', () => {
+  it('quem é escalado (ex.: times do Sorteio) entra na lista como confirmado; "talvez" vira confirmado', async () => {
+    const { chefe, ana } = await cenario({ maxPlayers: null })
+    await ana.post(URL, { maybe: true })
+
+    const res = await chefe.put('/api/grupos/1/matches/1/escalacao', { teamA: [1, 2], teamB: [3, 4] })
+    expect(res.status).toBe(200)
+
+    const lista = (await chefe.get(URL)).body.data
+    expect(lista.confirmed.map((l) => l.playerId).sort()).toEqual([1, 2, 3, 4])
+    expect(lista.waitlist).toEqual([])
+  })
+
+  it('escalar de novo não duplica ninguém na lista', async () => {
+    const { chefe, attendanceRepo } = await cenario({ maxPlayers: null })
+    await chefe.put('/api/grupos/1/matches/1/escalacao', { teamA: [1, 2], teamB: [3, 4] })
+    await chefe.put('/api/grupos/1/matches/1/escalacao', { teamA: [2, 1], teamB: [4, 3] })
+    expect(attendanceRepo.presencas.filter((p) => p.matchId === 1)).toHaveLength(4)
+  })
+})
+
 describe('lista de presença: talvez e convidados', () => {
   it('"talvez" vai para a espera mesmo com vaga, e não sobe sozinho', async () => {
     const { ana, bia } = await cenario({ maxPlayers: 2 })

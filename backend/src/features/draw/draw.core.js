@@ -4,11 +4,16 @@
 import { ValidationError } from '../../errors/AppError.js'
 
 export const FORCA_PADRAO = 2.5 // quem ainda não tem nota do admin entra com 2,5 (o meio da escala de 0 a 5)
-export const MIN_JOGADORES = 6 // 3 por time, o mínimo para uma partida começar
-export const MAX_JOGADORES = 22 // limite da busca por força bruta (C(22,11) divisões)
-// Pelada: de 3 a 6 times, com pelo menos 3 por time; sem força bruta (seria lento demais).
+// Uma regra só para qualquer quantidade de times: de 3 a 11 jogadores POR TIME
+// (3 = mínimo para a partida começar; 11 = um time de futebol de campo completo).
+// Com 2 times isso dá 6 a 22, que também é o limite da força bruta (C(22,11) divisões).
+// Antes, 3 times aceitavam até 60 (20 por time), um número solto que não batia com o de 2 times.
+export const MIN_POR_TIME = 3
+export const MAX_POR_TIME = 11
+export const MIN_JOGADORES = 2 * MIN_POR_TIME // 6
+export const MAX_JOGADORES = 2 * MAX_POR_TIME // 22
+// Pelada: de 3 a 6 times; sem força bruta (seria lento demais), divisão gulosa.
 export const MAX_TIMES = 6
-export const MAX_JOGADORES_VARIOS_TIMES = 60
 const NOMES_DOS_TIMES = ['A', 'B', 'C', 'D', 'E', 'F']
 
 const arredondar2 = (n) => Math.round(n * 100) / 100
@@ -27,21 +32,21 @@ export function lerQuantidadeDeTimes(corpo) {
   return quantidade
 }
 
-// Valida a entrada externa: lista de ids únicos, de 6 a 22 jogadores (2 times)
-// ou de 3 por time a 60 (vários times).
+// Valida a entrada externa: lista de ids únicos, de 3 a 11 por time
+// (2 times: 6 a 22; 3 times: 9 a 33; ... 6 times: 18 a 66).
 export function lerIdsDoSorteio(corpo) {
   const ids = corpo?.playerIds
   const times = lerQuantidadeDeTimes(corpo)
   if (!Array.isArray(ids) || !ids.every((id) => Number.isInteger(id) && id > 0)) {
     throw new ValidationError('playerIds deve ser uma lista de ids de jogadores')
   }
-  const minimo = times === 2 ? MIN_JOGADORES : 3 * times
-  const maximo = times === 2 ? MAX_JOGADORES : MAX_JOGADORES_VARIOS_TIMES
+  const minimo = MIN_POR_TIME * times
+  const maximo = MAX_POR_TIME * times
   if (ids.length < minimo) {
     throw new ValidationError(`Escolha pelo menos ${minimo} jogadores para sortear`)
   }
   if (ids.length > maximo) {
-    throw new ValidationError(`Escolha no máximo ${maximo} jogadores para sortear`)
+    throw new ValidationError(`Escolha no máximo ${maximo} jogadores para sortear (até ${MAX_POR_TIME} por time)`)
   }
   if (new Set(ids).size !== ids.length) {
     throw new ValidationError('Jogador repetido na lista')

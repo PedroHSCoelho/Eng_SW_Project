@@ -173,7 +173,7 @@ export function lerIntervaloExplicito({ de, ate }) {
   const inicio = ler(de, 'de')
   const fim = ler(ate, 'ate')
   if (inicio && fim && inicio >= fim) {
-    throw new ValidationError('"de" deve ser anterior a "ate"')
+    throw new ValidationError('A data inicial ("De") deve ser anterior à data final ("Até")')
   }
   return { de: inicio, ate: fim }
 }

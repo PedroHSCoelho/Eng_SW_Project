@@ -140,6 +140,7 @@ function Classificacao({ linhas, partida }) {
             <th className="font-medium" title="Empates">E</th>
             <th className="font-medium" title="Derrotas">D</th>
             <th className="font-medium" title="Saldo de gols">SG</th>
+            <th className="font-medium" title="Gols marcados (gols pró)">GP</th>
             <th className="font-medium" title="Pontos">Pts</th>
           </tr>
         </thead>
@@ -152,11 +153,17 @@ function Classificacao({ linhas, partida }) {
               <td>{l.draws}</td>
               <td>{l.losses}</td>
               <td>{l.goalsFor - l.goalsAgainst}</td>
+              <td>{l.goalsFor}</td>
               <td className="font-bold">{l.points}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      {/* Mesmo critério do back-end (classificacaoDaPelada em pelada.core.js). */}
+      <p className="mt-2 text-xs text-green-300">
+        Pontos: vitória 3, empate 1. Empate em pontos: 1º saldo de gols (SG), 2º gols marcados (GP), 3º ordem dos
+        times (A, B, C...).
+      </p>
     </div>
   )
 }

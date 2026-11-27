@@ -16,7 +16,8 @@ const destaques = [
 const secundarios = [
   { icone: 'jogadores', titulo: 'Jogadores', texto: 'Perfil com gols, assistências e partidas', para: '/jogadores' },
   { icone: 'historico', titulo: 'Histórico', texto: 'Partidas finalizadas, com filtros', para: '/historico' },
-  { icone: 'estrela', titulo: 'Avaliação', texto: 'Dê notas depois do jogo', para: '/partidas' },
+  // Não há atalho de "Avaliação": a nota de 1 a 5 depois do jogo foi trocada pela votação do craque,
+  // que fica dentro da própria partida encerrada (CraquePanel).
 ]
 
 const sorteio = {
@@ -153,7 +154,7 @@ export default function HomePage() {
             <AtalhoGrande key={a.titulo} {...a} />
           ))}
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {pequenos.map((a) => (
             <AtalhoPequeno key={a.titulo} {...a} />
           ))}

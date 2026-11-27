@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import '@testing-library/jest-dom/vitest'
-import HistoryPage from './HistoryPage.jsx'
+import HistoryPage, { erroNasDatas } from './HistoryPage.jsx'
 import { diaSeguinte } from './historyApi.js'
 import { definirGrupoAtual } from '../../api/grupoAtual.js'
 
@@ -140,10 +140,33 @@ describe('HistoryPage', () => {
   })
 
   it('mostra o erro da API (ex.: filtro inválido)', async () => {
-    simularApi(() => resposta(400, { erro: '"de" deve ser anterior a "ate"' }))
+    simularApi(() => resposta(400, { erro: 'A data inicial ("De") deve ser anterior à data final ("Até")' }))
 
     renderizar()
 
     expect(await screen.findByRole('alert')).toHaveTextContent('anterior')
+  })
+
+  it('"De" depois de "Até": mensagem com acento, sem chamar a API e sem deixar resultados antigos', async () => {
+    simularApi(() => resposta(200, { data: pagina([item(1)]) }))
+    renderizar()
+    expect(await screen.findByText('Quadra 1')).toBeInTheDocument()
+    const chamadasAntes = urlsDoHistorico().length
+
+    fireEvent.change(screen.getByLabelText('De'), { target: { value: '2026-12-10' } })
+    fireEvent.change(screen.getByLabelText('Até'), { target: { value: '2026-12-01' } })
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Até')
+    expect(screen.queryByText('Quadra 1')).not.toBeInTheDocument()
+    // Só a mudança do "De" (ainda sem "Até") foi à API; a combinação inválida não.
+    expect(urlsDoHistorico().length).toBe(chamadasAntes + 1)
+  })
+})
+
+describe('erroNasDatas', () => {
+  it('só reclama quando "De" vem depois de "Até"', () => {
+    expect(erroNasDatas({ de: '2026-12-10', ate: '2026-12-01' })).toMatch(/anterior ou igual/)
+    expect(erroNasDatas({ de: '2026-12-01', ate: '2026-12-01' })).toBe('')
+    expect(erroNasDatas({ de: '', ate: '2026-12-01' })).toBe('')
   })
 })

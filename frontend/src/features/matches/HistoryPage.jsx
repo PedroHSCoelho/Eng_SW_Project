@@ -9,6 +9,12 @@ const campo =
   'w-full rounded-lg bg-green-950 px-3 py-2 text-white ring-1 ring-green-700 focus:outline-none focus:ring-2 focus:ring-green-400'
 const botao = 'rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50 bg-green-800 hover:bg-green-700'
 
+// "De" depois de "Até" não tem resultado possível. As datas vêm do <input type="date"> (AAAA-MM-DD),
+// então comparar o texto já compara as datas. "De" = "Até" vale (um dia só).
+export function erroNasDatas({ de, ate }) {
+  return de && ate && de > ate ? 'A data inicial ("De") deve ser anterior ou igual à data final ("Até")' : ''
+}
+
 export default function HistoryPage() {
   const [jogadores, setJogadores] = useState([])
   const [filtros, setFiltros] = useState({ playerId: '', de: '', ate: '' })
@@ -25,6 +31,15 @@ export default function HistoryPage() {
   useEffect(() => {
     // "ativo" evita que uma resposta antiga sobrescreva a nova (filtro mudado rápido).
     let ativo = true
+    // Datas fora de ordem: avisa sem ir à API e tira da tela o resultado do filtro anterior
+    // (antes o erro aparecia junto com partidas que não tinham nada a ver com o filtro novo).
+    const erroDasDatas = erroNasDatas(filtros)
+    if (erroDasDatas) {
+      setErro(erroDasDatas)
+      setHistorico(null)
+      setCarregando(false)
+      return undefined
+    }
     setCarregando(true)
     buscarHistorico({ ...filtros, page: pagina })
       .then((dados) => {
@@ -32,7 +47,11 @@ export default function HistoryPage() {
         setHistorico(dados)
         setErro('')
       })
-      .catch((e) => ativo && setErro(e.message))
+      .catch((e) => {
+        if (!ativo) return
+        setErro(e.message)
+        setHistorico(null)
+      })
       .finally(() => ativo && setCarregando(false))
     return () => {
       ativo = false
