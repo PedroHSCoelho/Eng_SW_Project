@@ -185,7 +185,7 @@ export default function DrawPage() {
               {resultado ? 'Sortear de novo' : 'Sortear times'}
             </button>
             <span className="text-sm text-green-200">
-              {quantos} {quantos === 1 ? 'selecionado' : 'selecionados'} (de {MIN_JOGADORES} a {MAX_JOGADORES})
+              {quantos} {quantos === 1 ? 'selecionado' : 'selecionados'} (de {MIN_JOGADORES} a {MAX_JOGADORES}: 3 a 11 por time)
             </span>
           </div>
         </fieldset>

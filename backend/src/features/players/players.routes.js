@@ -53,6 +53,10 @@ export function criarPlayersRouter(service) {
     res.json({ data: await service.inativar(req.participacao.groupId, lerId(req)) })
   })
 
+  router.patch('/:id/reativar', async (req, res) => {
+    res.json({ data: await service.reativar(req.participacao.groupId, lerId(req)) })
+  })
+
   router.delete('/:id', async (req, res) => {
     await service.excluir(req.participacao.groupId, lerId(req))
     res.status(204).end()

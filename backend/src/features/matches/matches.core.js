@@ -117,6 +117,18 @@ export function validarEscalacao({ jogadores, ...porChave }) {
   return times.flatMap(([team, ids]) => ids.map((playerId) => ({ playerId, team })))
 }
 
+// Quem foi escalado vai junto para a lista de presença (escalado = vai jogar).
+// Sem isto, os times do Sorteio entravam na escalação como "não confirmado".
+// Devolve quem falta na lista (`adicionar`) e quem está nela como "talvez" (`confirmar`).
+export function escaladosParaALista(escalacao, presencas) {
+  const naLista = new Map(presencas.map((p) => [p.playerId, p]))
+  const ids = [...new Set(escalacao.map((e) => e.playerId))]
+  return {
+    adicionar: ids.filter((id) => !naLista.has(id)),
+    confirmar: ids.filter((id) => naLista.get(id)?.maybe === true),
+  }
+}
+
 // A escalação só muda antes de a partida começar.
 export function verificarEscalacaoEditavel(partida) {
   if (partida.status !== 'SCHEDULED') {

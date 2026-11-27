@@ -167,6 +167,7 @@ describe('autorização nos jogadores do grupo', () => {
     expect((await request(app).post(url).set('Cookie', cookie).send(novo)).status).toBe(403)
     expect((await request(app).put(`${url}/1`).set('Cookie', cookie).send(novo)).status).toBe(403)
     expect((await request(app).patch(`${url}/1/inativar`).set('Cookie', cookie)).status).toBe(403)
+    expect((await request(app).patch(`${url}/1/reativar`).set('Cookie', cookie)).status).toBe(403)
     expect((await request(app).delete(`${url}/1`).set('Cookie', cookie)).status).toBe(403)
   })
 

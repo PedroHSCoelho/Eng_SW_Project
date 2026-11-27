@@ -148,5 +148,8 @@ describe('HomePage', () => {
     expect(screen.getByRole('heading', { name: 'Ranking', level: 3 }).closest('a')).toHaveAttribute('href', '/ranking')
     expect(screen.getByText('Jogadores').closest('a')).toHaveAttribute('href', '/jogadores')
     expect(screen.queryByText('Sorteio de times')).not.toBeInTheDocument()
+    // A tela de avaliação não existe (virou a votação do craque dentro da partida).
+    expect(screen.queryByText('Avaliação')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Dê notas/)).not.toBeInTheDocument()
   })
 })

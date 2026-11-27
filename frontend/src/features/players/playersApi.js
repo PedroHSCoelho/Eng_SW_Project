@@ -22,6 +22,11 @@ export function inativarJogador(id) {
   return pedir(`${apiDoGrupo()}/players/${id}/inativar`, { method: 'PATCH' })
 }
 
+// Desfaz a inativação (volta para escalação, presença e sorteio).
+export function reativarJogador(id) {
+  return pedir(`${apiDoGrupo()}/players/${id}/reativar`, { method: 'PATCH' })
+}
+
 export function excluirJogador(id) {
   return pedir(`${apiDoGrupo()}/players/${id}`, { method: 'DELETE' })
 }
