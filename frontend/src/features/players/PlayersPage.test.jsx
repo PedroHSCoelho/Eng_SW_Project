@@ -173,6 +173,19 @@ describe('PlayersPage', () => {
       await waitFor(() => expect(screen.getByText('Novo jogador')).toBeInTheDocument())
     })
 
+    it('rola a tela até o formulário ao clicar em Editar', async () => {
+      const rolar = vi.fn()
+      window.HTMLElement.prototype.scrollIntoView = rolar
+      simularApi(listaCom(ze))
+      renderizarPagina()
+      await screen.findByText('Zé')
+
+      fireEvent.click(screen.getByRole('button', { name: 'Editar Zé' }))
+
+      expect(rolar).toHaveBeenCalled()
+      delete window.HTMLElement.prototype.scrollIntoView
+    })
+
     it('cancelar volta o formulário para o modo de cadastro', async () => {
       simularApi(listaCom(ze))
       renderizarPagina()
@@ -220,6 +233,30 @@ describe('PlayersPage', () => {
       await screen.findByText('Beto')
 
       expect(screen.queryByRole('button', { name: 'Inativar Beto' })).not.toBeInTheDocument()
+    })
+  })
+
+  describe('reativar', () => {
+    it('inativo ganha o botão Reativar, que chama a API e recarrega a lista', async () => {
+      simularApi({
+        ...listaCom(beto),
+        'PATCH /api/grupos/1/players/2/reativar': () => resposta(200, { data: { ...beto, active: true } }),
+      })
+      renderizarPagina()
+      await screen.findByText('Beto')
+
+      fireEvent.click(screen.getByRole('button', { name: 'Reativar Beto' }))
+
+      await waitFor(() => expect(chamadas()).toContain('PATCH /api/grupos/1/players/2/reativar'))
+      await waitFor(() => expect(chamadas().filter((c) => c === 'GET /api/grupos/1/players')).toHaveLength(2))
+    })
+
+    it('jogador ativo não tem Reativar', async () => {
+      simularApi(listaCom(ze))
+      renderizarPagina()
+      await screen.findByText('Zé')
+
+      expect(screen.queryByRole('button', { name: 'Reativar Zé' })).not.toBeInTheDocument()
     })
   })
 
@@ -330,6 +367,19 @@ describe('PlayersPage: dar e tirar admin', () => {
 
     expect(await screen.findByRole('button', { name: 'Tirar admin de Beto' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Tirar admin de Lu' })).not.toBeInTheDocument()
+  })
+
+  it('no próprio cartão o admin não tem Inativar nem Excluir (nos outros tem)', async () => {
+    const eu = { userId: 1, role: 'ORGANIZER', playerId: 3, user: { id: 1, name: 'Luana' }, player: { id: 3, nickname: 'Lu' } }
+    simularApi(comMembros({ 'GET /api/grupos/1/membros': () => resposta(200, { data: [...membros, eu] }) }))
+
+    renderizarPagina()
+
+    expect(await screen.findByRole('button', { name: 'Inativar Zé' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Inativar Lu' })).not.toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: 'Excluir Lu' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Editar Lu' })).toBeInTheDocument()
+    expect(screen.getByText('Seu jogador')).toBeInTheDocument()
   })
 
   it('membro comum vê a marca de admin, mas não os botões nem o convite', async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BusinessRuleError, NotFoundError, ValidationError } from '../src/errors/AppError.js'
-import { criarPlayersService } from '../src/features/players/players.service.js'
+import { combinaComBusca, criarPlayersService, semAcento } from '../src/features/players/players.service.js'
 
 // Repositório falso: só o que o serviço precisa, sem Prisma nem banco.
 // Assim cada regra é testada isolada (núcleo decide, casca executa).
@@ -211,6 +211,32 @@ describe('inativar jogador', () => {
   })
 })
 
+describe('reativar jogador', () => {
+  it('rejeita (404) quando o jogador não existe ou é de outro grupo', async () => {
+    const service = criarPlayersService(repoFalso({ buscarPorId: async () => ({ groupId: 2, id: 1, active: false }) }))
+    await expect(service.reativar(1, 1)).rejects.toThrow(NotFoundError)
+  })
+
+  it('jogador que já está ativo -> 422', async () => {
+    const service = criarPlayersService(repoFalso({ buscarPorId: async () => ({ groupId: 1, id: 1, active: true }) }))
+    await expect(service.reativar(1, 1)).rejects.toThrow(BusinessRuleError)
+  })
+
+  it('volta a ficar ativo', async () => {
+    let gravado
+    const repo = repoFalso({
+      buscarPorId: async () => ({ groupId: 1, id: 1, active: false }),
+      atualizar: async (id, dados) => {
+        gravado = dados
+        return { id, ...dados }
+      },
+    })
+    const jogador = await criarPlayersService(repo).reativar(1, 1)
+    expect(gravado).toEqual({ active: true })
+    expect(jogador.active).toBe(true)
+  })
+})
+
 describe('buscar jogador', () => {
   it('rejeita (404) quando o jogador não existe', async () => {
     const service = criarPlayersService(repoFalso({ buscarPorId: async () => null }))
@@ -238,7 +264,8 @@ describe('listar jogadores', () => {
 
     await service.listar(1, { busca: '  ze ', apenasAtivos: true })
 
-    expect(filtros).toEqual({ groupId: 1, busca: 'ze', apenasAtivos: true, comNota: false })
+    // A busca não vai para o banco: é feita no serviço (para ignorar acentos).
+    expect(filtros).toEqual({ groupId: 1, apenasAtivos: true, comNota: false })
   })
 
   it('sem filtros: busca vazia e inclui inativos', async () => {
@@ -253,7 +280,33 @@ describe('listar jogadores', () => {
 
     await service.listar(1, {})
 
-    expect(filtros).toEqual({ groupId: 1, busca: '', apenasAtivos: false, comNota: false })
+    expect(filtros).toEqual({ groupId: 1, apenasAtivos: false, comNota: false })
+  })
+
+  it('busca ignora maiúsculas E acentos, no nome ou no apelido', async () => {
+    const lista = [
+      { id: 1, name: 'João Pedro', nickname: 'JP' },
+      { id: 2, name: 'Carlos Souza', nickname: 'Carlão' },
+      { id: 3, name: 'Ana', nickname: 'Aninha' },
+    ]
+    const service = criarPlayersService(repoFalso({ listar: async () => lista }))
+    const ids = async (busca) => (await service.listar(1, { busca })).map((j) => j.id)
+
+    expect(await ids('joao')).toEqual([1])
+    expect(await ids('carlao')).toEqual([2])
+    expect(await ids('CARLÃO')).toEqual([2])
+    expect(await ids('  ')).toEqual([1, 2, 3])
+    expect(await ids('xyz')).toEqual([])
+  })
+})
+
+describe('semAcento / combinaComBusca', () => {
+  it('tira acento e cedilha e passa para minúsculas', () => {
+    expect(semAcento('Ação Conceição Ñandu Ü')).toBe('acao conceicao nandu u')
+  })
+  it('busca vazia combina com todos', () => {
+    expect(combinaComBusca({ name: 'Zé', nickname: 'Zé' }, '')).toBe(true)
+    expect(combinaComBusca({ name: 'José', nickname: 'Zé' }, 'ze')).toBe(true)
   })
 })
 
