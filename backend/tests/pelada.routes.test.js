@@ -93,8 +93,10 @@ describe('pelada (vários times e jogos)', () => {
     expect(fim.body.data.games.map((j) => j.result)).toEqual(['HOME_WINS', 'AWAY_WINS'])
 
     const j1 = (await chefe.get('/api/grupos/1/players/1/stats')).body.data
-    expect(j1).toMatchObject({ matches: 1, wins: 1, losses: 1, draws: 0, goals: 1, goalDifference: 0 })
-    expect(j1.recentes[0]).toMatchObject({ resultado: 'E', format: 'PELADA', wins: 1, losses: 1 })
+    // J conta JOGOS: o time A jogou 2 jogos na noite, então J = 2 = V + E + D.
+    expect(j1).toMatchObject({ matches: 2, wins: 1, losses: 1, draws: 0, goals: 1, goalDifference: 0, goalsPerMatch: 0.5 })
+    // Pelada não vira "empate": sai a campanha da noite, sem resultado único nem placar somado.
+    expect(j1.recentes[0]).toEqual({ matchId: 1, date: expect.any(String), format: 'PELADA', resultado: null, wins: 1, draws: 0, losses: 1 })
     const j7 = (await chefe.get('/api/grupos/1/players/7/stats')).body.data
     expect(j7).toMatchObject({ matches: 1, wins: 0, losses: 1 })
     const j5 = (await chefe.get('/api/grupos/1/players/5/stats')).body.data

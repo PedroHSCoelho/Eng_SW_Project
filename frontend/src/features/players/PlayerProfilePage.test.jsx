@@ -57,9 +57,20 @@ describe('PlayerProfilePage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Zé' })).toBeInTheDocument()
     expect(screen.getByText('José da Silva · Atacante')).toBeInTheDocument()
-    expect(screen.getByText('Gols por partida').previousSibling).toHaveTextContent('0.75')
+    expect(screen.getByText('Gols por jogo').previousSibling).toHaveTextContent('0.75')
     expect(screen.getByText('Vitórias').previousSibling).toHaveTextContent('2')
     expect(screen.getByText('Saldo de gols').previousSibling).toHaveTextContent('2')
+  })
+
+  it('pelada nas últimas partidas mostra a campanha da noite, nunca "empate" com placar somado', async () => {
+    const pelada = { matchId: 5, date: '2026-11-20T22:00:00Z', format: 'PELADA', resultado: null, wins: 3, draws: 0, losses: 2 }
+    simularApi({ statsResp: { ...stats, recentes: [pelada, ...stats.recentes] } })
+
+    renderizar()
+
+    const item = await screen.findByLabelText(/^Pelada em .*3 vitórias, 0 empates e 2 derrotas/)
+    expect(item).toHaveTextContent('Pelada 3V 0E 2D')
+    expect(item).not.toHaveTextContent('x')
   })
 
   it('admin vê a nota do admin com vírgula (a API só manda o campo para admin)', async () => {
@@ -128,11 +139,11 @@ describe('PlayerProfilePage: estatísticas por período', () => {
     simularPorPeriodo()
     renderizar()
     await screen.findByRole('heading', { name: 'Zé' })
-    expect(screen.getByText('Partidas').previousSibling).toHaveTextContent('4')
+    expect(screen.getByText('Jogos').previousSibling).toHaveTextContent('4')
 
     fireEvent.change(screen.getByLabelText('Período'), { target: { value: 'mes' } })
 
-    await waitFor(() => expect(screen.getByText('Partidas').previousSibling).toHaveTextContent('1'))
+    await waitFor(() => expect(screen.getByText('Jogos').previousSibling).toHaveTextContent('1'))
     expect(screen.getByText('Gols').previousSibling).toHaveTextContent('2')
     // O jogador não é buscado de novo: só as estatísticas.
     const urls = fetch.mock.calls.map(([u]) => u)
@@ -158,6 +169,6 @@ describe('PlayerProfilePage: estatísticas por período', () => {
     fireEvent.change(screen.getByLabelText('Período'), { target: { value: 'ano' } })
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Período inválido')
-    expect(screen.getByText('Partidas').previousSibling).toHaveTextContent('4')
+    expect(screen.getByText('Jogos').previousSibling).toHaveTextContent('4')
   })
 })

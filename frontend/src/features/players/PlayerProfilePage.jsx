@@ -110,13 +110,14 @@ export default function PlayerProfilePage() {
         </p>
       )}
       <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Numero rotulo="Partidas" valor={stats.matches} />
+        {/* "Jogos" e não "Partidas": numa pelada cada jogo da noite conta, então Jogos = V + E + D. */}
+        <Numero rotulo="Jogos" valor={stats.matches} />
         <Numero rotulo="Vitórias" valor={stats.wins} />
         <Numero rotulo="Empates" valor={stats.draws} />
         <Numero rotulo="Derrotas" valor={stats.losses} />
         <Numero rotulo="Gols" valor={stats.goals} />
         <Numero rotulo="Assistências" valor={stats.assists} />
-        <Numero rotulo="Gols por partida" valor={stats.goalsPerMatch.toFixed(2)} />
+        <Numero rotulo="Gols por jogo" valor={stats.goalsPerMatch.toFixed(2)} />
         <Numero rotulo="Saldo de gols" valor={stats.goalDifference} />
         <Numero rotulo="Defesas difíceis" valor={stats.difficultSaves ?? 0} />
         <Numero rotulo="Cartões amarelos" valor={stats.yellowCards ?? 0} />
@@ -146,15 +147,26 @@ export default function PlayerProfilePage() {
         <p className="mt-2 text-green-200">Ainda não jogou nenhuma partida finalizada.</p>
       ) : (
         <ul className="mt-2 flex flex-wrap gap-2">
-          {stats.recentes.map((r) => (
-            <li
-              key={r.matchId}
-              className={`rounded-lg px-3 py-2 text-sm font-semibold ${RESULTADOS[r.resultado].classe}`}
-              aria-label={`${RESULTADOS[r.resultado].nome}, ${r.golsPro} a ${r.golsContra}, em ${new Date(r.date).toLocaleDateString('pt-BR')}`}
-            >
-              {r.resultado} <span className="font-normal">{r.golsPro}x{r.golsContra}</span>
-            </li>
-          ))}
+          {stats.recentes.map((r) =>
+            r.format === 'PELADA' ? (
+              // Pelada: vários jogos na noite, então mostra a campanha (ex.: 3V 0E 2D), sem placar somado.
+              <li
+                key={r.matchId}
+                className="rounded-lg bg-blue-100 px-3 py-2 text-sm font-semibold text-blue-900"
+                aria-label={`Pelada em ${new Date(r.date).toLocaleDateString('pt-BR')}: ${r.wins} vitórias, ${r.draws} empates e ${r.losses} derrotas`}
+              >
+                Pelada <span className="font-normal">{r.wins}V {r.draws}E {r.losses}D</span>
+              </li>
+            ) : (
+              <li
+                key={r.matchId}
+                className={`rounded-lg px-3 py-2 text-sm font-semibold ${RESULTADOS[r.resultado].classe}`}
+                aria-label={`${RESULTADOS[r.resultado].nome}, ${r.golsPro} a ${r.golsContra}, em ${new Date(r.date).toLocaleDateString('pt-BR')}`}
+              >
+                {r.resultado} <span className="font-normal">{r.golsPro}x{r.golsContra}</span>
+              </li>
+            ),
+          )}
         </ul>
       )}
     </section>

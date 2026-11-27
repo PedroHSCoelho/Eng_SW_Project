@@ -336,6 +336,49 @@ describe('ultimasPartidas (V, E ou D das últimas partidas do jogador)', () => {
   })
 })
 
+// Pelada com 3 times: o time A joga 3 jogos na noite (vence 2, perde 1); o C joga 1 só.
+// Jogos: 1) A 1x0 B   2) A 1x0 C   3) A 0x1 B
+const noiteDePelada = (id = 10, date = '2026-11-20T20:00:00Z') => ({
+  id, status: 'FINISHED', format: 'PELADA', teamCount: 3, result: null, date,
+  players: [{ playerId: 1, team: 'A' }, { playerId: 2, team: 'B' }, { playerId: 3, team: 'C' }],
+  games: [
+    { id: 1, number: 1, homeTeam: 'A', awayTeam: 'B', result: 'HOME_WINS' },
+    { id: 2, number: 2, homeTeam: 'A', awayTeam: 'C', result: 'HOME_WINS' },
+    { id: 3, number: 3, homeTeam: 'A', awayTeam: 'B', result: 'AWAY_WINS' },
+  ],
+  goals: [
+    { ...gol(1, 'A'), gameId: 1 },
+    { ...gol(1, 'A'), gameId: 2 },
+    { ...gol(2, 'B'), gameId: 3 },
+  ],
+})
+
+describe('pelada: J conta jogos (J = V + E + D)', () => {
+  it('na pelada cada jogo da noite conta no J, igual ao V/E/D', () => {
+    const a = estatisticasDoJogador(1, [noiteDePelada()])
+    expect(a).toMatchObject({ matches: 3, wins: 2, draws: 0, losses: 1, goals: 2, goalsPerMatch: 0.67 })
+    expect(a.matches).toBe(a.wins + a.draws + a.losses)
+    // O time C só entrou em 1 jogo: J = 1, mesmo estando na noite inteira.
+    expect(estatisticasDoJogador(3, [noiteDePelada()])).toMatchObject({ matches: 1, losses: 1 })
+  })
+
+  it('jogo único + pelada somam certo no ranking (J = V + E + D para todos)', () => {
+    const jogoUnico = partida(1, { time: { 1: 'A', 2: 'B', 3: 'B' }, result: 'B_WINS', goals: [gol(2, 'B')] })
+    const jogadores = [1, 2, 3].map((id) => ({ id, name: `J${id}`, nickname: `J${id}` }))
+    const { geral } = montarRanking({ partidas: [jogoUnico, noiteDePelada()], jogadores, minimoPartidas: 1 })
+    for (const linha of geral) expect(linha.matches).toBe(linha.wins + linha.draws + linha.losses)
+    expect(geral.find((l) => l.playerId === 1)).toMatchObject({ matches: 4, wins: 2, losses: 2, points: 6 })
+  })
+})
+
+describe('ultimasPartidas na pelada', () => {
+  it('não vira empate nem soma placares: devolve a campanha da noite', () => {
+    expect(ultimasPartidas(1, [noiteDePelada()])).toEqual([
+      { matchId: 10, date: '2026-11-20T20:00:00Z', format: 'PELADA', resultado: null, wins: 2, draws: 0, losses: 1 },
+    ])
+  })
+})
+
 describe('lerPosicao (?posicao= do ranking)', () => {
   it('ausente ou vazia: sem filtro (null)', () => {
     expect(lerPosicao(undefined)).toBeNull()

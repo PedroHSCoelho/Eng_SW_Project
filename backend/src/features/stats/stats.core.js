@@ -27,6 +27,7 @@ function desempenhoNaPartida(partida, time) {
   if (partida.format === 'PELADA') {
     const jogos = (partida.games ?? []).map((j) => desempenhoNoJogo(j, time, partida.goals)).filter(Boolean)
     return {
+      jogos: jogos.length,
       wins: jogos.filter((j) => j.resultado === 'V').length,
       draws: jogos.filter((j) => j.resultado === 'E').length,
       losses: jogos.filter((j) => j.resultado === 'D').length,
@@ -41,6 +42,7 @@ function desempenhoNaPartida(partida, time) {
   const ganhou = partida.result === (time === 'A' ? 'A_WINS' : 'B_WINS')
   const empate = partida.result === 'DRAW'
   return {
+    jogos: 1,
     wins: !empate && ganhou ? 1 : 0,
     draws: empate ? 1 : 0,
     losses: !empate && !ganhou ? 1 : 0,
@@ -51,9 +53,12 @@ function desempenhoNaPartida(partida, time) {
 }
 
 // Soma uma partida nas estatísticas de UM jogador (que já sabemos que jogou nela).
+// `matches` (o "J" da tela) conta JOGOS, não noites: no jogo único é 1; na pelada, cada jogo
+// em que o time dele entrou. Assim J = V + E + D sempre (antes a pelada contava 1 no J e
+// vários jogos no V/E/D, e a conta não fechava).
 function acumular(stats, partida, time) {
   const d = desempenhoNaPartida(partida, time)
-  stats.matches += 1
+  stats.matches += d.jogos
   stats.goalDifference += d.saldo
   stats.wins += d.wins
   stats.draws += d.draws
@@ -183,16 +188,22 @@ export function ultimasPartidas(playerId, partidas, quantas = 5) {
     .slice(0, quantas)
     .map(({ partida, escalado }) => {
       const d = desempenhoNaPartida(partida, escalado.team)
-      // Pelada: V se ganhou mais jogos do que perdeu, D se perdeu mais, E se empatou no saldo de jogos.
-      const resultado = d.wins > d.losses ? 'V' : d.losses > d.wins ? 'D' : 'E'
-      return {
-        matchId: partida.id,
-        date: partida.date,
-        resultado,
-        golsPro: d.pro,
-        golsContra: d.contra,
-        ...(partida.format === 'PELADA' && { format: 'PELADA', wins: d.wins, draws: d.draws, losses: d.losses }),
+      // Pelada: uma noite tem vários jogos, então não existe UM resultado nem UM placar.
+      // Em vez de inventar um (somar os placares dava "E 3x3" para quem ganhou 1 e perdeu 1),
+      // a pelada sai com a campanha da noite (wins/draws/losses) e resultado null.
+      if (partida.format === 'PELADA') {
+        return {
+          matchId: partida.id,
+          date: partida.date,
+          format: 'PELADA',
+          resultado: null,
+          wins: d.wins,
+          draws: d.draws,
+          losses: d.losses,
+        }
       }
+      const resultado = d.wins > 0 ? 'V' : d.losses > 0 ? 'D' : 'E'
+      return { matchId: partida.id, date: partida.date, resultado, golsPro: d.pro, golsContra: d.contra }
     })
 }
 

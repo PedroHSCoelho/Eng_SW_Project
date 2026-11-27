@@ -63,6 +63,18 @@ describe('RankingPage', () => {
     expect(screen.getByRole('tab', { name: 'Artilharia' })).toHaveAttribute('aria-selected', 'true')
   })
 
+  it('a regra de pontos só aparece na aba Geral; as outras explicam o próprio critério', async () => {
+    renderizar()
+    await screen.findByRole('table')
+    expect(screen.getByText(/Pontos: vitória 3/)).toBeInTheDocument()
+
+    for (const aba of ['Artilharia', 'Assistências', 'Defesas']) {
+      fireEvent.click(screen.getByRole('tab', { name: aba }))
+      expect(screen.queryByText(/Pontos: vitória 3/)).not.toBeInTheDocument()
+      expect(screen.getByText(/quem jogou menos jogos fica na frente/)).toBeInTheDocument()
+    }
+  })
+
   it('aba sem ninguém explica por quê', async () => {
     renderizar()
     await screen.findByRole('table')
@@ -73,7 +85,7 @@ describe('RankingPage', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 
-  it('ranking geral vazio explica a regra das 3 partidas', async () => {
+  it('ranking geral vazio explica a regra dos 3 jogos', async () => {
     fetch.mockImplementation(async () => resposta(200, { data: { geral: [], artilharia: [], assistencias: [] } }))
 
     renderizar()
